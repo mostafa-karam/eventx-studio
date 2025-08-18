@@ -36,7 +36,6 @@ const AppContent = () => {
 
   // Admin Dashboard
   if (isAdmin) {
-    const [selectedEvent, setSelectedEvent] = useState(null);
     
     const renderAdminContent = () => {
       switch (activeTab) {
