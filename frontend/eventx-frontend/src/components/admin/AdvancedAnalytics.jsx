@@ -133,7 +133,7 @@ const AdvancedAnalytics = () => {
       topEvents: [
         { name: 'Tech Summit 2024', tickets: 450, revenue: 22500, attendees: 420 },
         { name: 'Business Innovation', tickets: 320, revenue: 16000, attendees: 298 },
-        { name: 'Art & Design Expo', tickets: 280, revenue: 8400, revenue: 265 },
+        { name: 'Art & Design Expo', tickets: 280, revenue: 8400, attendees: 265 },
         { name: 'Sports Analytics', tickets: 200, revenue: 12000, attendees: 185 },
         { name: 'Education Forum', tickets: 150, revenue: 4500, attendees: 142 }
       ]
