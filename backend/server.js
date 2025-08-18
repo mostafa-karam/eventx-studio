@@ -22,7 +22,7 @@ const connectDB = async () => {
   try {
     // For development, we'll use a local MongoDB connection
     // In production, this would be MongoDB Atlas
-    const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://mostafakaramwork:<QlV65C2DMPR8g7MJ>@cluster0.ihfzlsi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/eventx-studio';
     await mongoose.connect(mongoURI);
     console.log('MongoDB connected successfully');
   } catch (error) {
@@ -30,7 +30,6 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
-
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/events', require('./routes/events'));
