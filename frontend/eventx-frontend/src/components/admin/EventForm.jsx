@@ -42,7 +42,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
   const [error, setError] = useState('');
 
   const { token } = useAuth();
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
