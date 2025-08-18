@@ -5,10 +5,10 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { 
-  Calendar, 
-  MapPin, 
-  Ticket, 
+import {
+  Calendar,
+  MapPin,
+  Ticket,
   Download,
   QrCode,
   Clock,
@@ -24,7 +24,7 @@ const MyTickets = () => {
   const [selectedTicket, setSelectedTicket] = useState(null);
 
   const { token } = useAuth();
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'import.meta.env.VITE_API_BASE_URL;';
 
   useEffect(() => {
     fetchMyTickets();
@@ -68,32 +68,32 @@ const MyTickets = () => {
   const getTicketStatus = (ticket) => {
     const now = new Date();
     const eventDate = new Date(ticket.event.date);
-    
+
     if (ticket.status === 'cancelled') {
-      return { 
-        status: 'cancelled', 
-        label: 'Cancelled', 
+      return {
+        status: 'cancelled',
+        label: 'Cancelled',
         color: 'bg-red-100 text-red-600',
         icon: XCircle
       };
     } else if (ticket.checkIn.status) {
-      return { 
-        status: 'checked-in', 
-        label: 'Checked In', 
+      return {
+        status: 'checked-in',
+        label: 'Checked In',
         color: 'bg-green-100 text-green-600',
         icon: CheckCircle
       };
     } else if (eventDate < now) {
-      return { 
-        status: 'expired', 
-        label: 'Expired', 
+      return {
+        status: 'expired',
+        label: 'Expired',
         color: 'bg-gray-100 text-gray-600',
         icon: Clock
       };
     } else {
-      return { 
-        status: 'active', 
-        label: 'Active', 
+      return {
+        status: 'active',
+        label: 'Active',
         color: 'bg-blue-100 text-blue-600',
         icon: Ticket
       };
@@ -103,12 +103,12 @@ const MyTickets = () => {
   const categorizeTickets = () => {
     const now = new Date();
     return {
-      upcoming: tickets.filter(ticket => 
-        new Date(ticket.event.date) > now && 
+      upcoming: tickets.filter(ticket =>
+        new Date(ticket.event.date) > now &&
         ticket.status !== 'cancelled'
       ),
-      past: tickets.filter(ticket => 
-        new Date(ticket.event.date) <= now || 
+      past: tickets.filter(ticket =>
+        new Date(ticket.event.date) <= now ||
         ticket.checkIn.status
       ),
       cancelled: tickets.filter(ticket => ticket.status === 'cancelled')
@@ -166,17 +166,17 @@ const MyTickets = () => {
               <Calendar className="h-4 w-4 mr-2" />
               {formatDate(ticket.event.date)}
             </div>
-            
+
             <div className="flex items-center text-sm text-gray-600">
               <MapPin className="h-4 w-4 mr-2" />
               {ticket.event.venue.name}, {ticket.event.venue.city}
             </div>
-            
+
             <div className="flex items-center justify-between pt-3">
               <div className="text-lg font-bold">
                 ${ticket.totalAmount}
               </div>
-              
+
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
@@ -210,7 +210,7 @@ const MyTickets = () => {
         <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
           <div className="text-center">
             <h3 className="text-lg font-bold mb-4">Your Ticket QR Code</h3>
-            
+
             {/* QR Code Placeholder */}
             <div className="w-48 h-48 mx-auto bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center mb-4">
               <div className="text-center">
@@ -219,13 +219,13 @@ const MyTickets = () => {
                 <p className="text-xs text-gray-400">{ticket.qrCode}</p>
               </div>
             </div>
-            
+
             <div className="text-sm text-gray-600 mb-4">
               <p className="font-medium">{ticket.event.title}</p>
               <p>{formatDate(ticket.event.date)}</p>
               <p>Ticket #{ticket.ticketNumber}</p>
             </div>
-            
+
             <div className="flex space-x-2">
               <Button
                 variant="outline"
@@ -350,9 +350,9 @@ const MyTickets = () => {
 
       {/* QR Code Modal */}
       {selectedTicket && (
-        <QRCodeModal 
-          ticket={selectedTicket} 
-          onClose={() => setSelectedTicket(null)} 
+        <QRCodeModal
+          ticket={selectedTicket}
+          onClose={() => setSelectedTicket(null)}
         />
       )}
     </div>

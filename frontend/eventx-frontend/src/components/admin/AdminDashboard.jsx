@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
-import { 
-  Calendar, 
-  Users, 
-  DollarSign, 
+import {
+  Calendar,
+  Users,
+  DollarSign,
   TrendingUp,
   Eye,
   Ticket
@@ -17,7 +17,7 @@ const AdminDashboard = () => {
   const [error, setError] = useState('');
 
   const { token } = useAuth();
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'import.meta.env.VITE_API_BASE_URL;';
 
   useEffect(() => {
     fetchDashboardData();
@@ -208,7 +208,7 @@ const AdminDashboard = () => {
                   <span className="font-medium text-gray-900">Conversion Rate</span>
                 </div>
                 <span className="text-lg font-bold text-green-600">
-                  {overview?.totalTicketsSold && dashboardData?.topPerformers?.events?.reduce((sum, event) => sum + (event.analytics?.views || 0), 0) 
+                  {overview?.totalTicketsSold && dashboardData?.topPerformers?.events?.reduce((sum, event) => sum + (event.analytics?.views || 0), 0)
                     ? ((overview.totalTicketsSold / dashboardData.topPerformers.events.reduce((sum, event) => sum + (event.analytics?.views || 0), 0)) * 100).toFixed(1)
                     : 0}%
                 </span>

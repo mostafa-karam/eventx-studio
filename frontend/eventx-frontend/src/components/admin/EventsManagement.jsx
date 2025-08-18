@@ -5,11 +5,11 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
-import { 
-  Calendar, 
-  MapPin, 
-  Users, 
-  DollarSign, 
+import {
+  Calendar,
+  MapPin,
+  Users,
+  DollarSign,
   Search,
   Plus,
   Edit,
@@ -26,7 +26,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
   const [deleteLoading, setDeleteLoading] = useState(null);
 
   const { token } = useAuth();
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'import.meta.env.VITE_API_BASE_URL;';
 
   useEffect(() => {
     fetchEvents();
@@ -108,7 +108,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
   const getEventStatus = (event) => {
     const now = new Date();
     const eventDate = new Date(event.date);
-    
+
     if (eventDate < now) {
       return { status: 'past', label: 'Past', color: 'bg-gray-100 text-gray-600' };
     } else if (event.seating.availableSeats === 0) {
@@ -149,7 +149,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
             Create, edit, and manage your events.
           </p>
         </div>
-        
+
         <Button onClick={onCreateEvent}>
           <Plus className="h-4 w-4 mr-2" />
           Create Event
@@ -215,33 +215,33 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
                           </Badge>
                         )}
                       </div>
-                      
+
                       <p className="text-gray-600 mb-4 line-clamp-2">
                         {event.description}
                       </p>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 mr-2" />
                           {formatDate(event.date)}
                         </div>
-                        
+
                         <div className="flex items-center">
                           <MapPin className="h-4 w-4 mr-2" />
                           {event.venue.name}, {event.venue.city}
                         </div>
-                        
+
                         <div className="flex items-center">
                           <Users className="h-4 w-4 mr-2" />
                           {event.seating.totalSeats - event.seating.availableSeats} / {event.seating.totalSeats} sold
                         </div>
-                        
+
                         <div className="flex items-center">
                           <DollarSign className="h-4 w-4 mr-2" />
                           {formatPrice(event)}
                         </div>
                       </div>
-                      
+
                       {/* Analytics */}
                       <div className="mt-4 flex items-center gap-6 text-sm text-gray-500">
                         <div className="flex items-center">
@@ -256,7 +256,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Actions */}
                     <div className="flex items-center space-x-2 ml-4">
                       <Button
@@ -267,7 +267,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
-                      
+
                       <Button
                         variant="outline"
                         size="sm"

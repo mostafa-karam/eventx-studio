@@ -6,11 +6,11 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
-import { 
-  Calendar, 
-  MapPin, 
-  Users, 
-  DollarSign, 
+import {
+  Calendar,
+  MapPin,
+  Users,
+  DollarSign,
   Search,
   Filter,
   Clock,
@@ -30,7 +30,7 @@ const EventsBrowser = ({ onEventSelect }) => {
   });
 
   const { token } = useAuth();
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'import.meta.env.VITE_API_BASE_URL;';
 
   useEffect(() => {
     fetchEvents();
@@ -87,7 +87,7 @@ const EventsBrowser = ({ onEventSelect }) => {
   const getEventStatus = (event) => {
     const now = new Date();
     const eventDate = new Date(event.date);
-    
+
     if (eventDate < now) {
       return { status: 'past', label: 'Past Event', color: 'bg-gray-100 text-gray-600' };
     } else if (event.seating.availableSeats === 0) {
@@ -143,7 +143,7 @@ const EventsBrowser = ({ onEventSelect }) => {
             />
           </div>
         </div>
-        
+
         <div className="flex gap-2">
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-40">
@@ -216,30 +216,30 @@ const EventsBrowser = ({ onEventSelect }) => {
                       <Calendar className="h-4 w-4 mr-2" />
                       {formatDate(event.date)}
                     </div>
-                    
+
                     <div className="flex items-center text-sm text-gray-600">
                       <MapPin className="h-4 w-4 mr-2" />
                       {event.venue.name}, {event.venue.city}
                     </div>
-                    
+
                     <div className="flex items-center text-sm text-gray-600">
                       <Users className="h-4 w-4 mr-2" />
                       {event.seating.availableSeats} of {event.seating.totalSeats} seats available
                     </div>
-                    
+
                     <div className="flex items-center justify-between pt-2">
                       <div className="flex items-center text-lg font-bold text-gray-900">
                         <DollarSign className="h-4 w-4 mr-1" />
                         {formatPrice(event)}
                       </div>
-                      
-                      <Button 
+
+                      <Button
                         onClick={() => onEventSelect(event)}
                         disabled={eventStatus.status === 'past' || eventStatus.status === 'sold-out'}
                         size="sm"
                       >
                         {eventStatus.status === 'past' ? 'Past Event' :
-                         eventStatus.status === 'sold-out' ? 'Sold Out' : 'View Details'}
+                          eventStatus.status === 'sold-out' ? 'Sold Out' : 'View Details'}
                       </Button>
                     </div>
                   </div>

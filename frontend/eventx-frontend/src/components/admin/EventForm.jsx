@@ -7,10 +7,10 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
-import { 
-  Calendar, 
-  MapPin, 
-  Users, 
+import {
+  Calendar,
+  MapPin,
+  Users,
   DollarSign,
   Save,
   ArrowLeft
@@ -37,16 +37,16 @@ const EventForm = ({ event, onSave, onCancel }) => {
       amount: event?.pricing?.amount || 0
     }
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const { token } = useAuth();
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'import.meta.env.VITE_API_BASE_URL;';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
       setFormData({
@@ -62,7 +62,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
         [name]: value
       });
     }
-    
+
     setError('');
   };
 
@@ -104,10 +104,10 @@ const EventForm = ({ event, onSave, onCancel }) => {
         }
       };
 
-      const url = event 
+      const url = event
         ? `${API_BASE_URL}/events/admin/${event._id}`
         : `${API_BASE_URL}/events/admin`;
-      
+
       const method = event ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -159,7 +159,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
             {event ? 'Update event details' : 'Fill in the details to create a new event'}
           </p>
         </div>
-        
+
         <Button variant="outline" onClick={onCancel}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Cancel
@@ -210,8 +210,8 @@ const EventForm = ({ event, onSave, onCancel }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
-                <Select 
-                  value={formData.category} 
+                <Select
+                  value={formData.category}
                   onValueChange={(value) => handleSelectChange('category', value)}
                 >
                   <SelectTrigger>
@@ -360,8 +360,8 @@ const EventForm = ({ event, onSave, onCancel }) => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="pricing.type">Pricing Type</Label>
-                <Select 
-                  value={formData.pricing.type} 
+                <Select
+                  value={formData.pricing.type}
                   onValueChange={(value) => handleSelectChange('pricing.type', value)}
                 >
                   <SelectTrigger>

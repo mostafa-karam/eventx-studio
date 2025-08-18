@@ -22,11 +22,11 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { 
-  TrendingUp, 
+import {
+  TrendingUp,
   TrendingDown,
-  Users, 
-  Calendar, 
+  Users,
+  Calendar,
   DollarSign,
   Ticket,
   Download,
@@ -45,7 +45,7 @@ const AdvancedAnalytics = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const { token } = useAuth();
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'import.meta.env.VITE_API_BASE_URL;';
 
   useEffect(() => {
     fetchAnalytics();
@@ -163,9 +163,8 @@ const AdvancedAnalytics = () => {
             <p className="text-sm font-medium text-gray-600">{title}</p>
             <p className="text-2xl font-bold text-gray-900">{value}</p>
             {change && (
-              <div className={`flex items-center mt-1 text-sm ${
-                trend === 'up' ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <div className={`flex items-center mt-1 text-sm ${trend === 'up' ? 'text-green-600' : 'text-red-600'
+                }`}>
                 {trend === 'up' ? (
                   <TrendingUp className="h-4 w-4 mr-1" />
                 ) : (
@@ -213,7 +212,7 @@ const AdvancedAnalytics = () => {
             Comprehensive insights into your events performance and audience.
           </p>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-32">
@@ -226,7 +225,7 @@ const AdvancedAnalytics = () => {
               <SelectItem value="1y">Last year</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <Button
             variant="outline"
             onClick={fetchAnalytics}
@@ -235,7 +234,7 @@ const AdvancedAnalytics = () => {
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          
+
           <Button variant="outline">
             <Download className="h-4 w-4 mr-2" />
             Export
@@ -304,11 +303,11 @@ const AdvancedAnalytics = () => {
                     <XAxis dataKey="month" />
                     <YAxis />
                     <Tooltip formatter={(value) => formatCurrency(value)} />
-                    <Area 
-                      type="monotone" 
-                      dataKey="revenue" 
-                      stroke="#3B82F6" 
-                      fill="#3B82F6" 
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#3B82F6"
+                      fill="#3B82F6"
                       fillOpacity={0.1}
                     />
                   </AreaChart>
@@ -333,10 +332,10 @@ const AdvancedAnalytics = () => {
                     <XAxis dataKey="month" />
                     <YAxis />
                     <Tooltip />
-                    <Line 
-                      type="monotone" 
-                      dataKey="tickets" 
-                      stroke="#10B981" 
+                    <Line
+                      type="monotone"
+                      dataKey="tickets"
+                      stroke="#10B981"
                       strokeWidth={3}
                       dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }}
                     />
@@ -395,7 +394,7 @@ const AdvancedAnalytics = () => {
                   {analytics.eventCategories.map((category, index) => (
                     <div key={category.name} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div 
+                        <div
                           className="w-4 h-4 rounded-full"
                           style={{ backgroundColor: COLORS[index % COLORS.length] }}
                         />
@@ -459,10 +458,10 @@ const AdvancedAnalytics = () => {
                       </div>
                       <div className="flex items-center space-x-2">
                         <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div 
+                          <div
                             className="bg-blue-600 h-2 rounded-full"
-                            style={{ 
-                              width: `${(location.count / analytics.attendeeDemographics.locations[0].count) * 100}%` 
+                            style={{
+                              width: `${(location.count / analytics.attendeeDemographics.locations[0].count) * 100}%`
                             }}
                           />
                         </div>

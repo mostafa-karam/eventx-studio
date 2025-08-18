@@ -7,9 +7,9 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
-import { 
-  FileText, 
-  Download, 
+import {
+  FileText,
+  Download,
   Calendar,
   Filter,
   Search,
@@ -36,7 +36,7 @@ const ReportsCenter = () => {
   });
 
   const { token } = useAuth();
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'import.meta.env.VITE_API_BASE_URL;';
 
   useEffect(() => {
     fetchReports();
@@ -156,11 +156,11 @@ const ReportsCenter = () => {
           parameters: { ...filters }
         };
         setReports([newReport, ...reports]);
-        
+
         // Simulate completion after 3 seconds
         setTimeout(() => {
-          setReports(prev => prev.map(report => 
-            report._id === newReport._id 
+          setReports(prev => prev.map(report =>
+            report._id === newReport._id
               ? { ...report, status: 'completed', fileSize: '2.1 MB', downloadUrl: '#' }
               : report
           ));
@@ -230,10 +230,10 @@ const ReportsCenter = () => {
       generating: { color: 'bg-yellow-100 text-yellow-600', icon: Clock },
       failed: { color: 'bg-red-100 text-red-600', icon: AlertCircle }
     };
-    
+
     const config = statusConfig[status] || statusConfig.completed;
     const Icon = config.icon;
-    
+
     return (
       <Badge className={config.color}>
         <Icon className="h-3 w-3 mr-1" />
@@ -274,9 +274,9 @@ const ReportsCenter = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="dateRange">Date Range</Label>
-              <Select 
-                value={filters.dateRange} 
-                onValueChange={(value) => setFilters({...filters, dateRange: value})}
+              <Select
+                value={filters.dateRange}
+                onValueChange={(value) => setFilters({ ...filters, dateRange: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select date range" />
@@ -293,9 +293,9 @@ const ReportsCenter = () => {
 
             <div className="space-y-2">
               <Label htmlFor="eventCategory">Event Category</Label>
-              <Select 
-                value={filters.eventCategory} 
-                onValueChange={(value) => setFilters({...filters, eventCategory: value})}
+              <Select
+                value={filters.eventCategory}
+                onValueChange={(value) => setFilters({ ...filters, eventCategory: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All categories" />
@@ -313,9 +313,9 @@ const ReportsCenter = () => {
 
             <div className="space-y-2">
               <Label htmlFor="status">Event Status</Label>
-              <Select 
-                value={filters.status} 
-                onValueChange={(value) => setFilters({...filters, status: value})}
+              <Select
+                value={filters.status}
+                onValueChange={(value) => setFilters({ ...filters, status: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All statuses" />
@@ -339,7 +339,7 @@ const ReportsCenter = () => {
                   id="startDate"
                   type="date"
                   value={filters.startDate}
-                  onChange={(e) => setFilters({...filters, startDate: e.target.value})}
+                  onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
@@ -348,7 +348,7 @@ const ReportsCenter = () => {
                   id="endDate"
                   type="date"
                   value={filters.endDate}
-                  onChange={(e) => setFilters({...filters, endDate: e.target.value})}
+                  onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
                 />
               </div>
             </div>
@@ -361,8 +361,8 @@ const ReportsCenter = () => {
               {reportTypes.map((reportType) => {
                 const Icon = getReportIcon(reportType.value);
                 return (
-                  <Card 
-                    key={reportType.value} 
+                  <Card
+                    key={reportType.value}
                     className="cursor-pointer hover:shadow-md transition-shadow"
                   >
                     <CardContent className="p-4">
@@ -419,8 +419,8 @@ const ReportsCenter = () => {
               {reports.map((report) => {
                 const Icon = getReportIcon(report.type);
                 return (
-                  <div 
-                    key={report._id} 
+                  <div
+                    key={report._id}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                   >
                     <div className="flex items-center space-x-4">
@@ -442,7 +442,7 @@ const ReportsCenter = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       {report.status === 'completed' && (
                         <Button
