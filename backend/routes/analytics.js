@@ -7,6 +7,9 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
+// In-memory reports store (replace with DB model later if needed)
+const reportsStore = [];
+
 // @route   GET /api/analytics/dashboard
 // @desc    Get dashboard analytics (Admin only)
 // @access  Private/Admin
@@ -508,4 +511,92 @@ function convertToCSV(data) {
 }
 
 module.exports = router;
+
+// Reports Center Endpoints
+// @route   GET /api/analytics/reports
+// @desc    List generated reports for the current admin (mock/in-memory)
+// @access  Private/Admin
+router.get('/reports', authenticate, requireAdmin, async (req, res) => {
+  try {
+    // Filter by organizer if we later persist with DB; for now, return all in-memory
+    return res.json({
+      success: true,
+      data: { reports: reportsStore },
+    });
+  } catch (error) {
+    console.error('Reports list error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching reports' });
+  }
+});
+
+// @route   POST /api/analytics/reports/generate
+// @desc    Generate a new report (simulated)
+// @access  Private/Admin
+router.post('/reports/generate', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { type, filters } = req.body || {};
+    if (!type) {
+      return res.status(400).json({ success: false, message: 'Report type is required' });
+    }
+
+    const id = new mongoose.Types.ObjectId().toString();
+    const now = new Date();
+    const newReport = {
+      _id: id,
+      name: `${String(type).charAt(0).toUpperCase() + String(type).slice(1)} Report - ${now.toLocaleDateString()}`,
+      type,
+      status: 'generating',
+      createdAt: now.toISOString(),
+      fileSize: null,
+      downloadUrl: null,
+      parameters: filters || {},
+    };
+
+    // Push initial generating state
+    reportsStore.unshift(newReport);
+
+    // Simulate async completion after 2 seconds
+    setTimeout(() => {
+      const idx = reportsStore.findIndex(r => r._id === id);
+      if (idx !== -1) {
+        reportsStore[idx] = {
+          ...reportsStore[idx],
+          status: 'completed',
+          fileSize: '2.1 MB',
+          downloadUrl: `/api/analytics/reports/${id}/download`,
+        };
+      }
+    }, 2000);
+
+    return res.status(201).json({ success: true, data: { report: newReport } });
+  } catch (error) {
+    console.error('Report generation error:', error);
+    res.status(500).json({ success: false, message: 'Server error while generating report' });
+  }
+});
+
+// @route   GET /api/analytics/reports/:id/download
+// @desc    Download generated report (simulated as CSV)
+// @access  Private/Admin
+router.get('/reports/:id/download', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const report = reportsStore.find(r => r._id === id);
+    if (!report) {
+      return res.status(404).json({ success: false, message: 'Report not found' });
+    }
+    if (report.status !== 'completed') {
+      return res.status(409).json({ success: false, message: 'Report not ready yet' });
+    }
+
+    // For demo, return a tiny CSV payload
+    const csv = `name,type,status,createdAt\n"${report.name}","${report.type}","${report.status}","${report.createdAt}"`;
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="report-${id}.csv"`);
+    return res.send(csv);
+  } catch (error) {
+    console.error('Report download error:', error);
+    res.status(500).json({ success: false, message: 'Server error while downloading report' });
+  }
+});
 
