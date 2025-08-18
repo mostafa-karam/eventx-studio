@@ -105,8 +105,8 @@ const EventForm = ({ event, onSave, onCancel }) => {
       };
 
       const url = event
-        ? `${API_BASE_URL}/events/admin/${event._id}`
-        : `${API_BASE_URL}/events/admin`;
+        ? `${API_BASE_URL}/events/${event._id}`
+        : `${API_BASE_URL}/events`;
 
       const method = event ? 'PUT' : 'POST';
 

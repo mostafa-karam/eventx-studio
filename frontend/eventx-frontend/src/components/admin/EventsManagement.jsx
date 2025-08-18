@@ -65,7 +65,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
 
     setDeleteLoading(eventId);
     try {
-      const response = await fetch(`${API_BASE_URL}/events/admin/${eventId}`, {
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

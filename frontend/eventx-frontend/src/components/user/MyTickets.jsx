@@ -115,28 +115,14 @@ const MyTickets = () => {
     };
   };
 
-  const downloadTicket = async (ticketId) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/download`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `ticket-${ticketId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
-    } catch (error) {
-      console.error('Download error:', error);
-    }
+  const downloadQrFromDataUrl = (dataUrl, filename) => {
+    if (!dataUrl) return;
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const TicketCard = ({ ticket }) => {
@@ -189,10 +175,11 @@ const MyTickets = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => downloadTicket(ticket._id)}
+                  onClick={() => downloadQrFromDataUrl(ticket.qrCodeImage, `ticket-${ticket._id}.png`)}
+                  disabled={!ticket.qrCodeImage}
                 >
                   <Download className="h-4 w-4 mr-1" />
-                  Download
+                  Download QR
                 </Button>
               </div>
             </div>
@@ -211,14 +198,17 @@ const MyTickets = () => {
           <div className="text-center">
             <h3 className="text-lg font-bold mb-4">Your Ticket QR Code</h3>
 
-            {/* QR Code Placeholder */}
-            <div className="w-48 h-48 mx-auto bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center mb-4">
-              <div className="text-center">
-                <QrCode className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm text-gray-500">QR Code</p>
-                <p className="text-xs text-gray-400">{ticket.qrCode}</p>
+            {ticket.qrCodeImage ? (
+              <img src={ticket.qrCodeImage} alt="Ticket QR Code" className="w-48 h-48 mx-auto mb-4" />
+            ) : (
+              <div className="w-48 h-48 mx-auto bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center mb-4">
+                <div className="text-center">
+                  <QrCode className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm text-gray-500">QR Code</p>
+                  <p className="text-xs text-gray-400">{ticket.qrCode}</p>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="text-sm text-gray-600 mb-4">
               <p className="font-medium">{ticket.event.title}</p>
@@ -229,11 +219,12 @@ const MyTickets = () => {
             <div className="flex space-x-2">
               <Button
                 variant="outline"
-                onClick={() => downloadTicket(ticket._id)}
+                onClick={() => downloadQrFromDataUrl(ticket.qrCodeImage, `ticket-${ticket._id}.png`)}
                 className="flex-1"
+                disabled={!ticket.qrCodeImage}
               >
                 <Download className="h-4 w-4 mr-2" />
-                Download
+                Download QR
               </Button>
               <Button onClick={onClose} className="flex-1">
                 Close

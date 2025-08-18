@@ -202,6 +202,25 @@ const AdvancedAnalytics = () => {
     );
   }
 
+  // Safe defaults to avoid runtime errors if backend omits fields
+  const safeOverview = {
+    totalEvents: analytics?.overview?.totalEvents ?? 0,
+    totalTicketsSold: analytics?.overview?.totalTicketsSold ?? 0,
+    totalRevenue: analytics?.overview?.totalRevenue ?? 0,
+    totalAttendees: analytics?.overview?.totalAttendees ?? 0,
+    growthRate: {
+      events: analytics?.overview?.growthRate?.events ?? 0,
+      tickets: analytics?.overview?.growthRate?.tickets ?? 0,
+      revenue: analytics?.overview?.growthRate?.revenue ?? 0,
+      attendees: analytics?.overview?.growthRate?.attendees ?? 0,
+    },
+  };
+  const safeRevenueData = analytics?.revenueData ?? [];
+  const safeEventCategories = analytics?.eventCategories ?? [];
+  const safeAgeGroups = analytics?.attendeeDemographics?.ageGroups ?? [];
+  const safeLocations = analytics?.attendeeDemographics?.locations ?? [];
+  const safeTopEvents = analytics?.topEvents ?? [];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -246,29 +265,29 @@ const AdvancedAnalytics = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Events"
-          value={formatNumber(analytics.overview.totalEvents)}
-          change={analytics.overview.growthRate.events}
+          value={formatNumber(safeOverview.totalEvents)}
+          change={safeOverview.growthRate.events}
           trend="up"
           icon={Calendar}
         />
         <StatCard
           title="Tickets Sold"
-          value={formatNumber(analytics.overview.totalTicketsSold)}
-          change={analytics.overview.growthRate.tickets}
+          value={formatNumber(safeOverview.totalTicketsSold)}
+          change={safeOverview.growthRate.tickets}
           trend="up"
           icon={Ticket}
         />
         <StatCard
           title="Total Revenue"
-          value={formatCurrency(analytics.overview.totalRevenue)}
-          change={analytics.overview.growthRate.revenue}
+          value={formatCurrency(safeOverview.totalRevenue)}
+          change={safeOverview.growthRate.revenue}
           trend="up"
           icon={DollarSign}
         />
         <StatCard
           title="Total Attendees"
-          value={formatNumber(analytics.overview.totalAttendees)}
-          change={analytics.overview.growthRate.attendees}
+          value={formatNumber(safeOverview.totalAttendees)}
+          change={safeOverview.growthRate.attendees}
           trend="up"
           icon={Users}
         />
@@ -298,7 +317,7 @@ const AdvancedAnalytics = () => {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={analytics.revenueData}>
+                  <AreaChart data={safeRevenueData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -327,7 +346,7 @@ const AdvancedAnalytics = () => {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={analytics.revenueData}>
+                  <LineChart data={safeRevenueData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -363,7 +382,7 @@ const AdvancedAnalytics = () => {
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={analytics.eventCategories}
+                      data={safeEventCategories}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -372,7 +391,7 @@ const AdvancedAnalytics = () => {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {analytics.eventCategories.map((entry, index) => (
+                      {safeEventCategories.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -391,7 +410,7 @@ const AdvancedAnalytics = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {analytics.eventCategories.map((category, index) => (
+                  {safeEventCategories.map((category, index) => (
                     <div key={category.name} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div
@@ -428,7 +447,7 @@ const AdvancedAnalytics = () => {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.attendeeDemographics.ageGroups}>
+                  <BarChart data={safeAgeGroups}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="age" />
                     <YAxis />
@@ -448,7 +467,7 @@ const AdvancedAnalytics = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {analytics.attendeeDemographics.locations.map((location, index) => (
+                  {safeLocations.map((location, index) => (
                     <div key={location.city} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-600">
@@ -461,7 +480,7 @@ const AdvancedAnalytics = () => {
                           <div
                             className="bg-blue-600 h-2 rounded-full"
                             style={{
-                              width: `${(location.count / analytics.attendeeDemographics.locations[0].count) * 100}%`
+                              width: `${safeLocations.length ? (location.count / safeLocations[0].count) * 100 : 0}%`
                             }}
                           />
                         </div>
@@ -488,7 +507,7 @@ const AdvancedAnalytics = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {analytics.topEvents.map((event, index) => (
+                {safeTopEvents.map((event, index) => (
                   <div key={event.name} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center space-x-4">
                       <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg font-bold text-blue-600">

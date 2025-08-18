@@ -27,6 +27,7 @@ const EventDetails = ({ event, onBack, onBookTicket }) => {
   const [showSeatSelection, setShowSeatSelection] = useState(false);
 
   const { user, token } = useAuth();
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -77,16 +78,48 @@ const EventDetails = ({ event, onBack, onBookTicket }) => {
 
     setLoading(true);
     try {
-      const bookingData = {
-        eventId: event._id,
-        quantity: bookingQuantity,
-        totalAmount: getTotalPrice(),
-        selectedSeats: selectedSeats
-      };
+      // Ensure we have seat map to select seat numbers
+      let eventDetails = event;
+      if (!event?.seating?.seatMap || !Array.isArray(event.seating.seatMap)) {
+        const res = await fetch(`${API_BASE_URL}/events/${event._id}`);
+        if (!res.ok) throw new Error('Failed to load event details for booking');
+        const data = await res.json();
+        eventDetails = data?.data?.event || event;
+      }
 
-      onBookTicket(bookingData);
+      const seatMap = eventDetails?.seating?.seatMap || [];
+      if (!seatMap.length) throw new Error('No seats available for booking');
+
+      // Pick seats: if user selected seats, use first; else pick first available
+      const seatsToBook = selectedSeats?.length
+        ? [selectedSeats[0]]
+        : (seatMap.find(s => !s.isBooked)?.seatNumber ? [seatMap.find(s => !s.isBooked).seatNumber] : []);
+
+      if (!seatsToBook.length) throw new Error('No available seats to book');
+
+      const response = await fetch(`${API_BASE_URL}/tickets/book`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          eventId: event._id,
+          seatNumber: seatsToBook[0],
+          paymentMethod: event.pricing.type === 'free' ? 'free' : 'card'
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.message || 'Booking failed');
+      }
+
+      // Navigate to My Tickets tab
+      onBookTicket?.({ ticket: result?.data?.ticket });
     } catch (error) {
       console.error('Booking error:', error);
+      alert(error.message || 'Booking failed');
     } finally {
       setLoading(false);
     }

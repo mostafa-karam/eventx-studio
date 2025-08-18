@@ -7,10 +7,13 @@ import EventsManagement from './components/admin/EventsManagement';
 import EventForm from './components/admin/EventForm';
 import AdvancedAnalytics from './components/admin/AdvancedAnalytics';
 import ReportsCenter from './components/admin/ReportsCenter';
+import UserManagement from './components/admin/UserManagement';
+import AdminSettings from './components/admin/AdminSettings';
 import UserLayout from './components/user/UserLayout';
 import EventsBrowser from './components/user/EventsBrowser';
 import EventDetails from './components/user/EventDetails';
 import MyTickets from './components/user/MyTickets';
+import UserProfile from './components/user/UserProfile';
 import './App.css';
 
 // Main App Content Component
@@ -77,19 +80,9 @@ const AppContent = () => {
         case 'reports':
           return <ReportsCenter />;
         case 'users':
-          return (
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">User Management</h2>
-              <p className="text-gray-600">User management functionality coming in Phase 5!</p>
-            </div>
-          );
+          return <UserManagement />;
         case 'settings':
-          return (
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Settings</h2>
-              <p className="text-gray-600">Settings functionality coming in Phase 5!</p>
-            </div>
-          );
+          return <AdminSettings />;
         default:
           return <AdminDashboard />;
       }
@@ -108,10 +101,8 @@ const AppContent = () => {
     setActiveTab('event-details');
   };
 
-  const handleBookTicket = async (bookingData) => {
-    // This would normally make an API call to book the ticket
-    console.log('Booking ticket:', bookingData);
-    alert('Ticket booking functionality will be connected to backend in Phase 4!');
+  const handleBookTicket = async (bookingResult) => {
+    // Booking now handled in EventDetails; navigate to My Tickets on success
     setActiveTab('my-tickets');
   };
 
@@ -137,12 +128,7 @@ const AppContent = () => {
           </div>
         );
       case 'profile':
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Profile</h2>
-            <p className="text-gray-600">Profile management coming soon!</p>
-          </div>
-        );
+        return <UserProfile />;
       default:
         return <EventsBrowser onEventSelect={handleEventSelect} />;
     }
