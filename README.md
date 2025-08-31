@@ -1,6 +1,6 @@
 # 🎟️ EventX Studio - Premium Event Management Platform
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/your-username/eventx-studio/actions)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/mostafa-karam/eventx-studio/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-blue)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-6.0%2B-green)](https://www.mongodb.com/)
