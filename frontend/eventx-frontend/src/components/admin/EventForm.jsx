@@ -48,6 +48,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
     },
     images: event?.images || []
   });
+  
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -57,26 +58,74 @@ const EventForm = ({ event, onSave, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const newFormData = { ...formData };
 
+    // Handle nested properties
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
-      setFormData({
-        ...formData,
-        [parent]: {
-          ...formData[parent],
+      
+      // Handle array indices in nested paths (e.g., 'seating.sections.0.price')
+      const path = name.split('.');
+      if (path.length > 2 && !isNaN(parseInt(path[1]))) {
+        const arrayName = path[0];
+        const index = parseInt(path[1]);
+        const field = path[2];
+        
+        newFormData[arrayName] = [...newFormData[arrayName]];
+        newFormData[arrayName][index] = {
+          ...newFormData[arrayName][index],
+          [field]: field === 'price' ? parseFloat(value) || 0 : value
+        };
+      } else {
+        newFormData[parent] = {
+          ...newFormData[parent],
           [child]: value
+        };
+      }
+
+      // Special handling for seating configuration
+      if (parent === 'seating' && child === 'totalSeats') {
+        const totalSeats = parseInt(value) || 0;
+        const venueCapacity = parseInt(newFormData.venue?.capacity) || 0;
+        
+        // Ensure totalSeats doesn't exceed venue capacity
+        if (venueCapacity > 0 && totalSeats > venueCapacity) {
+          newFormData.seating.totalSeats = venueCapacity;
         }
-      });
+        
+        // Ensure availableSeats doesn't exceed totalSeats
+        if (newFormData.seating.availableSeats > totalSeats) {
+          newFormData.seating.availableSeats = totalSeats;
+        }
+      }
+      
+      // When venue capacity changes, adjust totalSeats if needed
+      if (parent === 'venue' && child === 'capacity') {
+        const newCapacity = parseInt(value) || 0;
+        if (newFormData.seating.totalSeats > newCapacity) {
+          newFormData.seating.totalSeats = newCapacity;
+          if (newFormData.seating.availableSeats > newCapacity) {
+            newFormData.seating.availableSeats = newCapacity;
+          }
+        }
+      }
+      
+      // Ensure availableSeats doesn't exceed totalSeats
+      if (parent === 'seating' && child === 'availableSeats') {
+        const availableSeats = parseInt(value) || 0;
+        const totalSeats = parseInt(newFormData.seating.totalSeats) || 0;
+        if (availableSeats > totalSeats) {
+          newFormData.seating.availableSeats = totalSeats;
+        }
+      }
     } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
+      newFormData[name] = value;
     }
 
+    setFormData(newFormData);
     setError('');
   };
-
+  
   const handleSelectChange = (name, value) => {
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
@@ -96,37 +145,50 @@ const EventForm = ({ event, onSave, onCancel }) => {
     setError('');
   };
 
+  const validateForm = () => {
+    // Basic front-end validation aligned with backend constraints
+    if (!formData.category) {
+      throw new Error('Category is required');
+    }
+    if (!formData?.venue?.country) {
+      throw new Error('Country is required');
+    }
+    
+    const totalSeatsNum = parseInt(formData.seating.totalSeats);
+    const availableSeatsNum = parseInt(formData.seating.availableSeats);
+    const venueCapacityNum = parseInt(formData.venue.capacity);
+    
+    if (Number.isNaN(venueCapacityNum) || venueCapacityNum < 1) {
+      throw new Error('Venue capacity must be at least 1');
+    }
+    
+    if (Number.isNaN(totalSeatsNum) || totalSeatsNum < 1) {
+      throw new Error('Total seats must be at least 1');
+    }
+    
+    if (totalSeatsNum > venueCapacityNum) {
+      throw new Error('Total seats cannot exceed venue capacity');
+    }
+    
+    if (Number.isNaN(availableSeatsNum) || availableSeatsNum < 0) {
+      throw new Error('Available seats cannot be negative');
+    }
+    
+    if (availableSeatsNum > totalSeatsNum) {
+      throw new Error('Available seats cannot exceed total seats');
+    }
+    
+    return { totalSeatsNum, availableSeatsNum, venueCapacityNum };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // Basic front-end validation aligned with backend constraints
-      if (!formData.category) {
-        throw new Error('Category is required');
-      }
-      if (!formData?.venue?.country) {
-        throw new Error('Country is required');
-      }
-      const totalSeatsNum = parseInt(formData.seating.totalSeats);
-      const availableSeatsNum = parseInt(formData.seating.availableSeats);
-      const venueCapacityNum = parseInt(formData.venue.capacity);
-      if (Number.isNaN(totalSeatsNum) || totalSeatsNum < 1) {
-        throw new Error('Total seats must be at least 1');
-      }
-      if (Number.isNaN(availableSeatsNum) || availableSeatsNum < 0) {
-        throw new Error('Available seats cannot be negative');
-      }
-      if (availableSeatsNum > totalSeatsNum) {
-        throw new Error('Available seats cannot exceed total seats');
-      }
-      if (Number.isNaN(venueCapacityNum) || venueCapacityNum < 1) {
-        throw new Error('Venue capacity must be at least 1');
-      }
-      if (totalSeatsNum > venueCapacityNum) {
-        throw new Error('Total seats cannot exceed venue capacity');
-      }
+      // Validate form data
+      const { totalSeatsNum, availableSeatsNum, venueCapacityNum } = validateForm();
 
       const eventData = {
         ...formData,
@@ -409,7 +471,12 @@ const EventForm = ({ event, onSave, onCancel }) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="venue.capacity" className="text-sm font-medium text-gray-700">Venue Capacity *</Label>
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="venue.capacity" className="text-sm font-medium text-gray-700">Venue Capacity *</Label>
+                  <span className="text-xs text-gray-500">
+                    Max: {formData.venue.capacity} {formData.venue.capacity === '1' ? 'person' : 'people'}
+                  </span>
+                </div>
                 <div className="relative">
                   <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -420,10 +487,15 @@ const EventForm = ({ event, onSave, onCancel }) => {
                     value={formData.venue.capacity}
                     onChange={handleChange}
                     placeholder="e.g., 500"
-                    className="pl-10 h-11"
+                    className={`pl-10 h-11 ${parseInt(formData.venue.capacity) < parseInt(formData.seating.totalSeats) ? 'border-red-500' : ''}`}
                     required
                   />
                 </div>
+                {parseInt(formData.venue.capacity) < parseInt(formData.seating.totalSeats) && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Venue capacity cannot be less than total seats
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -443,7 +515,12 @@ const EventForm = ({ event, onSave, onCancel }) => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="seating.totalSeats" className="text-sm font-medium text-gray-700">Total Seats *</Label>
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="seating.totalSeats" className="text-sm font-medium text-gray-700">Total Seats *</Label>
+                  <span className="text-xs text-gray-500">
+                    {formData.venue.capacity - formData.seating.totalSeats} seats remaining
+                  </span>
+                </div>
                 <Input
                   id="seating.totalSeats"
                   name="seating.totalSeats"
@@ -451,14 +528,25 @@ const EventForm = ({ event, onSave, onCancel }) => {
                   value={formData.seating.totalSeats}
                   onChange={handleChange}
                   min="1"
+                  max={formData.venue.capacity}
                   placeholder="e.g., 100"
-                  className="h-11"
+                  className={`h-11 ${parseInt(formData.seating.totalSeats) > parseInt(formData.venue.capacity) ? 'border-red-500' : ''}`}
                   required
                 />
+                {parseInt(formData.seating.totalSeats) > parseInt(formData.venue.capacity) && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Cannot exceed venue capacity of {formData.venue.capacity}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="seating.availableSeats" className="text-sm font-medium text-gray-700">Available Seats *</Label>
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="seating.availableSeats" className="text-sm font-medium text-gray-700">Available Seats *</Label>
+                  <span className="text-xs text-gray-500">
+                    {formData.seating.availableSeats} of {formData.seating.totalSeats} available
+                  </span>
+                </div>
                 <Input
                   id="seating.availableSeats"
                   name="seating.availableSeats"
@@ -468,15 +556,28 @@ const EventForm = ({ event, onSave, onCancel }) => {
                   min="0"
                   max={formData.seating.totalSeats}
                   placeholder="e.g., 100"
-                  className="h-11"
+                  className={`h-11 ${parseInt(formData.seating.availableSeats) > parseInt(formData.seating.totalSeats) ? 'border-red-500' : ''}`}
                   required
                 />
-              </div>
-              
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-700">
-                  💡 Available seats should not exceed total seats or venue capacity
-                </p>
+                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                  <div 
+                    className="bg-green-500 h-2.5 rounded-full" 
+                    style={{
+                      width: `${Math.min(100, (formData.seating.availableSeats / formData.seating.totalSeats) * 100)}%`
+                    }}
+                  ></div>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>0</span>
+                  <span>Capacity: {formData.seating.totalSeats}</span>
+                </div>
+                
+                {parseInt(formData.seating.availableSeats) > parseInt(formData.seating.totalSeats) && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Available seats cannot exceed total seats
+                  </p>
+                )}
+                
               </div>
             </CardContent>
           </Card>

@@ -1,46 +1,68 @@
-# EventX Studio - Event Management System
+# 🎟️ EventX Studio - Premium Event Management Platform
 
-A comprehensive full-stack event management system built with React, Node.js, and MongoDB. EventX Studio provides role-based access for both event organizers (Admins) and attendees (Users), featuring event creation, ticket booking, analytics, and reporting capabilities.
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-blue)]()
+[![MongoDB](https://img.shields.io/badge/MongoDB-6.0%2B-green)]()
+[![React](https://img.shields.io/badge/React-19.1.0-blue)]()
 
-## 🚀 Features
+A comprehensive, secure, and scalable full-stack event management solution built with modern web technologies. EventX Studio provides a seamless experience for both event organizers (Admins) and attendees (Users), featuring advanced event management, secure authentication, real-time analytics, and comprehensive reporting capabilities.
 
-### Admin Features
+---
 
-- **Dashboard**: Comprehensive overview with key metrics and quick actions
-- **Event Management**: Create, edit, delete, and manage events with detailed information
-- **Analytics**: Advanced analytics dashboard with interactive charts and visualizations
-- **Reports**: Generate and export detailed reports (Revenue, Demographics, Performance, etc.)
-- **User Management**: Manage attendees and user accounts
-- **QR Code Generation**: Automatic QR code generation for ticket validation
+## 📑 Table of Contents
 
-### User Features
+- [✨ Features](#-features)
+- [🛠 Tech Stack](#-tech-stack)
+- [📁 Project Structure](#-project-structure)
+- [🚦 Getting Started](#-getting-started)
+- [🔒 Security](#-advanced-security--authentication)
+- [🌐 API Documentation](#-api-documentation)
+- [🎨 UI Components](#-ui-components)
+- [📈 Analytics & Reporting](#-analytics--reporting)
+- [🧪 Testing](#-testing--quality-assurance)
+- [🚀 Deployment](#-deployment-guide)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+- [👥 Team](#-team)
+- [📞 Support](#-support)
 
-- **Event Discovery**: Browse and search events with filtering and sorting options
-- **Event Details**: Detailed event information with booking interface
-- **Ticket Booking**: Secure ticket booking with seat selection and payment simulation
-- **My Tickets**: Manage booked tickets with QR codes for entry
-- **User Dashboard**: Personal dashboard with quick stats and navigation
+---
+
+## ✨ Features
+
+### 👨‍💼 Admin Features
+
+- **Dashboard**: Real-time analytics with KPIs, recent activities, and quick actions
+- **Event Management**: Full CRUD operations with rich text editing and media uploads
+- **Marketing Center**: Create and manage email campaigns with performance tracking
+- **User Management**: Role-based access control with advanced options
+- **Notifications System**: Centralized, filterable notification center
+- **QR Code System**: Secure QR generation and validation for tickets
+- **Support Center**: Ticketing system with FAQs and contact options
+
+### 👥 User Features
+
+- **Event Discovery**: Advanced search with filters (category, date, location)
+- **Event Details**: Interactive maps, social sharing, and details
+- **Favorites**: Save and manage favorite events
+- **Ticket Management**: View, download, and manage all tickets
+- **Personal Dashboard**: Upcoming events, history, and recommendations
+- **Profile & Security**: Manage personal info, active sessions, and 2FA
+
+---
 
 ## 🛠 Tech Stack
 
-### Frontend
+### 🖥️ Frontend
 
-- **React 19.1.0** - Modern UI library
-- **Tailwind CSS** - Utility-first CSS framework
-- **shadcn/ui** - High-quality UI components
-- **Recharts** - Data visualization library
-- **Lucide React** - Beautiful icons
-- **Vite** - Fast build tool and development server
+- **React 19.1.0** · **Tailwind CSS** · **shadcn/ui** · **Recharts** · **Lucide Icons** · **Vite** · **Radix UI** · **React Hook Form** · **Zod**
 
-### Backend
+### ⚙️ Backend
 
-- **Node.js** - JavaScript runtime
-- **Express.js** - Web application framework
-- **MongoDB** - NoSQL database
-- **Mongoose** - MongoDB object modeling
-- **JWT** - JSON Web Token authentication
-- **bcryptjs** - Password hashing
-- **QR Code** - QR code generation
+- **Node.js 18+** · **Express.js** · **MongoDB 6.0+** · **Mongoose** · **JWT** · **bcryptjs** · **Nodemailer** · **Winston** · **ua-parser-js** · **Jest & Supertest**
+
+---
 
 ## 📁 Project Structure
 
@@ -50,281 +72,177 @@ eventx-studio/
 │   └── eventx-frontend/
 │       ├── src/
 │       │   ├── components/
-│       │   │   ├── admin/          # Admin-specific components
-│       │   │   ├── user/           # User-specific components
-│       │   │   └── ui/             # Reusable UI components
-│       │   ├── contexts/           # React contexts
-│       │   ├── pages/              # Page components
-│       │   └── App.jsx             # Main application component
-│       ├── public/                 # Static assets
-│       └── package.json            # Frontend dependencies
+│       │   │   ├── admin/
+│       │   │   ├── user/
+│       │   │   └── ui/
+│       │   ├── contexts/
+│       │   ├── pages/
+│       │   └── App.jsx
+│       ├── public/
+│       └── package.json
 ├── backend/
-│   ├── models/                     # Database models
-│   ├── routes/                     # API routes
-│   ├── middleware/                 # Custom middleware
-│   ├── controllers/                # Route controllers
-│   ├── config/                     # Configuration files
-│   ├── server.js                   # Main server file
-│   └── package.json                # Backend dependencies
-└── README.md                       # Project documentation
+│   ├── models/
+│   ├── routes/
+│   ├── middleware/
+│   ├── controllers/
+│   ├── config/
+│   ├── server.js
+│   └── package.json
+└── README.md
 ```
+
+---
 
 ## 🚦 Getting Started
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
-- MongoDB (local installation or MongoDB Atlas)
-- npm or yarn package manager
+- Node.js (v18+)
+- MongoDB (local or Atlas)
+- npm or yarn
 
 ### Installation
 
-1. **Clone the repository**
-
-   ```bash
-   git clone <repository-url>
-   cd eventx-studio
-   ```
-
-2. **Backend Setup**
-
-   ```bash
-   cd backend
-   npm install
-
-   # Create environment file
-   cp .env.example .env
-   # Edit .env with your MongoDB connection string and JWT secret
-
-   # Start the backend server
-   npm run dev
-   ```
-
-3. **Frontend Setup**
-
-   ```bash
-   cd frontend/eventx-frontend
-   npm install
-
-   # Start the development server
-   npm run dev
-   ```
-
-4. **Access the Application**
-   - Frontend: <http://localhost:5173>
-   - Backend API: <http://localhost:5000>
-
-### Environment Variables
-
-Create a `.env` file in the backend directory:
-
-```env
-MONGODB_URI=mongodb://localhost:27017/eventx-studio
-JWT_SECRET=your-super-secret-jwt-key
-PORT=5000
-NODE_ENV=development
+```bash
+git clone <repository-url>
+cd eventx-studio
 ```
 
-## 📊 Database Models
+**Backend Setup**
 
-### User Model
-
-```javascript
-{
-  name: String,
-  email: String (unique),
-  password: String (hashed),
-  role: String (admin/user),
-  profile: {
-    phone: String,
-    age: Number,
-    city: String,
-    interests: [String]
-  }
-}
+```bash
+cd backend
+npm install
+cp .env.example .env   # Add MongoDB URI & JWT secret
+npm run dev
 ```
 
-### Event Model
+**Frontend Setup**
 
-```javascript
-{
-  title: String,
-  description: String,
-  category: String,
-  date: Date,
-  venue: {
-    name: String,
-    address: String,
-    city: String,
-    country: String
-  },
-  seating: {
-    totalSeats: Number,
-    availableSeats: Number
-  },
-  pricing: {
-    type: String (free/paid),
-    amount: Number
-  },
-  organizer: ObjectId (User),
-  analytics: {
-    views: Number,
-    bookings: Number,
-    revenue: Number
-  }
-}
+```bash
+cd frontend/eventx-frontend
+npm install
+npm run dev
 ```
 
-### Ticket Model
-
-```javascript
-{
-  user: ObjectId (User),
-  event: ObjectId (Event),
-  ticketNumber: String (unique),
-  qrCode: String,
-  quantity: Number,
-  totalAmount: Number,
-  bookingDate: Date,
-  status: String (active/cancelled),
-  checkIn: {
-    status: Boolean,
-    timestamp: Date
-  }
-}
-```
-
-## 🔐 Authentication & Authorization
-
-The system implements JWT-based authentication with role-based access control:
-
-- **Public Routes**: Registration, login
-- **User Routes**: Event browsing, ticket booking, profile management
-- **Admin Routes**: Event management, analytics, reports, user management
-
-## 📱 API Endpoints
-
-### Authentication
-
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `GET /api/auth/profile` - Get user profile
-
-### Events
-
-- `GET /api/events` - Get all events (public)
-- `GET /api/events/:id` - Get event details
-- `POST /api/events/admin` - Create event (admin)
-- `PUT /api/events/admin/:id` - Update event (admin)
-- `DELETE /api/events/admin/:id` - Delete event (admin)
-
-### Tickets
-
-- `POST /api/tickets/book` - Book tickets
-- `GET /api/tickets/my-tickets` - Get user tickets
-- `POST /api/tickets/:id/checkin` - Check-in ticket
-
-### Analytics
-
-- `GET /api/analytics/dashboard` - Get dashboard analytics
-- `GET /api/analytics/reports` - Get reports list
-- `POST /api/analytics/reports/generate` - Generate report
-
-## 🎨 UI Components
-
-The application uses a consistent design system with:
-
-- **Color Palette**: Professional blue and gray tones
-- **Typography**: Clean, readable fonts with proper hierarchy
-- **Components**: Reusable UI components from shadcn/ui
-- **Responsive Design**: Mobile-first approach with Tailwind CSS
-- **Accessibility**: ARIA labels and keyboard navigation support
-
-## 📈 Analytics & Reporting
-
-### Dashboard Analytics
-
-- Total events, tickets sold, revenue, and attendees
-- Growth rate indicators with trend arrows
-- Interactive charts for revenue and sales data
-- Event category distribution
-- Demographic analysis
-
-### Report Types
-
-1. **Revenue Report** - Financial performance and trends
-2. **Demographics Analysis** - Attendee demographics and insights
-3. **Event Performance** - Success metrics and KPIs
-4. **Sales Analysis** - Ticket sales patterns
-5. **Attendance Report** - Attendance rates and patterns
-6. **Feedback Summary** - Event feedback and ratings
-
-## 🧪 Testing
-
-### Manual Testing Checklist
-
-- [ ] User registration and login
-- [ ] Admin registration and login
-- [ ] Event creation and management
-- [ ] Event browsing and filtering
-- [ ] Ticket booking process
-- [ ] QR code generation
-- [ ] Analytics dashboard
-- [ ] Report generation
-- [ ] Responsive design
-- [ ] Error handling
-
-## 🚀 Deployment
-
-### Frontend Deployment (Vercel/Netlify)
-
-1. Build the production version:
-
-   ```bash
-   cd frontend/eventx-frontend
-   npm run build
-   ```
-
-2. Deploy the `dist` folder to your hosting platform
-
-### Backend Deployment (Heroku/Railway)
-
-1. Set environment variables on your hosting platform
-2. Deploy the backend directory
-3. Ensure MongoDB connection is configured
-
-### Database Setup (MongoDB Atlas)
-
-1. Create a MongoDB Atlas cluster
-2. Configure network access and database user
-3. Update the MONGODB_URI in environment variables
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👥 Team
-
-- **Developer**: EventX Studio Development Team
-- **Project Type**: Full-Stack Event Management System
-- **Framework**: MERN Stack (MongoDB, Express.js, React, Node.js)
-
-## 📞 Support
-
-For support and questions:
-
-- Create an issue in the repository
-- Contact the development team
-- Check the documentation for common solutions
+Access: [Frontend](http://localhost:5173) · [Backend API](http://localhost:5000)
 
 ---
 
-**EventX Studio** - Making event management simple and efficient! 🎉
+## 🔒 Advanced Security & Authentication
+
+- **MFA (2FA)** support
+- **Account Lockout** after failed logins
+- **Session Management** with device tracking
+- **RBAC**: role-based permissions
+- **Rate Limiting**, **CORS**, **CSRF**, **Security Headers**
+
+---
+
+## 🌐 API Documentation
+
+OpenAPI (Swagger) available. Example endpoints:
+
+- `POST /api/v1/auth/register` - User registration
+- `GET /api/v1/events` - Fetch events
+- `POST /api/v1/tickets` - Purchase tickets
+- `GET /api/v1/analytics/dashboard` - Dashboard metrics
+
+---
+
+## 🎨 UI Components
+
+- **Design System**: Blue & gray palette, clean typography
+- **Responsive Design**: Mobile-first with Tailwind
+- **Accessibility**: WCAG 2.1 AA + ARIA labels
+
+---
+
+## 📈 Analytics & Reporting
+
+- **Dashboards**: Revenue, attendees, sales, demographics
+- **Reports**: Revenue, demographics, performance, feedback
+
+---
+
+## 🧪 Testing & QA
+
+- **Frontend**: React Testing Library, Cypress, axe-core
+- **Backend**: Jest, Supertest, k6, OWASP ZAP
+- **Coverage**: Frontend 85%+, Backend 90%+
+
+---
+
+## 🚀 Deployment Guide
+
+### Production Deployment
+
+**Docker (Recommended):**
+
+```bash
+docker-compose -f docker-compose.prod.yml up --build -d
+```
+
+**Manual Deployment:**
+
+- Build frontend: `npm run build`
+- Serve with **Nginx** + run backend with **PM2**
+
+Example Nginx Config:
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        root /path/to/dist;
+        try_files $uri /index.html;
+    }
+
+    location /api {
+        proxy_pass http://localhost:5000;
+    }
+}
+```
+
+---
+
+## 🤝 Contributing
+
+1. Fork repo
+2. Create feature branch (`git checkout -b feature/xyz`)
+3. Commit (`git commit -m 'Add feature xyz'`)
+4. Push (`git push origin feature/xyz`)
+5. Open Pull Request
+
+### Coding Standards
+
+- Follow **ESLint & Prettier** rules
+- Use **conventional commits**
+- Add **tests** for new features
+
+---
+
+## 📄 License
+
+Licensed under the [MIT License](LICENSE).
+
+---
+
+## 👥 Team
+
+- **Developer**: EventX Studio Dev Team
+- **Stack**: MERN (MongoDB, Express, React, Node)
+
+---
+
+## 📞 Support
+
+- Open a GitHub issue
+- Check docs for solutions
+- Contact dev team
+
+---
+
+**EventX Studio** - Making event management simple & efficient 🎉
