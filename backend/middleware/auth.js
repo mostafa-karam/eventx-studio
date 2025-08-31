@@ -30,6 +30,23 @@ const authenticate = async (req, res, next) => {
       });
     }
 
+    // Check if account is locked
+    if (user.isLocked) {
+      return res.status(423).json({ 
+        success: false, 
+        message: 'Account is temporarily locked due to security reasons.' 
+      });
+    }
+
+    // Add session ID to request if present
+    if (decoded.sessionId) {
+      req.sessionId = decoded.sessionId;
+      
+      // Update session activity
+      user.updateSessionActivity(decoded.sessionId);
+      await user.save();
+    }
+
     req.user = user;
     next();
   } catch (error) {
@@ -107,8 +124,11 @@ const optionalAuth = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.id).select('-password');
       
-      if (user && user.isActive) {
+      if (user && user.isActive && !user.isLocked) {
         req.user = user;
+        if (decoded.sessionId) {
+          req.sessionId = decoded.sessionId;
+        }
       }
     }
     

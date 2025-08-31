@@ -13,20 +13,30 @@ import {
   Users,
   DollarSign,
   Save,
-  ArrowLeft
+  ArrowLeft,
+  Plus,
+  Image,
+  Clock,
+  Tag,
+  Building,
+  Globe
 } from 'lucide-react';
 
 const EventForm = ({ event, onSave, onCancel }) => {
+  const validStatuses = ['draft', 'published', 'cancelled', 'completed'];
+
   const [formData, setFormData] = useState({
     title: event?.title || '',
     description: event?.description || '',
     category: event?.category || '',
     date: event?.date ? new Date(event.date).toISOString().slice(0, 16) : '',
+    status: validStatuses.includes(event?.status) ? event.status : 'draft',
     venue: {
       name: event?.venue?.name || '',
       address: event?.venue?.address || '',
       city: event?.venue?.city || '',
-      country: event?.venue?.country || ''
+      country: event?.venue?.country || '',
+      capacity: event?.venue?.capacity || event?.seating?.totalSeats || 100
     },
     seating: {
       totalSeats: event?.seating?.totalSeats || 100,
@@ -35,7 +45,8 @@ const EventForm = ({ event, onSave, onCancel }) => {
     pricing: {
       type: event?.pricing?.type || 'paid',
       amount: event?.pricing?.amount || 0
-    }
+    },
+    images: event?.images || []
   });
 
   const [loading, setLoading] = useState(false);
@@ -91,16 +102,46 @@ const EventForm = ({ event, onSave, onCancel }) => {
     setError('');
 
     try {
+      // Basic front-end validation aligned with backend constraints
+      if (!formData.category) {
+        throw new Error('Category is required');
+      }
+      if (!formData?.venue?.country) {
+        throw new Error('Country is required');
+      }
+      const totalSeatsNum = parseInt(formData.seating.totalSeats);
+      const availableSeatsNum = parseInt(formData.seating.availableSeats);
+      const venueCapacityNum = parseInt(formData.venue.capacity);
+      if (Number.isNaN(totalSeatsNum) || totalSeatsNum < 1) {
+        throw new Error('Total seats must be at least 1');
+      }
+      if (Number.isNaN(availableSeatsNum) || availableSeatsNum < 0) {
+        throw new Error('Available seats cannot be negative');
+      }
+      if (availableSeatsNum > totalSeatsNum) {
+        throw new Error('Available seats cannot exceed total seats');
+      }
+      if (Number.isNaN(venueCapacityNum) || venueCapacityNum < 1) {
+        throw new Error('Venue capacity must be at least 1');
+      }
+      if (totalSeatsNum > venueCapacityNum) {
+        throw new Error('Total seats cannot exceed venue capacity');
+      }
+
       const eventData = {
         ...formData,
+        venue: {
+          ...formData.venue,
+          capacity: venueCapacityNum
+        },
         seating: {
           ...formData.seating,
-          totalSeats: parseInt(formData.seating.totalSeats),
-          availableSeats: parseInt(formData.seating.availableSeats)
+          totalSeats: totalSeatsNum,
+          availableSeats: availableSeatsNum
         },
         pricing: {
           ...formData.pricing,
-          amount: parseFloat(formData.pricing.amount)
+          amount: formData.pricing.type === 'free' ? 0 : parseFloat(formData.pricing.amount)
         }
       };
 
@@ -124,7 +165,8 @@ const EventForm = ({ event, onSave, onCancel }) => {
         onSave(data.data.event);
       } else {
         const data = await response.json();
-        setError(data.message || 'Failed to save event');
+        const backendErrors = Array.isArray(data?.errors) ? data.errors.join(', ') : '';
+        setError(backendErrors || data.message || 'Failed to save event');
       }
     } catch (error) {
       console.error('Event save error:', error);
@@ -138,267 +180,42 @@ const EventForm = ({ event, onSave, onCancel }) => {
     'conference',
     'workshop',
     'seminar',
-    'networking',
-    'entertainment',
+    'concert',
     'sports',
-    'arts',
-    'technology',
-    'business',
-    'education'
+    'exhibition',
+    'networking',
+    'other'
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">
-            {event ? 'Edit Event' : 'Create New Event'}
-          </h2>
-          <p className="text-gray-600 mt-2">
-            {event ? 'Update event details' : 'Fill in the details to create a new event'}
-          </p>
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+            <Plus className="w-6 h-6 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {event ? 'Edit Event' : 'Create New Event'}
+            </h1>
+            <p className="text-gray-600">
+              {event ? 'Update your event details and settings' : 'Fill in the details to create an amazing event'}
+            </p>
+          </div>
         </div>
 
-        <Button variant="outline" onClick={onCancel}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Cancel
-        </Button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
-            <CardDescription>
-              Enter the basic details about your event
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Event Title *</Label>
-              <Input
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="Enter event title"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                placeholder="Describe your event"
-                rows={4}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => handleSelectChange('category', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category.charAt(0).toUpperCase() + category.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="date">Date & Time *</Label>
-                <Input
-                  id="date"
-                  name="date"
-                  type="datetime-local"
-                  value={formData.date}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Venue Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <MapPin className="h-5 w-5 mr-2" />
-              Venue Information
-            </CardTitle>
-            <CardDescription>
-              Where will your event take place?
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="venue.name">Venue Name *</Label>
-              <Input
-                id="venue.name"
-                name="venue.name"
-                value={formData.venue.name}
-                onChange={handleChange}
-                placeholder="Enter venue name"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="venue.address">Address *</Label>
-              <Input
-                id="venue.address"
-                name="venue.address"
-                value={formData.venue.address}
-                onChange={handleChange}
-                placeholder="Enter venue address"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="venue.city">City *</Label>
-                <Input
-                  id="venue.city"
-                  name="venue.city"
-                  value={formData.venue.city}
-                  onChange={handleChange}
-                  placeholder="Enter city"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="venue.country">Country</Label>
-                <Input
-                  id="venue.country"
-                  name="venue.country"
-                  value={formData.venue.country}
-                  onChange={handleChange}
-                  placeholder="Enter country"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Seating & Pricing */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Users className="h-5 w-5 mr-2" />
-                Seating
-              </CardTitle>
-              <CardDescription>
-                Configure event capacity
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="seating.totalSeats">Total Seats *</Label>
-                <Input
-                  id="seating.totalSeats"
-                  name="seating.totalSeats"
-                  type="number"
-                  value={formData.seating.totalSeats}
-                  onChange={handleChange}
-                  min="1"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="seating.availableSeats">Available Seats *</Label>
-                <Input
-                  id="seating.availableSeats"
-                  name="seating.availableSeats"
-                  type="number"
-                  value={formData.seating.availableSeats}
-                  onChange={handleChange}
-                  min="0"
-                  max={formData.seating.totalSeats}
-                  required
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <DollarSign className="h-5 w-5 mr-2" />
-                Pricing
-              </CardTitle>
-              <CardDescription>
-                Set ticket pricing
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="pricing.type">Pricing Type</Label>
-                <Select
-                  value={formData.pricing.type}
-                  onValueChange={(value) => handleSelectChange('pricing.type', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select pricing type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {formData.pricing.type === 'paid' && (
-                <div className="space-y-2">
-                  <Label htmlFor="pricing.amount">Ticket Price ($) *</Label>
-                  <Input
-                    id="pricing.amount"
-                    name="pricing.amount"
-                    type="number"
-                    step="0.01"
-                    value={formData.pricing.amount}
-                    onChange={handleChange}
-                    min="0"
-                    required
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Submit Button */}
-        <div className="flex justify-end space-x-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
+        <div className="flex items-center space-x-3">
+          <Button variant="outline" onClick={onCancel}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
+          <Button 
+            type="submit" 
+            form="event-form"
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
             {loading ? (
               'Saving...'
             ) : (
@@ -409,6 +226,394 @@ const EventForm = ({ event, onSave, onCancel }) => {
             )}
           </Button>
         </div>
+      </div>
+
+      <form id="event-form" onSubmit={handleSubmit} className="space-y-6">
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Basic Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Tag className="w-5 h-5 text-blue-600" />
+              <span>Basic Information</span>
+            </CardTitle>
+            <CardDescription>
+              Enter the essential details about your event
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="title" className="text-sm font-medium text-gray-700">Event Title *</Label>
+              <Input
+                id="title"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                placeholder="e.g., Annual Tech Conference 2024"
+                className="text-lg"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-sm font-medium text-gray-700">Event Description *</Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Provide a detailed description of your event, including what attendees can expect..."
+                rows={5}
+                className="resize-none"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="category" className="text-sm font-medium text-gray-700">Category *</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => handleSelectChange('category', value)}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Choose category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="conference">🏢 Conference</SelectItem>
+                    <SelectItem value="workshop">🛠️ Workshop</SelectItem>
+                    <SelectItem value="seminar">📚 Seminar</SelectItem>
+                    <SelectItem value="concert">🎵 Concert</SelectItem>
+                    <SelectItem value="sports">🏆 Sports</SelectItem>
+                    <SelectItem value="exhibition">🎨 Exhibition</SelectItem>
+                    <SelectItem value="networking">🤝 Networking</SelectItem>
+                    <SelectItem value="other">📅 Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="date" className="text-sm font-medium text-gray-700">Date & Time *</Label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    id="date"
+                    name="date"
+                    type="datetime-local"
+                    value={formData.date}
+                    onChange={handleChange}
+                    className="pl-10 h-11"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status" className="text-sm font-medium text-gray-700">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => handleSelectChange('status', value)}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">📝 Draft</SelectItem>
+                    <SelectItem value="published">✅ Published</SelectItem>
+                    <SelectItem value="cancelled">❌ Cancelled</SelectItem>
+                    <SelectItem value="completed">🏁 Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Venue Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <MapPin className="w-5 h-5 text-green-600" />
+              <span>Venue Information</span>
+            </CardTitle>
+            <CardDescription>
+              Specify where your event will take place
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="venue.name" className="text-sm font-medium text-gray-700">Venue Name *</Label>
+              <div className="relative">
+                <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  id="venue.name"
+                  name="venue.name"
+                  value={formData.venue.name}
+                  onChange={handleChange}
+                  placeholder="e.g., Grand Convention Center"
+                  className="pl-10 h-11"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="venue.address" className="text-sm font-medium text-gray-700">Street Address *</Label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  id="venue.address"
+                  name="venue.address"
+                  value={formData.venue.address}
+                  onChange={handleChange}
+                  placeholder="e.g., 123 Main Street, Suite 100"
+                  className="pl-10 h-11"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="venue.city" className="text-sm font-medium text-gray-700">City *</Label>
+                <Input
+                  id="venue.city"
+                  name="venue.city"
+                  value={formData.venue.city}
+                  onChange={handleChange}
+                  placeholder="e.g., New York"
+                  className="h-11"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="venue.country" className="text-sm font-medium text-gray-700">Country *</Label>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    id="venue.country"
+                    name="venue.country"
+                    value={formData.venue.country}
+                    onChange={handleChange}
+                    placeholder="e.g., United States"
+                    className="pl-10 h-11"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="venue.capacity" className="text-sm font-medium text-gray-700">Venue Capacity *</Label>
+                <div className="relative">
+                  <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    id="venue.capacity"
+                    name="venue.capacity"
+                    type="number"
+                    min="1"
+                    value={formData.venue.capacity}
+                    onChange={handleChange}
+                    placeholder="e.g., 500"
+                    className="pl-10 h-11"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Seating, Pricing & Images */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="w-5 h-5 text-purple-600" />
+                <span>Seating Configuration</span>
+              </CardTitle>
+              <CardDescription>
+                Configure event capacity and seating
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="seating.totalSeats" className="text-sm font-medium text-gray-700">Total Seats *</Label>
+                <Input
+                  id="seating.totalSeats"
+                  name="seating.totalSeats"
+                  type="number"
+                  value={formData.seating.totalSeats}
+                  onChange={handleChange}
+                  min="1"
+                  placeholder="e.g., 100"
+                  className="h-11"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="seating.availableSeats" className="text-sm font-medium text-gray-700">Available Seats *</Label>
+                <Input
+                  id="seating.availableSeats"
+                  name="seating.availableSeats"
+                  type="number"
+                  value={formData.seating.availableSeats}
+                  onChange={handleChange}
+                  min="0"
+                  max={formData.seating.totalSeats}
+                  placeholder="e.g., 100"
+                  className="h-11"
+                  required
+                />
+              </div>
+              
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  💡 Available seats should not exceed total seats or venue capacity
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <DollarSign className="w-5 h-5 text-green-600" />
+                <span>Ticket Pricing</span>
+              </CardTitle>
+              <CardDescription>
+                Set your ticket pricing strategy
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="pricing.type" className="text-sm font-medium text-gray-700">Pricing Type *</Label>
+                <Select
+                  value={formData.pricing.type}
+                  onValueChange={(value) => handleSelectChange('pricing.type', value)}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Choose pricing model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">🆓 Free Event</SelectItem>
+                    <SelectItem value="paid">💰 Paid Event</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {formData.pricing.type === 'paid' && (
+                <div className="space-y-2">
+                  <Label htmlFor="pricing.amount" className="text-sm font-medium text-gray-700">Ticket Price (USD) *</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="pricing.amount"
+                      name="pricing.amount"
+                      type="number"
+                      step="0.01"
+                      value={formData.pricing.amount}
+                      onChange={handleChange}
+                      min="0"
+                      placeholder="0.00"
+                      className="pl-10 h-11"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {formData.pricing.type === 'free' && (
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <p className="text-sm text-green-700">
+                    🎉 This will be a free event - no payment required
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Image className="w-5 h-5 text-orange-600" />
+                <span>Event Images</span>
+              </CardTitle>
+              <CardDescription>Add images to showcase your event</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="imageUrl" className="text-sm font-medium text-gray-700">Image URL</Label>
+                <Input
+                  id="imageUrl"
+                  name="imageUrl"
+                  placeholder="https://example.com/image.jpg"
+                  className="h-11"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.target.value) {
+                      e.preventDefault();
+                      setFormData({
+                        ...formData,
+                        images: [...(formData.images || []), { url: e.target.value }]
+                      });
+                      e.target.value = '';
+                    }
+                  }}
+                />
+                <p className="text-xs text-gray-500">Press Enter to add the image</p>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Images Added</span>
+                  <span className="text-sm text-gray-600">{(formData.images || []).length}</span>
+                </div>
+                {(formData.images || []).length > 0 && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    {(formData.images || []).map((img, idx) => (
+                      <div key={idx} className="truncate">{img.url}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Form Actions */}
+        <Card className="bg-gray-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                {event ? 'Update your event details' : 'Ready to create your event?'}
+              </div>
+              <div className="flex items-center space-x-3">
+                <Button type="button" variant="outline" onClick={onCancel}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      {event ? 'Update Event' : 'Create Event'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </form>
     </div>
   );

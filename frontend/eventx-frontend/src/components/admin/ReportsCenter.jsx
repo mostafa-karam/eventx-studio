@@ -31,8 +31,8 @@ const ReportsCenter = () => {
     dateRange: '30d',
     startDate: '',
     endDate: '',
-    eventCategory: '',
-    status: ''
+    eventCategory: 'all',
+    status: 'all'
   });
 
   const { token } = useAuth();
@@ -56,73 +56,16 @@ const ReportsCenter = () => {
         const data = await response.json();
         setReports(data.data.reports);
       } else {
-        // Mock data for demonstration
-        setReports(generateMockReports());
+        setReports([]);
       }
     } catch (error) {
       console.error('Reports fetch error:', error);
-      setReports(generateMockReports());
+      setReports([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateMockReports = () => {
-    return [
-      {
-        _id: '1',
-        name: 'Monthly Revenue Report - December 2024',
-        type: 'revenue',
-        status: 'completed',
-        createdAt: '2024-12-01T10:00:00Z',
-        fileSize: '2.4 MB',
-        downloadUrl: '#',
-        parameters: {
-          dateRange: '30d',
-          category: 'all'
-        }
-      },
-      {
-        _id: '2',
-        name: 'Attendee Demographics Analysis',
-        type: 'demographics',
-        status: 'completed',
-        createdAt: '2024-11-28T15:30:00Z',
-        fileSize: '1.8 MB',
-        downloadUrl: '#',
-        parameters: {
-          dateRange: '90d',
-          category: 'technology'
-        }
-      },
-      {
-        _id: '3',
-        name: 'Event Performance Summary',
-        type: 'performance',
-        status: 'generating',
-        createdAt: '2024-12-02T09:15:00Z',
-        fileSize: null,
-        downloadUrl: null,
-        parameters: {
-          dateRange: '7d',
-          category: 'all'
-        }
-      },
-      {
-        _id: '4',
-        name: 'Ticket Sales Analysis - Q4 2024',
-        type: 'sales',
-        status: 'completed',
-        createdAt: '2024-11-25T14:20:00Z',
-        fileSize: '3.1 MB',
-        downloadUrl: '#',
-        parameters: {
-          dateRange: '90d',
-          category: 'business'
-        }
-      }
-    ];
-  };
 
   const generateReport = async (reportType) => {
     setGenerating(reportType);
@@ -144,27 +87,7 @@ const ReportsCenter = () => {
         // Add new report to the list
         setReports([data.data.report, ...reports]);
       } else {
-        // Simulate report generation for demo
-        const newReport = {
-          _id: Date.now().toString(),
-          name: `${getReportTypeName(reportType)} - ${new Date().toLocaleDateString()}`,
-          type: reportType,
-          status: 'generating',
-          createdAt: new Date().toISOString(),
-          fileSize: null,
-          downloadUrl: null,
-          parameters: { ...filters }
-        };
-        setReports([newReport, ...reports]);
-
-        // Simulate completion after 3 seconds
-        setTimeout(() => {
-          setReports(prev => prev.map(report =>
-            report._id === newReport._id
-              ? { ...report, status: 'completed', fileSize: '2.1 MB', downloadUrl: '#' }
-              : report
-          ));
-        }, 3000);
+        console.error('Failed to generate report');
       }
     } catch (error) {
       console.error('Report generation error:', error);
@@ -192,8 +115,7 @@ const ReportsCenter = () => {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       } else {
-        // Simulate download for demo
-        alert('Report download would start here in a real implementation!');
+        console.error('Failed to download report');
       }
     } catch (error) {
       console.error('Download error:', error);
@@ -301,7 +223,7 @@ const ReportsCenter = () => {
                   <SelectValue placeholder="All categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All categories</SelectItem>
+                  <SelectItem value="all">All categories</SelectItem>
                   <SelectItem value="technology">Technology</SelectItem>
                   <SelectItem value="business">Business</SelectItem>
                   <SelectItem value="arts">Arts</SelectItem>
@@ -321,8 +243,9 @@ const ReportsCenter = () => {
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>

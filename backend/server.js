@@ -30,11 +30,31 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
+
 // Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/events', require('./routes/events'));
-app.use('/api/tickets', require('./routes/tickets'));
-app.use('/api/analytics', require('./routes/analytics'));
+const authRoutes = require('./routes/auth');
+const eventRoutes = require('./routes/events');
+const ticketRoutes = require('./routes/tickets');
+const analyticsRoutes = require('./routes/analytics');
+const paymentRoutes = require('./routes/payments');
+const bookingRoutes = require('./routes/booking');
+const userRoutes = require('./routes/users');
+const notificationRoutes = require('./routes/notifications');
+const supportRoutes = require('./routes/support');
+const marketingRoutes = require('./routes/marketing');
+const categoriesRoutes = require('./routes/categories');
+
+app.use('/api/auth', authRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/tickets', ticketRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/booking', bookingRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/marketing', marketingRoutes);
+app.use('/api/categories', categoriesRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

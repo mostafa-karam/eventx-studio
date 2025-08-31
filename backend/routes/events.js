@@ -108,13 +108,38 @@ router.get('/admin/my-events', authenticate, requireAdmin, async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const events = await Event.find({ organizer: req.user._id })
+    // Base query: events created by the current admin
+    const query = { organizer: req.user._id };
+
+    // Optional text search across a few fields
+    if (req.query.search) {
+      query.$or = [
+        { title: { $regex: req.query.search, $options: 'i' } },
+        { description: { $regex: req.query.search, $options: 'i' } },
+        { 'venue.name': { $regex: req.query.search, $options: 'i' } },
+        { 'venue.city': { $regex: req.query.search, $options: 'i' } }
+      ];
+    }
+
+    // Optional category filter
+    if (req.query.category) {
+      query.category = req.query.category;
+    }
+
+    // Optional date range filter
+    if (req.query.dateFrom || req.query.dateTo) {
+      query.date = {};
+      if (req.query.dateFrom) query.date.$gte = new Date(req.query.dateFrom);
+      if (req.query.dateTo) query.date.$lte = new Date(req.query.dateTo);
+    }
+
+    const events = await Event.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .select('-seating.seatMap');
 
-    const total = await Event.countDocuments({ organizer: req.user._id });
+    const total = await Event.countDocuments(query);
 
     res.json({
       success: true,

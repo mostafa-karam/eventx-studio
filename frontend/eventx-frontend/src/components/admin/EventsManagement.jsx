@@ -15,7 +15,11 @@ import {
   Edit,
   Trash2,
   Eye,
-  MoreHorizontal
+  MoreHorizontal,
+  Filter,
+  ArrowRight,
+  Clock,
+  Ticket
 } from 'lucide-react';
 
 const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
@@ -24,18 +28,36 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [specificDate, setSpecificDate] = useState('');
 
   const { token } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchEvents();
-  }, [searchTerm]);
+  }, [searchTerm, categoryFilter, dateFrom, dateTo]);
+
+  // When specificDate changes, constrain the range to that exact day
+  useEffect(() => {
+    if (specificDate) {
+      setDateFrom(specificDate);
+      setDateTo(specificDate);
+    } else {
+      setDateFrom('');
+      setDateTo('');
+    }
+  }, [specificDate]);
 
   const fetchEvents = async () => {
     try {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
+      if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter);
+      if (dateFrom) params.append('dateFrom', dateFrom);
+      if (dateTo) params.append('dateTo', dateTo);
 
       const response = await fetch(`${API_BASE_URL}/events/admin/my-events?${params}`, {
         headers: {
@@ -55,6 +77,29 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const togglePublish = async (evt) => {
+    const current = evt.status || 'draft';
+    const nextStatus = current === 'published' ? 'draft' : 'published';
+    try {
+      const res = await fetch(`${API_BASE_URL}/events/${evt._id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to update status');
+      }
+      setEvents((prev) => prev.map((e) => (e._id === evt._id ? { ...e, status: nextStatus } : e)));
+    } catch (e) {
+      console.error('Publish toggle error:', e);
+      setError(e.message || 'Failed to update status');
     }
   };
 
@@ -99,10 +144,10 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
   };
 
   const formatPrice = (event) => {
-    if (event.pricing.type === 'free') {
+    if (event?.pricing?.type === 'free') {
       return 'Free';
     }
-    return `$${event.pricing.amount}`;
+    return `$${event?.pricing?.amount ?? 0}`;
   };
 
   const getEventStatus = (event) => {
@@ -111,7 +156,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
 
     if (eventDate < now) {
       return { status: 'past', label: 'Past', color: 'bg-gray-100 text-gray-600' };
-    } else if (event.seating.availableSeats === 0) {
+    } else if ((event?.seating?.availableSeats ?? 0) === 0) {
       return { status: 'sold-out', label: 'Sold Out', color: 'bg-red-100 text-red-600' };
     } else {
       return { status: 'active', label: 'Active', color: 'bg-green-100 text-green-600' };
@@ -140,36 +185,127 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">Events Management</h2>
-          <p className="text-gray-600 mt-2">
-            Create, edit, and manage your events.
-          </p>
-        </div>
-
-        <Button onClick={onCreateEvent}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Event
-        </Button>
-      </div>
-
-      {/* Search */}
-      <div className="flex gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search events..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <Calendar className="w-8 h-8 text-blue-600" />
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Event Management</h1>
+            <p className="text-gray-600">Create, manage, and track your events</p>
           </div>
         </div>
+        <div className="flex items-center space-x-3">
+          <Button variant="outline">
+            <Eye className="w-4 h-4 mr-2" />
+            Preview Mode
+          </Button>
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={onCreateEvent}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Event
+          </Button>
+        </div>
       </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Events</p>
+                <p className="text-3xl font-bold text-gray-900">{events.length}</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Published</p>
+                <p className="text-3xl font-bold text-green-600">{events.filter(e => e.status === 'published').length}</p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <Eye className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Draft Events</p>
+                <p className="text-3xl font-bold text-yellow-600">{events.filter(e => e.status === 'draft' || !e.status).length}</p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <Edit className="w-6 h-6 text-yellow-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Tickets</p>
+                <p className="text-3xl font-bold text-purple-600">{events.reduce((sum, e) => sum + (e.seating?.totalSeats || 0), 0)}</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Ticket className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters and Search */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input 
+              placeholder="Search events..." 
+              className="pl-10 w-80"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <select 
+            value={categoryFilter} 
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="all">All Categories</option>
+            <option value="music">🎵 Music</option>
+            <option value="sports">🏆 Sports</option>
+            <option value="conference">💼 Conference</option>
+            <option value="workshop">🛠️ Workshop</option>
+            <option value="festival">🎪 Festival</option>
+          </select>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm">
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
+          </Button>
+          <input
+            type="date"
+            value={specificDate}
+            onChange={(e) => setSpecificDate(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          />
+        </div>
+      </div>
+
 
       {/* Error Message */}
       {error && (
@@ -179,119 +315,128 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
       )}
 
       {/* Events List */}
-      {events.length === 0 && !loading ? (
-        <div className="text-center py-12">
-          <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No events found</h3>
-          <p className="text-gray-500 mb-4">
-            {searchTerm ? 'Try adjusting your search criteria.' : 'Create your first event to get started.'}
-          </p>
-          {!searchTerm && (
-            <Button onClick={onCreateEvent}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Your First Event
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {events.map((event) => {
-            const eventStatus = getEventStatus(event);
-            return (
-              <Card key={event._id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {event.title}
-                        </h3>
-                        <Badge className={eventStatus.color}>
-                          {eventStatus.label}
-                        </Badge>
-                        {event.category && (
-                          <Badge variant="secondary">
-                            {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
-                          </Badge>
-                        )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Calendar className="w-5 h-5" />
+            <span>Events Overview</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {events.length === 0 && !loading ? (
+            <div className="text-center py-12">
+              <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No events found</h3>
+              <p className="text-gray-600 mb-4">
+                {searchTerm ? 'Try adjusting your search criteria.' : 'Create your first event to get started.'}
+              </p>
+              {!searchTerm && (
+                <Button onClick={onCreateEvent}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Your First Event
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {events.map((event) => {
+                const eventStatus = getEventStatus(event);
+                const totalSeats = event?.seating?.totalSeats ?? 0;
+                const availableSeats = event?.seating?.availableSeats ?? 0;
+                const soldSeats = Math.max(0, totalSeats - availableSeats);
+                const eventEmoji = event.category === 'music' ? '🎵' : 
+                                  event.category === 'sports' ? '🏆' : 
+                                  event.category === 'conference' ? '💼' : 
+                                  event.category === 'workshop' ? '🛠️' : 
+                                  event.category === 'festival' ? '🎪' : '📅';
+                
+                return (
+                  <div key={event._id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-4 flex-1">
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-xl">
+                          {eventEmoji}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h3 className="font-semibold text-gray-900 text-lg">{event.title}</h3>
+                            <Badge className={event.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                              {event.status === 'published' ? 'Published' : 'Draft'}
+                            </Badge>
+                            <Badge className={eventStatus.color}>
+                              {eventStatus.label}
+                            </Badge>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            <div className="flex items-center space-x-2">
+                              <MapPin className="w-4 h-4 text-gray-400" />
+                              <span className="text-sm text-gray-600">{event?.venue?.name || 'TBD'}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Calendar className="w-4 h-4 text-gray-400" />
+                              <span className="text-sm text-gray-600">{formatDate(event.date)}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <DollarSign className="w-4 h-4 text-green-500" />
+                              <span className="text-sm font-medium text-green-600">{formatPrice(event)}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Users className="w-4 h-4 text-purple-500" />
+                              <span className="text-sm text-gray-600">{soldSeats}/{totalSeats} tickets</span>
+                            </div>
+                          </div>
+                          
+                          {/* Progress Bar */}
+                          <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                              style={{ width: `${totalSeats > 0 ? (soldSeats / totalSeats) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {soldSeats} of {totalSeats} tickets sold ({totalSeats > 0 ? Math.round((soldSeats / totalSeats) * 100) : 0}%)
+                          </p>
+                        </div>
                       </div>
-
-                      <p className="text-gray-600 mb-4 line-clamp-2">
-                        {event.description}
-                      </p>
-
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-2" />
-                          {formatDate(event.date)}
-                        </div>
-
-                        <div className="flex items-center">
-                          <MapPin className="h-4 w-4 mr-2" />
-                          {event.venue.name}, {event.venue.city}
-                        </div>
-
-                        <div className="flex items-center">
-                          <Users className="h-4 w-4 mr-2" />
-                          {event.seating.totalSeats - event.seating.availableSeats} / {event.seating.totalSeats} sold
-                        </div>
-
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 mr-2" />
-                          {formatPrice(event)}
-                        </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => togglePublish(event)}
+                          className={event.status === 'published' ? 'text-yellow-600 border-yellow-600 hover:bg-yellow-50' : 'text-green-600 border-green-600 hover:bg-green-50'}
+                        >
+                          {event.status === 'published' ? 'Unpublish' : 'Publish'}
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => onEditEvent(event)}
+                          className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleDeleteEvent(event._id)}
+                          disabled={deleteLoading === event._id}
+                          className="text-red-600 border-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          {deleteLoading === event._id ? 'Deleting...' : 'Delete'}
+                        </Button>
                       </div>
-
-                      {/* Analytics */}
-                      <div className="mt-4 flex items-center gap-6 text-sm text-gray-500">
-                        <div className="flex items-center">
-                          <Eye className="h-4 w-4 mr-1" />
-                          {event.analytics?.views || 0} views
-                        </div>
-                        <div>
-                          Revenue: ${event.analytics?.revenue || 0}
-                        </div>
-                        <div>
-                          Bookings: {event.analytics?.bookings || 0}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center space-x-2 ml-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onEditEvent(event)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteEvent(event._id)}
-                        disabled={deleteLoading === event._id}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        {deleteLoading === event._id ? (
-                          'Deleting...'
-                        ) : (
-                          <>
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
-                          </>
-                        )}
-                      </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -85,8 +85,8 @@ const ticketSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Pre-save middleware to generate QR code data
-ticketSchema.pre('save', function(next) {
+// Ensure qrCode exists before validation (required field)
+ticketSchema.pre('validate', function(next) {
   if (this.isNew) {
     // QR code will contain ticket verification data
     const qrData = {

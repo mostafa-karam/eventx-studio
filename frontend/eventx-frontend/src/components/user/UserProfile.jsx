@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Button } from '../ui/button';
+import { User, Lock, Phone, Mail, Settings } from 'lucide-react';
 
 const UserProfile = () => {
     const { token, user, setUser } = useAuth();
@@ -75,89 +76,173 @@ const UserProfile = () => {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-3xl font-bold text-gray-900">My Profile</h2>
-                <p className="text-gray-600 mt-2">Manage your personal information and password.</p>
+            <div className="max-w-4xl">
+                <Card>
+                    <CardHeader className="py-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <Settings className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div>
+                                    <CardTitle>Profile Settings</CardTitle>
+                                    <CardDescription>Manage your account information and preferences</CardDescription>
+                                </div>
+                            </div>
+                            <div className="px-3 py-1 rounded-md bg-gray-100 text-gray-700 text-sm">
+                                {user?.name || 'User'}
+                            </div>
+                        </div>
+                    </CardHeader>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Profile</CardTitle>
+                        <CardDescription>Update your basic information</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Profile Information */}
+                            <Card className="hover:shadow-sm transition-shadow">
+                                <CardHeader>
+                                    <div className="flex items-center space-x-3">
+                                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                            <User className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-gray-900">Profile Information</CardTitle>
+                                            <CardDescription>Update your personal details</CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-6">
+                                    <form onSubmit={handleSaveProfile} className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                                            <div className="relative">
+                                                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    value={name}
+                                                    onChange={(e) => setName(e.target.value)}
+                                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                    placeholder="Enter your full name"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                                            <div className="relative">
+                                                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                <input
+                                                    type="email"
+                                                    value={user?.email || ''}
+                                                    disabled
+                                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-2 flex items-center">
+                                                <Lock className="h-3 w-3 mr-1" />
+                                                Email cannot be changed for security reasons
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                                            <div className="relative">
+                                                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                <input
+                                                    type="tel"
+                                                    value={phone}
+                                                    onChange={(e) => setPhone(e.target.value)}
+                                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                    placeholder="Enter your phone number"
+                                                />
+                                            </div>
+                                        </div>
+                                        {profileMsg && (
+                                            <Alert className={profileMsg.includes('successfully') ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+                                                <AlertDescription className={profileMsg.includes('successfully') ? 'text-green-800' : 'text-red-800'}>
+                                                    {profileMsg}
+                                                </AlertDescription>
+                                            </Alert>
+                                        )}
+                                        <Button 
+                                            type="submit" 
+                                            disabled={savingProfile} 
+                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors"
+                                        >
+                                            {savingProfile ? 'Saving Changes...' : 'Save Profile Changes'}
+                                        </Button>
+                                    </form>
+                                </CardContent>
+                            </Card>
+
+                            {/* Password Information */}
+                            <Card className="hover:shadow-sm transition-shadow">
+                                <CardHeader>
+                                    <div className="flex items-center space-x-3">
+                                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                            <Lock className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-gray-900">Password Information</CardTitle>
+                                            <CardDescription>Update your password</CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-6">
+                                    <form onSubmit={handleChangePassword} className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
+                                            <div className="relative">
+                                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                <input
+                                                    type="password"
+                                                    value={currentPassword}
+                                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                    placeholder="Enter your current password"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
+                                            <div className="relative">
+                                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                <input
+                                                    type="password"
+                                                    value={newPassword}
+                                                    onChange={(e) => setNewPassword(e.target.value)}
+                                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                    placeholder="Enter your new password"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        {pwdMsg && (
+                                            <Alert className={pwdMsg.includes('successfully') ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+                                                <AlertDescription className={pwdMsg.includes('successfully') ? 'text-green-800' : 'text-red-800'}>
+                                                    {pwdMsg}
+                                                </AlertDescription>
+                                            </Alert>
+                                        )}
+                                        <Button 
+                                            type="submit" 
+                                            disabled={changingPwd} 
+                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors"
+                                        >
+                                            {changingPwd ? 'Changing Password...' : 'Change Password'}
+                                        </Button>
+                                    </form>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Profile</CardTitle>
-                    <CardDescription>Update your basic information</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {profileMsg && (
-                        <Alert variant={profileMsg.includes('success') ? 'default' : 'destructive'}>
-                            <AlertDescription>{profileMsg}</AlertDescription>
-                        </Alert>
-                    )}
-                    <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleSaveProfile}>
-                        <div>
-                            <label className="block text-sm text-gray-700 mb-1">Name</label>
-                            <input
-                                className="w-full border rounded px-3 py-2"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-700 mb-1">Phone</label>
-                            <input
-                                className="w-full border rounded px-3 py-2"
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
-                            />
-                        </div>
-                        <div className="md:col-span-2 flex justify-end">
-                            <Button type="submit" disabled={savingProfile}>
-                                {savingProfile ? 'Saving...' : 'Save Changes'}
-                            </Button>
-                        </div>
-                    </form>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Security</CardTitle>
-                    <CardDescription>Change your account password</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {pwdMsg && (
-                        <Alert variant={pwdMsg.includes('success') ? 'default' : 'destructive'}>
-                            <AlertDescription>{pwdMsg}</AlertDescription>
-                        </Alert>
-                    )}
-                    <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleChangePassword}>
-                        <div>
-                            <label className="block text-sm text-gray-700 mb-1">Current Password</label>
-                            <input
-                                type="password"
-                                className="w-full border rounded px-3 py-2"
-                                value={currentPassword}
-                                onChange={(e) => setCurrentPassword(e.target.value)}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-700 mb-1">New Password</label>
-                            <input
-                                type="password"
-                                className="w-full border rounded px-3 py-2"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                required
-                            />
-                        </div>
-                        <div className="md:col-span-2 flex justify-end">
-                            <Button type="submit" disabled={changingPwd}>
-                                {changingPwd ? 'Changing...' : 'Change Password'}
-                            </Button>
-                        </div>
-                    </form>
-                </CardContent>
-            </Card>
         </div>
     );
 };

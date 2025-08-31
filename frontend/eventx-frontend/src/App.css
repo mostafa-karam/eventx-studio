@@ -42,9 +42,11 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.75rem;
+  --background: #f6f7fb;
+  /* soft light background like Figma */
+  --foreground: #0f1724;
+  /* main text color */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -77,9 +79,9 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --background: #0b1220;
+  --foreground: #e6eef8;
+  --card: #0f1724;
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
@@ -114,7 +116,48 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.4;
+  }
+
+  /* Card and container defaults to match Figma styling */
+  .card {
+    background: var(--card);
+    color: var(--card-foreground);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 18px rgba(15, 23, 36, 0.06);
+    padding: 1rem;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+    color: var(--foreground);
+  }
+
+  /* Inputs and search */
+  input,
+  textarea,
+  select {
+    @apply bg-white/90 border border-gray-200 rounded-md px-3 py-2 text-sm;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground font-semibold rounded-md px-4 py-2 shadow-sm;
   }
 }

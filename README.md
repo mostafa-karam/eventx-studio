@@ -274,18 +274,6 @@ The application uses a consistent design system with:
 - [ ] Responsive design
 - [ ] Error handling
 
-### Test Accounts
-
-```Account
-Admin Account:
-Email: admin@eventx.com
-Password: admin123
-
-User Account:
-Email: user@eventx.com
-Password: user123
-```
-
 ## 🚀 Deployment
 
 ### Frontend Deployment (Vercel/Netlify)

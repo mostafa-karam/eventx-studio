@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Button } from '../ui/button';
+import { Settings, User, Lock, Shield } from 'lucide-react';
 
 const AdminSettings = () => {
     const { token, user, setUser } = useAuth();
@@ -74,18 +75,29 @@ const AdminSettings = () => {
     };
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h2 className="text-3xl font-bold text-gray-900">Settings</h2>
-                <p className="text-gray-600 mt-2">Manage your profile and account security.</p>
+        <div className="p-6 space-y-6">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-gray-900 to-black rounded-lg p-6 mb-6">
+                <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                        <Settings className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-white">Settings</h1>
+                        <p className="text-gray-300">Manage your profile and account security</p>
+                    </div>
+                </div>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Profile</CardTitle>
-                    <CardDescription>Update your basic information</CardDescription>
+            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
+                    <CardTitle className="flex items-center text-gray-900">
+                        <User className="h-5 w-5 mr-2" />
+                        Profile
+                    </CardTitle>
+                    <CardDescription className="text-gray-600">Update your basic information</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                     {profileMsg && (
                         <Alert variant={profileMsg.includes('success') ? 'default' : 'destructive'}>
                             <AlertDescription>{profileMsg}</AlertDescription>
@@ -93,24 +105,30 @@ const AdminSettings = () => {
                     )}
                     <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleSaveProfile}>
                         <div>
-                            <label className="block text-sm text-gray-700 mb-1">Name</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
                             <input
-                                className="w-full border rounded px-3 py-2"
+                                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 required
+                                placeholder="Enter your full name"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-700 mb-1">Phone</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
                             <input
-                                className="w-full border rounded px-3 py-2"
+                                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
+                                placeholder="Enter your phone number"
                             />
                         </div>
                         <div className="md:col-span-2 flex justify-end">
-                            <Button type="submit" disabled={savingProfile}>
+                            <Button 
+                                type="submit" 
+                                disabled={savingProfile}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                            >
                                 {savingProfile ? 'Saving...' : 'Save Changes'}
                             </Button>
                         </div>
@@ -118,12 +136,15 @@ const AdminSettings = () => {
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Security</CardTitle>
-                    <CardDescription>Change your account password</CardDescription>
+            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
+                    <CardTitle className="flex items-center text-gray-900">
+                        <Lock className="h-5 w-5 mr-2" />
+                        Security
+                    </CardTitle>
+                    <CardDescription className="text-gray-600">Change your account password</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                     {pwdMsg && (
                         <Alert variant={pwdMsg.includes('success') ? 'default' : 'destructive'}>
                             <AlertDescription>{pwdMsg}</AlertDescription>
@@ -131,27 +152,34 @@ const AdminSettings = () => {
                     )}
                     <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleChangePassword}>
                         <div>
-                            <label className="block text-sm text-gray-700 mb-1">Current Password</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
                             <input
                                 type="password"
-                                className="w-full border rounded px-3 py-2"
+                                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
                                 value={currentPassword}
                                 onChange={(e) => setCurrentPassword(e.target.value)}
                                 required
+                                placeholder="Enter current password"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-700 mb-1">New Password</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
                             <input
                                 type="password"
-                                className="w-full border rounded px-3 py-2"
+                                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
                                 required
+                                placeholder="Enter new password"
                             />
                         </div>
                         <div className="md:col-span-2 flex justify-end">
-                            <Button type="submit" disabled={changingPwd}>
+                            <Button 
+                                type="submit" 
+                                disabled={changingPwd}
+                                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                            >
+                                <Shield className="h-4 w-4 mr-2" />
                                 {changingPwd ? 'Changing...' : 'Change Password'}
                             </Button>
                         </div>

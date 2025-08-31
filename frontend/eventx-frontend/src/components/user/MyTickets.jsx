@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
 import {
   Calendar,
   MapPin,
@@ -22,6 +23,7 @@ const MyTickets = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [cancelLoadingId, setCancelLoadingId] = useState(null);
 
   const { token } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -54,7 +56,9 @@ const MyTickets = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'TBA';
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return 'TBA';
     return date.toLocaleDateString('en-US', {
       weekday: 'short',
       year: 'numeric',
@@ -67,7 +71,7 @@ const MyTickets = () => {
 
   const getTicketStatus = (ticket) => {
     const now = new Date();
-    const eventDate = new Date(ticket.event.date);
+    const eventDate = ticket?.event?.date ? new Date(ticket.event.date) : null;
 
     if (ticket.status === 'cancelled') {
       return {
@@ -76,14 +80,14 @@ const MyTickets = () => {
         color: 'bg-red-100 text-red-600',
         icon: XCircle
       };
-    } else if (ticket.checkIn.status) {
+    } else if (ticket.checkIn && ticket.checkIn.isCheckedIn) {
       return {
         status: 'checked-in',
         label: 'Checked In',
         color: 'bg-green-100 text-green-600',
         icon: CheckCircle
       };
-    } else if (eventDate < now) {
+    } else if (eventDate && eventDate < now) {
       return {
         status: 'expired',
         label: 'Expired',
@@ -104,15 +108,52 @@ const MyTickets = () => {
     const now = new Date();
     return {
       upcoming: tickets.filter(ticket =>
-        new Date(ticket.event.date) > now &&
+        ticket.event && ticket.event.date && new Date(ticket.event.date) > now &&
         ticket.status !== 'cancelled'
       ),
       past: tickets.filter(ticket =>
-        new Date(ticket.event.date) <= now ||
-        ticket.checkIn.status
+        (!ticket.event) || (ticket.event && ticket.event.date && new Date(ticket.event.date) <= now) ||
+        (ticket.checkIn && ticket.checkIn.isCheckedIn)
       ),
       cancelled: tickets.filter(ticket => ticket.status === 'cancelled')
     };
+  };
+
+  const canCancelTicket = (ticket) => {
+    const now = new Date();
+    const eventDate = ticket?.event?.date ? new Date(ticket.event.date) : null;
+    if (ticket.status === 'cancelled') return false;
+    if (ticket.status === 'used') return false;
+    if (!eventDate) return false;
+    if (eventDate < now) return false;
+    return true;
+  };
+
+  const handleCancelTicket = async (ticketId) => {
+    try {
+      setError('');
+      setCancelLoadingId(ticketId);
+      const res = await fetch(`${API_BASE_URL}/tickets/${ticketId}/cancel`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to cancel ticket');
+      }
+
+      // Update local state
+      setTickets((prev) => prev.map((t) => (t._id === ticketId ? { ...t, status: 'cancelled' } : t)));
+    } catch (e) {
+      console.error('Cancel ticket error:', e);
+      setError(e.message || 'Failed to cancel ticket');
+    } finally {
+      setCancelLoadingId(null);
+    }
   };
 
   const downloadQrFromDataUrl = (dataUrl, filename) => {
@@ -138,10 +179,10 @@ const MyTickets = () => {
               {ticketStatus.label}
             </Badge>
             <span className="text-sm text-gray-500">
-              #{ticket.ticketNumber}
+              #{ticket.ticketNumber || ticket.ticketId || ticket._id}
             </span>
           </div>
-          <CardTitle className="text-lg">{ticket.event.title}</CardTitle>
+          <CardTitle className="text-lg">{ticket.event?.title || 'Unknown Event'}</CardTitle>
           <CardDescription>
             Booked on {formatDate(ticket.bookingDate)}
           </CardDescription>
@@ -150,37 +191,51 @@ const MyTickets = () => {
           <div className="space-y-3">
             <div className="flex items-center text-sm text-gray-600">
               <Calendar className="h-4 w-4 mr-2" />
-              {formatDate(ticket.event.date)}
+              {formatDate(ticket.event?.date)}
             </div>
 
             <div className="flex items-center text-sm text-gray-600">
               <MapPin className="h-4 w-4 mr-2" />
-              {ticket.event.venue.name}, {ticket.event.venue.city}
+              {ticket.event?.venue ? `${ticket.event.venue.name}, ${ticket.event.venue.city}` : 'Venue TBA'}
             </div>
 
             <div className="flex items-center justify-between pt-3">
               <div className="text-lg font-bold">
-                ${ticket.totalAmount}
+                {ticket.payment?.amount === 0 || !ticket.payment?.amount ? 'Free' : `$${ticket.payment.amount}`}
               </div>
 
               <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedTicket(ticket)}
-                >
-                  <QrCode className="h-4 w-4 mr-1" />
-                  QR Code
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => downloadQrFromDataUrl(ticket.qrCodeImage, `ticket-${ticket._id}.png`)}
-                  disabled={!ticket.qrCodeImage}
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  Download QR
-                </Button>
+                {ticket.status !== 'cancelled' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedTicket(ticket)}
+                    >
+                      <QrCode className="h-4 w-4 mr-1" />
+                      QR Code
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => downloadQrFromDataUrl(ticket.qrCodeImage, `ticket-${ticket._id}.png`)}
+                      disabled={!ticket.qrCodeImage}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download QR
+                    </Button>
+                  </>
+                )}
+                {canCancelTicket(ticket) && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleCancelTicket(ticket._id)}
+                    disabled={cancelLoadingId === ticket._id}
+                  >
+                    {cancelLoadingId === ticket._id ? 'Cancelling...' : 'Cancel'}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -193,11 +248,14 @@ const MyTickets = () => {
     if (!ticket) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-          <div className="text-center">
-            <h3 className="text-lg font-bold mb-4">Your Ticket QR Code</h3>
+      <Dialog open={!!ticket} onOpenChange={(o) => { if (!o) onClose(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Your Ticket QR Code</DialogTitle>
+            <DialogDescription>{ticket.event?.title}</DialogDescription>
+          </DialogHeader>
 
+          <div className="text-center py-4">
             {ticket.qrCodeImage ? (
               <img src={ticket.qrCodeImage} alt="Ticket QR Code" className="w-48 h-48 mx-auto mb-4" />
             ) : (
@@ -211,8 +269,8 @@ const MyTickets = () => {
             )}
 
             <div className="text-sm text-gray-600 mb-4">
-              <p className="font-medium">{ticket.event.title}</p>
-              <p>{formatDate(ticket.event.date)}</p>
+              <p className="font-medium">{ticket.event?.title}</p>
+              <p>{formatDate(ticket.event?.date)}</p>
               <p>Ticket #{ticket.ticketNumber}</p>
             </div>
 
@@ -226,13 +284,12 @@ const MyTickets = () => {
                 <Download className="h-4 w-4 mr-2" />
                 Download QR
               </Button>
-              <Button onClick={onClose} className="flex-1">
-                Close
-              </Button>
+              <Button onClick={onClose} className="flex-1">Close</Button>
             </div>
           </div>
-        </div>
-      </div>
+          <DialogClose />
+        </DialogContent>
+      </Dialog>
     );
   };
 
@@ -262,12 +319,19 @@ const MyTickets = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900">My Tickets</h2>
-        <p className="text-gray-600 mt-2">
-          Manage and view all your event tickets in one place.
-        </p>
-      </div>
+      <Card>
+        <CardHeader className="py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>My Tickets</CardTitle>
+              <CardDescription>Manage and view all your event tickets in one place.</CardDescription>
+            </div>
+            <div className="px-3 py-1 rounded-md bg-gray-100 text-gray-700 text-sm">
+              {tickets?.length || 0} total
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
 
       {/* Error Message */}
       {error && (

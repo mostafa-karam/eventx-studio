@@ -22,8 +22,11 @@ const eventSchema = new mongoose.Schema({
     type: Date,
     required: [true, 'Event date is required'],
     validate: {
-      validator: function(value) {
-        return value > new Date();
+      validator: function (value) {
+        // Enforce future date on create, or when date is being changed
+        if (this.isNew) return value > new Date();
+        if (this.isModified('date')) return value > new Date();
+        return true;
       },
       message: 'Event date must be in the future'
     }
@@ -31,7 +34,7 @@ const eventSchema = new mongoose.Schema({
   endDate: {
     type: Date,
     validate: {
-      validator: function(value) {
+      validator: function (value) {
         return !value || value > this.date;
       },
       message: 'End date must be after start date'
@@ -153,10 +156,10 @@ const eventSchema = new mongoose.Schema({
 });
 
 // Pre-save middleware to initialize available seats
-eventSchema.pre('save', function(next) {
+eventSchema.pre('save', function (next) {
   if (this.isNew) {
     this.seating.availableSeats = this.seating.totalSeats;
-    
+
     // Initialize seat map if not provided
     if (!this.seating.seatMap || this.seating.seatMap.length === 0) {
       this.seating.seatMap = [];
@@ -172,7 +175,7 @@ eventSchema.pre('save', function(next) {
 });
 
 // Method to book a seat
-eventSchema.methods.bookSeat = function(seatNumber, userId) {
+eventSchema.methods.bookSeat = function (seatNumber, userId) {
   const seat = this.seating.seatMap.find(s => s.seatNumber === seatNumber);
   if (!seat) {
     throw new Error('Seat not found');
@@ -180,21 +183,21 @@ eventSchema.methods.bookSeat = function(seatNumber, userId) {
   if (seat.isBooked) {
     throw new Error('Seat is already booked');
   }
-  
+
   seat.isBooked = true;
   seat.bookedBy = userId;
   this.seating.availableSeats -= 1;
   this.analytics.bookings += 1;
-  
+
   if (this.pricing.type === 'paid') {
     this.analytics.revenue += this.pricing.amount;
   }
-  
+
   return seat;
 };
 
 // Method to cancel seat booking
-eventSchema.methods.cancelSeat = function(seatNumber) {
+eventSchema.methods.cancelSeat = function (seatNumber) {
   const seat = this.seating.seatMap.find(s => s.seatNumber === seatNumber);
   if (!seat) {
     throw new Error('Seat not found');
@@ -202,16 +205,16 @@ eventSchema.methods.cancelSeat = function(seatNumber) {
   if (!seat.isBooked) {
     throw new Error('Seat is not booked');
   }
-  
+
   seat.isBooked = false;
   seat.bookedBy = null;
   this.seating.availableSeats += 1;
   this.analytics.bookings -= 1;
-  
+
   if (this.pricing.type === 'paid') {
     this.analytics.revenue -= this.pricing.amount;
   }
-  
+
   return seat;
 };
 

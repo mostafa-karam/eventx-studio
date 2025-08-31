@@ -65,80 +65,19 @@ const AdvancedAnalytics = () => {
         const data = await response.json();
         setAnalytics(data.data);
       } else {
-        // Mock data for demonstration since backend isn't connected
-        setAnalytics(generateMockAnalytics());
+        setError('Failed to load analytics data');
+        setAnalytics(null);
       }
     } catch (error) {
       console.error('Analytics fetch error:', error);
-      // Use mock data when backend is not available
-      setAnalytics(generateMockAnalytics());
+      setError('Unable to connect to analytics service');
+      setAnalytics(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const generateMockAnalytics = () => {
-    return {
-      overview: {
-        totalEvents: 24,
-        totalTicketsSold: 1847,
-        totalRevenue: 45680,
-        totalAttendees: 1623,
-        growthRate: {
-          events: 12.5,
-          tickets: 8.3,
-          revenue: 15.7,
-          attendees: 6.9
-        }
-      },
-      revenueData: [
-        { month: 'Jan', revenue: 4200, tickets: 168 },
-        { month: 'Feb', revenue: 3800, tickets: 152 },
-        { month: 'Mar', revenue: 5200, tickets: 208 },
-        { month: 'Apr', revenue: 4600, tickets: 184 },
-        { month: 'May', revenue: 6100, tickets: 244 },
-        { month: 'Jun', revenue: 5800, tickets: 232 },
-        { month: 'Jul', revenue: 7200, tickets: 288 },
-        { month: 'Aug', revenue: 6800, tickets: 272 },
-        { month: 'Sep', revenue: 8100, tickets: 324 },
-        { month: 'Oct', revenue: 7600, tickets: 304 },
-        { month: 'Nov', revenue: 9200, tickets: 368 },
-        { month: 'Dec', revenue: 8900, tickets: 356 }
-      ],
-      eventCategories: [
-        { name: 'Technology', value: 35, count: 8 },
-        { name: 'Business', value: 25, count: 6 },
-        { name: 'Arts', value: 20, count: 5 },
-        { name: 'Sports', value: 12, count: 3 },
-        { name: 'Education', value: 8, count: 2 }
-      ],
-      attendeeDemographics: {
-        ageGroups: [
-          { age: '18-25', count: 324, percentage: 20 },
-          { age: '26-35', count: 487, percentage: 30 },
-          { age: '36-45', count: 406, percentage: 25 },
-          { age: '46-55', count: 243, percentage: 15 },
-          { age: '55+', count: 163, percentage: 10 }
-        ],
-        locations: [
-          { city: 'New York', count: 423 },
-          { city: 'Los Angeles', count: 312 },
-          { city: 'Chicago', count: 287 },
-          { city: 'Houston', count: 234 },
-          { city: 'Phoenix', count: 189 },
-          { city: 'Others', count: 178 }
-        ]
-      },
-      topEvents: [
-        { name: 'Tech Summit 2024', tickets: 450, revenue: 22500, attendees: 420 },
-        { name: 'Business Innovation', tickets: 320, revenue: 16000, attendees: 298 },
-        { name: 'Art & Design Expo', tickets: 280, revenue: 8400, attendees: 265 },
-        { name: 'Sports Analytics', tickets: 200, revenue: 12000, attendees: 185 },
-        { name: 'Education Forum', tickets: 150, revenue: 4500, attendees: 142 }
-      ]
-    };
-  };
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
@@ -155,36 +94,52 @@ const AdvancedAnalytics = () => {
 
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
 
-  const StatCard = ({ title, value, change, icon: Icon, trend }) => (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            {change && (
-              <div className={`flex items-center mt-1 text-sm ${trend === 'up' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                {trend === 'up' ? (
+  const StatCard = ({ title, value, change = 0, icon: Icon }) => {
+    const isUp = Number(change) >= 0;
+    const pct = Math.abs(Number(change)).toFixed(1);
+    return (
+      <Card className="hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-gray-50">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">{title}</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
+              <div className={`flex items-center mt-3 text-sm font-medium ${isUp ? 'text-green-600' : 'text-red-600'}`}>
+                {isUp ? (
                   <TrendingUp className="h-4 w-4 mr-1" />
                 ) : (
                   <TrendingDown className="h-4 w-4 mr-1" />
                 )}
-                {change}% from last period
+                {pct}% from last period
               </div>
-            )}
+            </div>
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center">
+              <Icon className="h-7 w-7 text-black" />
+            </div>
           </div>
-          <div className="p-3 bg-blue-50 rounded-full">
-            <Icon className="h-6 w-6 text-blue-600" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="bg-black rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <BarChart3 className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
+                <p className="text-gray-300">Loading analytics data...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
@@ -192,11 +147,57 @@ const AdvancedAnalytics = () => {
                 <div className="animate-pulse">
                   <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
                   <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
                 </div>
               </CardContent>
             </Card>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !analytics) {
+    return (
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="bg-black rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <BarChart3 className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
+                <p className="text-gray-300">Comprehensive insights into your events</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                onClick={fetchAnalytics}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="text-center">
+            <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Analytics Data Available</h3>
+            <p className="text-gray-600 mb-4">
+              {error || 'Unable to load analytics data. Please check your connection and try again.'}
+            </p>
+            <Button onClick={fetchAnalytics} className="bg-blue-600 hover:bg-blue-700">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry Loading
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -222,42 +223,51 @@ const AdvancedAnalytics = () => {
   const safeTopEvents = analytics?.topEvents ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">Advanced Analytics</h2>
-          <p className="text-gray-600 mt-2">
-            Comprehensive insights into your events performance and audience.
-          </p>
-        </div>
+      <div className="bg-black rounded-lg p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <BarChart3 className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
+              <p className="text-gray-300">Comprehensive insights into your events</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-36 bg-white/10 border-white/20 text-white">
+                <SelectValue placeholder="Time range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="90d">Last 90 days</SelectItem>
+                <SelectItem value="1y">Last year</SelectItem>
+              </SelectContent>
+            </Select>
 
-        <div className="flex items-center space-x-4">
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
-              <SelectItem value="1y">Last year</SelectItem>
-            </SelectContent>
-          </Select>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onClick={fetchAnalytics}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
 
-          <Button
-            variant="outline"
-            onClick={fetchAnalytics}
-            disabled={refreshing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -267,55 +277,51 @@ const AdvancedAnalytics = () => {
           title="Total Events"
           value={formatNumber(safeOverview.totalEvents)}
           change={safeOverview.growthRate.events}
-          trend="up"
           icon={Calendar}
         />
         <StatCard
           title="Tickets Sold"
           value={formatNumber(safeOverview.totalTicketsSold)}
           change={safeOverview.growthRate.tickets}
-          trend="up"
           icon={Ticket}
         />
         <StatCard
           title="Total Revenue"
           value={formatCurrency(safeOverview.totalRevenue)}
           change={safeOverview.growthRate.revenue}
-          trend="up"
           icon={DollarSign}
         />
         <StatCard
           title="Total Attendees"
           value={formatNumber(safeOverview.totalAttendees)}
           change={safeOverview.growthRate.attendees}
-          trend="up"
           icon={Users}
         />
       </div>
 
       {/* Charts Tabs */}
       <Tabs defaultValue="revenue" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="revenue">Revenue & Sales</TabsTrigger>
-          <TabsTrigger value="events">Event Categories</TabsTrigger>
-          <TabsTrigger value="demographics">Demographics</TabsTrigger>
-          <TabsTrigger value="performance">Top Events</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 bg-gray-100 p-1 rounded-lg">
+          <TabsTrigger value="revenue" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Revenue & Sales</TabsTrigger>
+          <TabsTrigger value="events" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Event Categories</TabsTrigger>
+          <TabsTrigger value="demographics" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Demographics</TabsTrigger>
+          <TabsTrigger value="performance" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Top Events</TabsTrigger>
         </TabsList>
 
         {/* Revenue & Sales Tab */}
         <TabsContent value="revenue" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
+            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
+                <CardTitle className="flex items-center text-gray-900">
                   <BarChart3 className="h-5 w-5 mr-2" />
                   Monthly Revenue
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-gray-600">
                   Revenue trends over the selected time period
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={safeRevenueData}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -334,17 +340,17 @@ const AdvancedAnalytics = () => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
+            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
+                <CardTitle className="flex items-center text-gray-900">
                   <Activity className="h-5 w-5 mr-2" />
                   Tickets Sold
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-gray-600">
                   Ticket sales volume over time
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={safeRevenueData}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -368,17 +374,17 @@ const AdvancedAnalytics = () => {
         {/* Event Categories Tab */}
         <TabsContent value="events" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
+            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
+                <CardTitle className="flex items-center text-gray-900">
                   <PieChartIcon className="h-5 w-5 mr-2" />
                   Events by Category
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-gray-600">
                   Distribution of events across different categories
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
@@ -386,8 +392,7 @@ const AdvancedAnalytics = () => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percentage }) => `${name} ${percentage}%`}
-                      outerRadius={80}
+                      outerRadius={85}
                       fill="#8884d8"
                       dataKey="value"
                     >
@@ -398,17 +403,29 @@ const AdvancedAnalytics = () => {
                     <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
+                <div className="flex flex-wrap gap-4 justify-center mt-4 text-sm">
+                  {(() => {
+                    const total = safeEventCategories.reduce((sum, c) => sum + (c.value || 0), 0) || 1;
+                    return safeEventCategories.map((c, i) => (
+                      <div key={c.name} className="flex items-center space-x-2">
+                        <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                        <span className="text-gray-700">{c.name}</span>
+                        <Badge variant="secondary">{Math.round(((c.value || 0) / total) * 100)}%</Badge>
+                      </div>
+                    ));
+                  })()}
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Category Performance</CardTitle>
-                <CardDescription>
+            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
+                <CardTitle className="text-gray-900">Category Performance</CardTitle>
+                <CardDescription className="text-gray-600">
                   Event count and performance by category
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <div className="space-y-4">
                   {safeEventCategories.map((category, index) => (
                     <div key={category.name} className="flex items-center justify-between">
@@ -438,14 +455,14 @@ const AdvancedAnalytics = () => {
         {/* Demographics Tab */}
         <TabsContent value="demographics" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Age Distribution</CardTitle>
-                <CardDescription>
+            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
+                <CardTitle className="text-gray-900">Age Distribution</CardTitle>
+                <CardDescription className="text-gray-600">
                   Attendee age groups breakdown
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={safeAgeGroups}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -458,14 +475,14 @@ const AdvancedAnalytics = () => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Geographic Distribution</CardTitle>
-                <CardDescription>
+            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
+                <CardTitle className="text-gray-900">Geographic Distribution</CardTitle>
+                <CardDescription className="text-gray-600">
                   Top cities by attendee count
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <div className="space-y-4">
                   {safeLocations.map((location, index) => (
                     <div key={location.city} className="flex items-center justify-between">
@@ -498,36 +515,37 @@ const AdvancedAnalytics = () => {
 
         {/* Top Events Tab */}
         <TabsContent value="performance" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Performing Events</CardTitle>
-              <CardDescription>
+          <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
+              <CardTitle className="text-gray-900">Top Performing Events</CardTitle>
+              <CardDescription className="text-gray-600">
                 Events ranked by tickets sold and revenue generated
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <div className="space-y-4">
                 {safeTopEvents.map((event, index) => (
-                  <div key={event.name} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div key={event.name} className="flex items-center justify-between p-6 border border-gray-200 rounded-lg bg-white hover:shadow-sm transition-shadow">
                     <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg font-bold text-blue-600">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-lg font-bold text-white">
                         {index + 1}
                       </div>
                       <div>
-                        <h4 className="font-medium text-gray-900">{event.name}</h4>
-                        <p className="text-sm text-gray-600">
+                        <h4 className="font-semibold text-gray-900 text-lg">{event.name}</h4>
+                        <p className="text-sm text-gray-600 flex items-center">
+                          <Users className="w-4 h-4 mr-1" />
                           {event.attendees} attendees
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-6 text-sm">
-                      <div className="text-center">
-                        <p className="font-medium text-gray-900">{event.tickets}</p>
-                        <p className="text-gray-600">Tickets</p>
+                    <div className="flex items-center space-x-8 text-sm">
+                      <div className="text-center bg-blue-50 px-4 py-2 rounded-lg">
+                        <p className="font-bold text-blue-900 text-lg">{event.tickets}</p>
+                        <p className="text-blue-600 font-medium">Tickets</p>
                       </div>
-                      <div className="text-center">
-                        <p className="font-medium text-gray-900">{formatCurrency(event.revenue)}</p>
-                        <p className="text-gray-600">Revenue</p>
+                      <div className="text-center bg-green-50 px-4 py-2 rounded-lg">
+                        <p className="font-bold text-green-900 text-lg">{formatCurrency(event.revenue)}</p>
+                        <p className="text-green-600 font-medium">Revenue</p>
                       </div>
                     </div>
                   </div>

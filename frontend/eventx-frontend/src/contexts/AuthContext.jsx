@@ -66,9 +66,14 @@ export const AuthProvider = ({ children }) => {
         setUser(user);
         setToken(token);
         localStorage.setItem('token', token);
-        return { success: true };
+        return { success: true, data: data.data };
       } else {
-        return { success: false, message: data.message };
+        return { 
+          success: false, 
+          message: data.message,
+          attemptsRemaining: data.attemptsRemaining,
+          lockTimeRemaining: data.lockTimeRemaining
+        };
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -93,7 +98,7 @@ export const AuthProvider = ({ children }) => {
         setUser(user);
         setToken(token);
         localStorage.setItem('token', token);
-        return { success: true };
+        return { success: true, data: data.data };
       } else {
         return { success: false, message: data.message, errors: data.errors };
       }
@@ -107,6 +112,9 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
+    // Also clear remembered email so login form doesn't prefill after logout
+    localStorage.removeItem('eventx_remember_email');
+    localStorage.removeItem('eventx_remember_opt_in');
   };
 
   const updateProfile = async (profileData) => {
@@ -134,6 +142,117 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Additional auth methods
+  const forgotPassword = async (email) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      return { success: data.success, message: data.message };
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      return { success: false, message: 'Network error. Please try again.' };
+    }
+  };
+
+  const resetPassword = async (token, password) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, password }),
+      });
+
+      const data = await response.json();
+      return { success: data.success, message: data.message };
+    } catch (error) {
+      console.error('Reset password error:', error);
+      return { success: false, message: 'Network error. Please try again.' };
+    }
+  };
+
+  const verifyEmail = async (token) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await response.json();
+      if (data.success && user) {
+        setUser({ ...user, emailVerified: true });
+      }
+      return { success: data.success, message: data.message };
+    } catch (error) {
+      console.error('Email verification error:', error);
+      return { success: false, message: 'Network error. Please try again.' };
+    }
+  };
+
+  const getSessions = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/sessions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      return { success: data.success, data: data.data };
+    } catch (error) {
+      console.error('Get sessions error:', error);
+      return { success: false, message: 'Network error. Please try again.' };
+    }
+  };
+
+  const removeSession = async (sessionId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      return { success: data.success, message: data.message };
+    } catch (error) {
+      console.error('Remove session error:', error);
+      return { success: false, message: 'Network error. Please try again.' };
+    }
+  };
+
+  const removeAllSessions = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/sessions`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      return { success: data.success, message: data.message };
+    } catch (error) {
+      console.error('Remove all sessions error:', error);
+      return { success: false, message: 'Network error. Please try again.' };
+    }
+  };
+
   const value = {
     user,
     token,
@@ -142,6 +261,12 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateProfile,
+    forgotPassword,
+    resetPassword,
+    verifyEmail,
+    getSessions,
+    removeSession,
+    removeAllSessions,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
   };
