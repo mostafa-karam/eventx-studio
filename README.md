@@ -1,10 +1,10 @@
 # 🎟️ EventX Studio - Premium Event Management Platform
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/your-username/eventx-studio/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-18%2B-blue)]()
-[![MongoDB](https://img.shields.io/badge/MongoDB-6.0%2B-green)]()
-[![React](https://img.shields.io/badge/React-19.1.0-blue)]()
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-blue)](https://nodejs.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-6.0%2B-green)](https://www.mongodb.com/)
+[![React](https://img.shields.io/badge/React-19.1.0-blue)](https://react.dev/)
 
 A comprehensive, secure, and scalable full-stack event management solution built with modern web technologies. EventX Studio provides a seamless experience for both event organizers (Admins) and attendees (Users), featuring advanced event management, secure authentication, real-time analytics, and comprehensive reporting capabilities.
 
@@ -16,16 +16,12 @@ A comprehensive, secure, and scalable full-stack event management solution built
 - [🛠 Tech Stack](#-tech-stack)
 - [📁 Project Structure](#-project-structure)
 - [🚦 Getting Started](#-getting-started)
-- [🔒 Security](#-advanced-security--authentication)
+- [🔒 Advanced Security & Authentication](#-advanced-security--authentication)
 - [🌐 API Documentation](#-api-documentation)
 - [🎨 UI Components](#-ui-components)
 - [📈 Analytics & Reporting](#-analytics--reporting)
-- [🧪 Testing](#-testing--quality-assurance)
-- [🚀 Deployment](#-deployment-guide)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
-- [👥 Team](#-team)
-- [📞 Support](#-support)
+- [🧪 Testing & Quality Assurance](#-testing--quality-assurance)
+- [🚀 Deployment Guide](#-deployment-guide)
 
 ---
 
@@ -108,7 +104,7 @@ git clone <repository-url>
 cd eventx-studio
 ```
 
-**Backend Setup**
+## **Backend Setup**
 
 ```bash
 cd backend
@@ -117,7 +113,7 @@ cp .env.example .env   # Add MongoDB URI & JWT secret
 npm run dev
 ```
 
-**Frontend Setup**
+## **Frontend Setup**
 
 ```bash
 cd frontend/eventx-frontend
@@ -165,7 +161,7 @@ OpenAPI (Swagger) available. Example endpoints:
 
 ---
 
-## 🧪 Testing & QA
+## 🧪 Testing & Quality Assurance
 
 - **Frontend**: React Testing Library, Cypress, axe-core
 - **Backend**: Jest, Supertest, k6, OWASP ZAP
@@ -207,42 +203,3 @@ server {
 ```
 
 ---
-
-## 🤝 Contributing
-
-1. Fork repo
-2. Create feature branch (`git checkout -b feature/xyz`)
-3. Commit (`git commit -m 'Add feature xyz'`)
-4. Push (`git push origin feature/xyz`)
-5. Open Pull Request
-
-### Coding Standards
-
-- Follow **ESLint & Prettier** rules
-- Use **conventional commits**
-- Add **tests** for new features
-
----
-
-## 📄 License
-
-Licensed under the [MIT License](LICENSE).
-
----
-
-## 👥 Team
-
-- **Developer**: EventX Studio Dev Team
-- **Stack**: MERN (MongoDB, Express, React, Node)
-
----
-
-## 📞 Support
-
-- Open a GitHub issue
-- Check docs for solutions
-- Contact dev team
-
----
-
-**EventX Studio** - Making event management simple & efficient 🎉
