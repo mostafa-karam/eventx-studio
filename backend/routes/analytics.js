@@ -42,7 +42,7 @@ const getAttendeesDemographics = async () => {
     const ageGroups = {
       '18-24': 0, '25-34': 0, '35-44': 0, '45-54': 0, '55+': 0
     };
-    
+
     attendees.forEach(attendee => {
       const age = attendee.age;
       if (age >= 18 && age <= 24) ageGroups['18-24']++;
@@ -62,7 +62,7 @@ const getAttendeesDemographics = async () => {
     });
 
     const locations = Object.entries(locationCounts)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
       .map(([city, count]) => ({ city, count }));
 
@@ -143,7 +143,7 @@ router.get('/dashboard', authenticate, requireAdmin, async (req, res) => {
 
     // Basic counts - show all system data for admin dashboard
     const totalEvents = await Event.countDocuments({});
-    const activeEvents = await Event.countDocuments({ 
+    const activeEvents = await Event.countDocuments({
       status: 'published',
       date: { $gte: new Date() }
     });
@@ -176,7 +176,7 @@ router.get('/dashboard', authenticate, requireAdmin, async (req, res) => {
       {
         $match: {
           status: { $in: ['booked', 'used'] },
-          bookingDate: { 
+          bookingDate: {
             $gte: new Date(new Date().setMonth(new Date().getMonth() - 6))
           }
         }
@@ -209,52 +209,142 @@ router.get('/dashboard', authenticate, requireAdmin, async (req, res) => {
       }
     ]);
 
-    // Top performing events - all events
+    // Top performing events - all events with enhanced data
     const topEvents = await Event.find({})
       .sort({ createdAt: -1 })
-      .limit(5)
-      .select('title date venue.name venue.city seating');
+      .limit(10)
+      .select('title date venue.name venue.city seating category status createdAt pricing');
 
-    // Recent activity - get recent bookings and user registrations
+    // Get detailed analytics for the latest event
+    let latestEventAnalytics = null;
+    if (topEvents.length > 0) {
+      const latestEvent = topEvents[0];
+      const eventTickets = await Ticket.aggregate([
+        {
+          $match: {
+            event: latestEvent._id,
+            status: { $in: ['booked', 'used'] }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalTicketsSold: { $sum: 1 },
+            totalRevenue: { $sum: { $ifNull: ['$payment.amount', 0] } },
+            averageTicketPrice: { $avg: { $ifNull: ['$payment.amount', 0] } }
+          }
+        }
+      ]);
+
+      const eventViews = await Event.findById(latestEvent._id).select('analytics.views');
+
+      latestEventAnalytics = {
+        ...latestEvent.toObject(),
+        analytics: {
+          ticketsSold: eventTickets[0]?.totalTicketsSold || 0,
+          totalRevenue: eventTickets[0]?.totalRevenue || 0,
+          averageTicketPrice: eventTickets[0]?.averageTicketPrice || 0,
+          views: eventViews?.analytics?.views || 0,
+          occupancyRate: latestEvent.seating?.totalSeats > 0
+            ? Math.round(((latestEvent.seating.totalSeats - latestEvent.seating.availableSeats) / latestEvent.seating.totalSeats) * 100)
+            : 0
+        }
+      };
+    }
+
+    // Recent activity - get comprehensive activity data
     const recentTickets = await Ticket.find({})
-      .populate('user', 'name')
-      .populate('event', 'title')
+      .populate('user', 'name email')
+      .populate('event', 'title date venue.name')
       .sort({ bookingDate: -1 })
-      .limit(5);
+      .limit(8);
 
     const recentUsers = await User.find({ role: 'user' })
       .sort({ createdAt: -1 })
-      .limit(3)
-      .select('name createdAt');
+      .limit(5)
+      .select('name email createdAt');
 
-    // Format notifications/activity
+    const recentEvents = await Event.find({})
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .select('title date status createdAt');
+
+    // Format comprehensive notifications/activity
     const notifications = [];
-    
-    // Add recent bookings
+
+    // Add recent bookings with enhanced details
     recentTickets.forEach(ticket => {
       if (ticket.user && ticket.event) {
+        const eventDate = ticket.event.date ? new Date(ticket.event.date).toLocaleDateString() : 'TBD';
+        const venue = ticket.event.venue?.name || 'Venue TBD';
+
         notifications.push({
-          id: ticket._id,
-          message: `${ticket.user.name} booked a ticket for ${ticket.event.title}`,
+          id: `booking-${ticket._id}`,
+          message: `${ticket.user.name} booked a ticket for "${ticket.event.title}"`,
+          description: `Event on ${eventDate} at ${venue}`,
           type: 'booking',
-          timestamp: ticket.bookingDate || ticket.createdAt
+          timestamp: ticket.bookingDate || ticket.createdAt,
+          user: {
+            name: ticket.user.name,
+            email: ticket.user.email
+          },
+          event: {
+            title: ticket.event.title,
+            date: ticket.event.date,
+            venue: ticket.event.venue?.name
+          },
+          metadata: {
+            ticketId: ticket.ticketId,
+            seatNumber: ticket.seatNumber,
+            amount: ticket.payment?.amount
+          }
         });
       }
     });
 
-    // Add recent user registrations
+    // Add recent user registrations with enhanced details
     recentUsers.forEach(user => {
       notifications.push({
-        id: user._id,
+        id: `user-${user._id}`,
         message: `New user ${user.name} registered`,
+        description: `Welcome to EventX platform`,
         type: 'registration',
-        timestamp: user.createdAt
+        timestamp: user.createdAt,
+        user: {
+          name: user.name,
+          email: user.email
+        },
+        metadata: {
+          source: 'platform'
+        }
       });
     });
 
-    // Sort by timestamp and limit to 5 most recent
+    // Add recent event activities
+    recentEvents.forEach(event => {
+      const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBD';
+      const statusText = event.status === 'published' ? 'published' : 'created';
+
+      notifications.push({
+        id: `event-${event._id}`,
+        message: `Event "${event.title}" was ${statusText}`,
+        description: `Scheduled for ${eventDate}`,
+        type: 'event',
+        timestamp: event.createdAt,
+        event: {
+          title: event.title,
+          date: event.date,
+          status: event.status
+        },
+        metadata: {
+          action: statusText
+        }
+      });
+    });
+
+    // Sort by timestamp and limit to 8 most recent
     notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    const recentNotifications = notifications.slice(0, 5);
+    const recentNotifications = notifications.slice(0, 8);
 
     res.json({
       success: true,
@@ -289,6 +379,8 @@ router.get('/dashboard', authenticate, requireAdmin, async (req, res) => {
         topPerformers: {
           events: topEvents
         },
+        allEvents: topEvents, // All events for selection
+        latestEventAnalytics: latestEventAnalytics,
         notifications: recentNotifications,
         // Real demographics data from actual users
         attendeeDemographics: await getAttendeesDemographics(),
@@ -442,12 +534,12 @@ router.get('/attendees', authenticate, requireAdmin, async (req, res) => {
 
     // Convert to arrays and sort
     const topLocations = Object.entries(locationDistribution)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([location, count]) => ({ location, count }));
 
     const topInterests = Object.entries(interestDistribution)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([interest, count]) => ({ interest, count }));
 
@@ -480,9 +572,9 @@ router.get('/events/:eventId', authenticate, requireAdmin, async (req, res) => {
     const eventId = req.params.eventId;
 
     // Verify event belongs to current admin
-    const event = await Event.findOne({ 
-      _id: eventId, 
-      organizer: req.user._id 
+    const event = await Event.findOne({
+      _id: eventId,
+      organizer: req.user._id
     });
 
     if (!event) {
@@ -509,9 +601,9 @@ router.get('/events/:eventId', authenticate, requireAdmin, async (req, res) => {
     // Daily booking trend (last 30 days)
     const bookingTrend = await Ticket.aggregate([
       {
-        $match: { 
+        $match: {
           event: new mongoose.Types.ObjectId(eventId),
-          bookingDate: { 
+          bookingDate: {
             $gte: new Date(new Date().setDate(new Date().getDate() - 30))
           }
         }
@@ -535,7 +627,7 @@ router.get('/events/:eventId', authenticate, requireAdmin, async (req, res) => {
     // Attendee demographics for this event
     const eventAttendees = await Ticket.aggregate([
       {
-        $match: { 
+        $match: {
           event: new mongoose.Types.ObjectId(eventId),
           status: { $in: ['booked', 'used'] }
         }
@@ -581,14 +673,14 @@ router.get('/events/:eventId', authenticate, requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Event analytics error:', error);
-    
+
     if (error.name === 'CastError') {
       return res.status(404).json({
         success: false,
         message: 'Event not found'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'Server error while fetching event analytics'
@@ -619,7 +711,7 @@ router.get('/export', authenticate, requireAdmin, async (req, res) => {
         .populate('user', 'name email')
         .select('ticketId seatNumber bookingDate status payment')
         .sort({ bookingDate: -1 });
-      
+
       // Filter out tickets where event is null (not belonging to this admin)
       data = data.filter(ticket => ticket.event);
     }
@@ -651,10 +743,10 @@ router.get('/export', authenticate, requireAdmin, async (req, res) => {
 // Helper function to convert data to CSV
 function convertToCSV(data) {
   if (!data || data.length === 0) return '';
-  
+
   const headers = Object.keys(data[0].toObject ? data[0].toObject() : data[0]);
   const csvHeaders = headers.join(',');
-  
+
   const csvRows = data.map(item => {
     const obj = item.toObject ? item.toObject() : item;
     return headers.map(header => {
@@ -665,7 +757,7 @@ function convertToCSV(data) {
       return `"${String(value).replace(/"/g, '""')}"`;
     }).join(',');
   });
-  
+
   return [csvHeaders, ...csvRows].join('\n');
 }
 
@@ -675,12 +767,12 @@ function convertToCSV(data) {
 router.get('/attendee-insights', authenticate, requireAdmin, async (req, res) => {
   try {
     const { eventId } = req.query;
-    
+
     let matchCondition = {
       'eventData.organizer': req.user._id,
       status: { $in: ['booked', 'used'] }
     };
-    
+
     if (eventId) {
       matchCondition['eventData._id'] = new mongoose.Types.ObjectId(eventId);
     }
@@ -825,12 +917,12 @@ router.get('/attendee-insights', authenticate, requireAdmin, async (req, res) =>
 
     // Convert to arrays and sort
     const topLocations = Object.entries(locationDistribution)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([location, count]) => ({ location, count }));
 
     const topInterests = Object.entries(interestDistribution)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([interest, count]) => ({ interest, count }));
 
@@ -947,10 +1039,10 @@ router.get('/all-attendee-insights', authenticate, requireAdmin, async (req, res
     // Calculate overview metrics
     const uniqueAttendees = new Set(attendees.map(a => a.userData?._id)).size;
     const averageAge = attendees.filter(a => a.age).reduce((sum, a) => sum + a.age, 0) / attendees.filter(a => a.age).length || 0;
-    
+
     // Age group distribution
     const ageGroups = {
-      '13-17': 0, '18-24': 0, '25-34': 0, '35-44': 0, 
+      '13-17': 0, '18-24': 0, '25-34': 0, '35-44': 0,
       '45-54': 0, '55-64': 0, '65+': 0, 'Unknown': 0
     };
 
@@ -1014,16 +1106,16 @@ router.get('/all-attendee-insights', authenticate, requireAdmin, async (req, res
 
     // Get dominant demographics
     const dominantAgeGroup = Object.entries(ageGroups)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || '18-24';
-    
+      .sort(([, a], [, b]) => b - a)[0]?.[0] || '18-24';
+
     const dominantGender = Object.entries(genderDistribution)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'balanced';
-    
+      .sort(([, a], [, b]) => b - a)[0]?.[0] || 'balanced';
+
     const topLocation = Object.entries(locationDistribution)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A';
-    
+      .sort(([, a], [, b]) => b - a)[0]?.[0] || 'N/A';
+
     const topInterest = Object.entries(interestDistribution)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A';
+      .sort(([, a], [, b]) => b - a)[0]?.[0] || 'N/A';
 
     // Calculate trends (mock percentage changes for now - would need historical data)
     const ageTrend = Math.floor(Math.random() * 60) - 10; // -10 to 50
@@ -1069,23 +1161,23 @@ router.get('/all-attendee-insights', authenticate, requireAdmin, async (req, res
           ageGroups: Object.entries(ageGroups).map(([group, count]) => ({ group, count })),
           genderDistribution: Object.entries(genderDistribution).map(([gender, count]) => ({ gender, count })),
           locationDistribution: Object.entries(locationDistribution)
-            .sort(([,a], [,b]) => b - a)
+            .sort(([, a], [, b]) => b - a)
             .slice(0, 10)
             .map(([location, count]) => ({ location, count })),
           interestDistribution: Object.entries(interestDistribution)
-            .sort(([,a], [,b]) => b - a)
+            .sort(([, a], [, b]) => b - a)
             .slice(0, 10)
             .map(([interest, count]) => ({ interest, count }))
         },
         ageData: Object.entries(ageGroups)
-          .filter(([,count]) => count > 0)
+          .filter(([, count]) => count > 0)
           .map(([group, count]) => ({ age: group, count, percentage: Math.round((count / attendees.length) * 100) })),
         locationData: Object.entries(locationDistribution)
-          .sort(([,a], [,b]) => b - a)
+          .sort(([, a], [, b]) => b - a)
           .slice(0, 6)
           .map(([city, count]) => ({ city, count })),
         interestData: Object.entries(interestDistribution)
-          .sort(([,a], [,b]) => b - a)
+          .sort(([, a], [, b]) => b - a)
           .slice(0, 6)
           .map(([interest, count]) => ({ name: interest, value: count })),
         socialEngagement: {
@@ -1098,7 +1190,7 @@ router.get('/all-attendee-insights', authenticate, requireAdmin, async (req, res
             .sort(([a], [b]) => new Date(a) - new Date(b))
             .map(([month, count]) => ({ month, attendees: count })),
           categoryPreferences: Object.entries(categoryPreferences)
-            .sort(([,a], [,b]) => b - a)
+            .sort(([, a], [, b]) => b - a)
             .map(([category, count]) => ({ category, count }))
         }
       }
@@ -1118,7 +1210,7 @@ router.get('/all-attendee-insights', authenticate, requireAdmin, async (req, res
 router.get('/attendee-insights', authenticate, requireAdmin, async (req, res) => {
   try {
     const { eventId } = req.query;
-    
+
     if (!eventId) {
       return res.status(400).json({
         success: false,
@@ -1138,7 +1230,7 @@ router.get('/attendee-insights', authenticate, requireAdmin, async (req, res) =>
     // Get attendees for this event
     const attendees = await Ticket.aggregate([
       {
-        $match: { 
+        $match: {
           event: new mongoose.Types.ObjectId(eventId),
           status: { $in: ['booked', 'used'] }
         }
@@ -1200,20 +1292,20 @@ router.get('/attendee-insights', authenticate, requireAdmin, async (req, res) =>
     });
 
     // Get dominant values - handle empty data for single event
-    const ageEntries = Object.entries(ageGroups).filter(([,count]) => count > 0);
-    const genderEntries = Object.entries(genderCounts).filter(([,count]) => count > 0);
-    
-    const dominantAgeGroup = ageEntries.length > 0 ? 
+    const ageEntries = Object.entries(ageGroups).filter(([, count]) => count > 0);
+    const genderEntries = Object.entries(genderCounts).filter(([, count]) => count > 0);
+
+    const dominantAgeGroup = ageEntries.length > 0 ?
       ageEntries.reduce((a, b) => a[1] > b[1] ? a : b)[0] : '25-34';
-    const dominantGender = genderEntries.length > 0 ? 
+    const dominantGender = genderEntries.length > 0 ?
       genderEntries.reduce((a, b) => a[1] > b[1] ? a : b)[0] : 'male';
-    const topLocation = Object.entries(locationCounts).sort(([,a], [,b]) => b - a)[0]?.[0] || 'Unknown';
-    const topInterest = Object.entries(interestCounts).sort(([,a], [,b]) => b - a)[0]?.[0] || 'General';
+    const topLocation = Object.entries(locationCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || 'Unknown';
+    const topInterest = Object.entries(interestCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || 'General';
 
     // Real age trend data over time (based on booking dates)
     const ageOverTime = await Ticket.aggregate([
       {
-        $match: { 
+        $match: {
           event: new mongoose.Types.ObjectId(eventId),
           status: { $in: ['booked', 'used'] },
           bookingDate: { $exists: true }
@@ -1297,11 +1389,11 @@ router.get('/attendee-insights', authenticate, requireAdmin, async (req, res) =>
         },
         ageData: Object.entries(ageGroups).map(([age, count]) => ({ name: age, value: count })),
         locationData: Object.entries(locationCounts)
-          .sort(([,a], [,b]) => b - a)
+          .sort(([, a], [, b]) => b - a)
           .slice(0, 10)
           .map(([city, count]) => ({ city, count })),
         interestData: Object.entries(interestCounts)
-          .sort(([,a], [,b]) => b - a)
+          .sort(([, a], [, b]) => b - a)
           .slice(0, 8)
           .map(([name, value]) => ({ name, value })),
         trends: {
@@ -1385,15 +1477,15 @@ router.get('/all-attendee-insights', authenticate, requireAdmin, async (req, res
     });
 
     // Get dominant values - handle empty data for all events
-    const ageEntries = Object.entries(ageGroups).filter(([,count]) => count > 0);
-    const genderEntries = Object.entries(genderCounts).filter(([,count]) => count > 0);
-    
-    const dominantAgeGroup = ageEntries.length > 0 ? 
+    const ageEntries = Object.entries(ageGroups).filter(([, count]) => count > 0);
+    const genderEntries = Object.entries(genderCounts).filter(([, count]) => count > 0);
+
+    const dominantAgeGroup = ageEntries.length > 0 ?
       ageEntries.reduce((a, b) => a[1] > b[1] ? a : b)[0] : '25-34';
-    const dominantGender = genderEntries.length > 0 ? 
+    const dominantGender = genderEntries.length > 0 ?
       genderEntries.reduce((a, b) => a[1] > b[1] ? a : b)[0] : 'male';
-    const topLocation = Object.entries(locationCounts).sort(([,a], [,b]) => b - a)[0]?.[0] || 'Unknown';
-    const topInterest = Object.entries(interestCounts).sort(([,a], [,b]) => b - a)[0]?.[0] || 'General';
+    const topLocation = Object.entries(locationCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || 'Unknown';
+    const topInterest = Object.entries(interestCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || 'General';
 
     res.json({
       success: true,
@@ -1429,11 +1521,11 @@ router.get('/all-attendee-insights', authenticate, requireAdmin, async (req, res
         demographics: {
           ageGroups: Object.entries(ageGroups).map(([age, count]) => ({ age, count })),
           locationDistribution: Object.entries(locationCounts)
-            .sort(([,a], [,b]) => b - a)
+            .sort(([, a], [, b]) => b - a)
             .slice(0, 10)
             .map(([location, count]) => ({ location, count })),
           interestDistribution: Object.entries(interestCounts)
-            .sort(([,a], [,b]) => b - a)
+            .sort(([, a], [, b]) => b - a)
             .slice(0, 8)
             .map(([interest, count]) => ({ interest, count }))
         }

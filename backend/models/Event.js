@@ -77,7 +77,17 @@ const eventSchema = new mongoose.Schema({
     amount: {
       type: Number,
       default: 0,
-      min: [0, 'Price cannot be negative']
+      min: [0, 'Price cannot be negative'],
+      validate: {
+        validator: function (value) {
+          // If event is paid, price must be greater than 0
+          if (this.pricing && this.pricing.type === 'paid') {
+            return value > 0;
+          }
+          return true;
+        },
+        message: 'Paid events must have a price greater than 0'
+      }
     },
     currency: {
       type: String,
@@ -158,7 +168,15 @@ const eventSchema = new mongoose.Schema({
 // Pre-save middleware to initialize available seats
 eventSchema.pre('save', function (next) {
   if (this.isNew) {
-    this.seating.availableSeats = this.seating.totalSeats;
+    // Only set availableSeats to totalSeats if availableSeats is not explicitly set
+    if (this.seating.availableSeats === undefined || this.seating.availableSeats === null) {
+      this.seating.availableSeats = this.seating.totalSeats;
+    }
+
+    // Ensure availableSeats doesn't exceed totalSeats
+    if (this.seating.availableSeats > this.seating.totalSeats) {
+      this.seating.availableSeats = this.seating.totalSeats;
+    }
 
     // Initialize seat map if not provided
     if (!this.seating.seatMap || this.seating.seatMap.length === 0) {

@@ -72,7 +72,10 @@ router.post('/confirm', authenticate, async (req, res) => {
                 generated.push({ seatNumber: `S${i.toString().padStart(3, '0')}`, isBooked: false, bookedBy: null });
             }
             event.seating.seatMap = generated;
-            event.seating.availableSeats = event.seating.totalSeats;
+            // Only set availableSeats to totalSeats if it's not already set
+            if (event.seating.availableSeats === undefined || event.seating.availableSeats === null) {
+                event.seating.availableSeats = event.seating.totalSeats;
+            }
             await event.save();
         }
 

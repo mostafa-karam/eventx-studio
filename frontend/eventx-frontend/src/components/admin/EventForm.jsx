@@ -48,7 +48,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
     },
     images: event?.images || []
   });
-  
+
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -63,14 +63,14 @@ const EventForm = ({ event, onSave, onCancel }) => {
     // Handle nested properties
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
-      
+
       // Handle array indices in nested paths (e.g., 'seating.sections.0.price')
       const path = name.split('.');
       if (path.length > 2 && !isNaN(parseInt(path[1]))) {
         const arrayName = path[0];
         const index = parseInt(path[1]);
         const field = path[2];
-        
+
         newFormData[arrayName] = [...newFormData[arrayName]];
         newFormData[arrayName][index] = {
           ...newFormData[arrayName][index],
@@ -87,18 +87,18 @@ const EventForm = ({ event, onSave, onCancel }) => {
       if (parent === 'seating' && child === 'totalSeats') {
         const totalSeats = parseInt(value) || 0;
         const venueCapacity = parseInt(newFormData.venue?.capacity) || 0;
-        
+
         // Ensure totalSeats doesn't exceed venue capacity
         if (venueCapacity > 0 && totalSeats > venueCapacity) {
           newFormData.seating.totalSeats = venueCapacity;
         }
-        
+
         // Ensure availableSeats doesn't exceed totalSeats
         if (newFormData.seating.availableSeats > totalSeats) {
           newFormData.seating.availableSeats = totalSeats;
         }
       }
-      
+
       // When venue capacity changes, adjust totalSeats if needed
       if (parent === 'venue' && child === 'capacity') {
         const newCapacity = parseInt(value) || 0;
@@ -109,13 +109,22 @@ const EventForm = ({ event, onSave, onCancel }) => {
           }
         }
       }
-      
+
       // Ensure availableSeats doesn't exceed totalSeats
       if (parent === 'seating' && child === 'availableSeats') {
         const availableSeats = parseInt(value) || 0;
         const totalSeats = parseInt(newFormData.seating.totalSeats) || 0;
         if (availableSeats > totalSeats) {
           newFormData.seating.availableSeats = totalSeats;
+        }
+      }
+
+      // Validate pricing for paid events
+      if (parent === 'pricing' && child === 'amount') {
+        const price = parseFloat(value) || 0;
+        if (newFormData.pricing.type === 'paid' && price <= 0 && value !== '') {
+          // Don't update the value if it's 0 or negative for paid events
+          return;
         }
       }
     } else {
@@ -125,7 +134,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
     setFormData(newFormData);
     setError('');
   };
-  
+
   const handleSelectChange = (name, value) => {
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
@@ -153,31 +162,39 @@ const EventForm = ({ event, onSave, onCancel }) => {
     if (!formData?.venue?.country) {
       throw new Error('Country is required');
     }
-    
+
     const totalSeatsNum = parseInt(formData.seating.totalSeats);
     const availableSeatsNum = parseInt(formData.seating.availableSeats);
     const venueCapacityNum = parseInt(formData.venue.capacity);
-    
+
     if (Number.isNaN(venueCapacityNum) || venueCapacityNum < 1) {
       throw new Error('Venue capacity must be at least 1');
     }
-    
+
     if (Number.isNaN(totalSeatsNum) || totalSeatsNum < 1) {
       throw new Error('Total seats must be at least 1');
     }
-    
+
     if (totalSeatsNum > venueCapacityNum) {
       throw new Error('Total seats cannot exceed venue capacity');
     }
-    
+
     if (Number.isNaN(availableSeatsNum) || availableSeatsNum < 0) {
       throw new Error('Available seats cannot be negative');
     }
-    
+
     if (availableSeatsNum > totalSeatsNum) {
       throw new Error('Available seats cannot exceed total seats');
     }
-    
+
+    // Validate pricing
+    if (formData.pricing.type === 'paid') {
+      const priceNum = parseFloat(formData.pricing.amount);
+      if (Number.isNaN(priceNum) || priceNum <= 0) {
+        throw new Error('Paid events must have a price greater than 0');
+      }
+    }
+
     return { totalSeatsNum, availableSeatsNum, venueCapacityNum };
   };
 
@@ -272,8 +289,8 @@ const EventForm = ({ event, onSave, onCancel }) => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Cancel
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             form="event-form"
             disabled={loading}
             className="bg-blue-600 hover:bg-blue-700"
@@ -560,8 +577,8 @@ const EventForm = ({ event, onSave, onCancel }) => {
                   required
                 />
                 <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                  <div 
-                    className="bg-green-500 h-2.5 rounded-full" 
+                  <div
+                    className="bg-green-500 h-2.5 rounded-full"
                     style={{
                       width: `${Math.min(100, (formData.seating.availableSeats / formData.seating.totalSeats) * 100)}%`
                     }}
@@ -571,13 +588,13 @@ const EventForm = ({ event, onSave, onCancel }) => {
                   <span>0</span>
                   <span>Capacity: {formData.seating.totalSeats}</span>
                 </div>
-                
+
                 {parseInt(formData.seating.availableSeats) > parseInt(formData.seating.totalSeats) && (
                   <p className="text-xs text-red-500 mt-1">
                     Available seats cannot exceed total seats
                   </p>
                 )}
-                
+
               </div>
             </CardContent>
           </Card>
@@ -621,15 +638,23 @@ const EventForm = ({ event, onSave, onCancel }) => {
                       step="0.01"
                       value={formData.pricing.amount}
                       onChange={handleChange}
-                      min="0"
+                      min="0.01"
                       placeholder="0.00"
-                      className="pl-10 h-11"
+                      className={`pl-10 h-11 ${parseFloat(formData.pricing.amount) <= 0 && formData.pricing.amount !== '' ? 'border-red-500' : ''}`}
                       required
                     />
                   </div>
+                  {parseFloat(formData.pricing.amount) <= 0 && formData.pricing.amount !== '' && (
+                    <p className="text-xs text-red-500 mt-1">
+                      Paid events must have a price greater than $0.00
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Minimum price: $0.01
+                  </p>
                 </div>
               )}
-              
+
               {formData.pricing.type === 'free' && (
                 <div className="bg-green-50 p-4 rounded-lg">
                   <p className="text-sm text-green-700">
@@ -669,7 +694,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
                 />
                 <p className="text-xs text-gray-500">Press Enter to add the image</p>
               </div>
-              
+
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">Images Added</span>
