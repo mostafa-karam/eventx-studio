@@ -6,8 +6,8 @@ import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { 
-  Loader2, Mail, Lock, Eye, EyeOff, Shield, ArrowRight, CheckCircle, XCircle, 
+import {
+  Loader2, Mail, Lock, Eye, EyeOff, Shield, ArrowRight, CheckCircle, XCircle,
   AlertTriangle, WifiOff, User
 } from 'lucide-react';
 
@@ -70,13 +70,13 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
   const handleDemoLogin = async (type) => {
     const demoCredentials = {
       admin: { email: 'mostafa.karam.work@gmail.com', password: 'admin123' },
-      user: { email: 'user@eventx.com', password: 'user123' }
+      user: { email: 'user@eventx.com', password: 'user1234' }
     };
-    
+
     const credentials = demoCredentials[type];
     setFormData(credentials);
     setLoading(true);
-    
+
     try {
       const result = await login(credentials.email, credentials.password);
       if (!result.success) {
@@ -122,7 +122,7 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
             Welcome Back
           </CardTitle>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           {/* Offline Alert */}
           {!isOnline && (
@@ -155,7 +155,7 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
                   <div className="text-xs text-gray-600">Full access</div>
                 </div>
               </Button>
-              
+
               <Button
                 type="button"
                 variant="outline"
@@ -261,9 +261,9 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700" 
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700"
               disabled={loading || !formData.email || !formData.password}
             >
               {loading ? (
@@ -301,7 +301,7 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
           <DialogHeader>
             <DialogTitle>Reset Password</DialogTitle>
           </DialogHeader>
-          
+
           {forgotPasswordSent ? (
             <div className="text-center py-4">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
@@ -309,7 +309,7 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
               <p className="text-gray-600">
                 We've sent a password reset link to {forgotPasswordEmail}
               </p>
-              <Button 
+              <Button
                 onClick={() => {
                   setShowForgotPassword(false);
                   setForgotPasswordSent(false);
@@ -333,7 +333,7 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
                   required
                 />
               </div>
-              
+
               <div className="flex gap-3">
                 <Button
                   type="button"

@@ -40,8 +40,6 @@ const AdminDashboard = ({ onTabChange }) => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Dashboard API response:', data);
-        console.log('Overview data:', data.data?.overview);
         setDashboardData(data.data);
       } else {
         setError('Failed to load dashboard data');

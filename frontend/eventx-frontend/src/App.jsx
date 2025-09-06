@@ -88,7 +88,7 @@ const AppContent = () => {
           setActiveTab('event-details');
           return;
         }
-      } catch {}
+      } catch { }
       // Fallback: go to notifications if we can't parse
       setActiveTab('notifications');
     };
@@ -111,7 +111,6 @@ const AppContent = () => {
           return (
             <EventForm
               onSave={(event) => {
-                console.log('Event created:', event);
                 setActiveTab('events');
               }}
               onCancel={() => setActiveTab('events')}
@@ -122,7 +121,6 @@ const AppContent = () => {
             <EventForm
               event={selectedEvent}
               onSave={(event) => {
-                console.log('Event updated:', event);
                 setActiveTab('events');
               }}
               onCancel={() => setActiveTab('events')}

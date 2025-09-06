@@ -6,8 +6,8 @@ import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Progress } from '../ui/progress';
-import { 
-  Loader2, Mail, Lock, Eye, EyeOff, User, Phone, CheckCircle, XCircle, 
+import {
+  Loader2, Mail, Lock, Eye, EyeOff, User, Phone, CheckCircle, XCircle,
   ArrowRight, ArrowLeft, Shield, MapPin, Calendar, Users
 } from 'lucide-react';
 
@@ -45,30 +45,30 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
 
   const calculatePasswordStrength = (password) => {
     if (!password) return { score: 0, feedback: '', color: 'gray', level: '' };
-    
+
     let score = 0;
     let feedback = [];
-    
+
     // Length check
     if (password.length >= 8) score += 1;
     else feedback.push('8+ characters');
-    
+
     // Lowercase check
     if (/[a-z]/.test(password)) score += 1;
     else feedback.push('lowercase letter');
-    
+
     // Uppercase check
     if (/[A-Z]/.test(password)) score += 1;
     else feedback.push('uppercase letter');
-    
+
     // Number check
     if (/\d/.test(password)) score += 1;
     else feedback.push('number');
-    
+
     // Special character check
     if (/[^\w\s]/.test(password)) score += 1;
     else feedback.push('special character');
-    
+
     const levels = [
       { level: 'Very Weak', color: 'red', bgColor: 'bg-red-500' },
       { level: 'Weak', color: 'orange', bgColor: 'bg-orange-500' },
@@ -76,9 +76,9 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
       { level: 'Good', color: 'blue', bgColor: 'bg-blue-500' },
       { level: 'Strong', color: 'green', bgColor: 'bg-green-500' }
     ];
-    
+
     const currentLevel = levels[Math.min(score, 4)];
-    
+
     return {
       score,
       feedback: feedback.length > 0 ? `Add: ${feedback.join(', ')}` : `${currentLevel.level} password`,
@@ -121,19 +121,19 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
-    
+
     setFormData(prev => ({ ...prev, [name]: newValue }));
-    
+
     // Update password strength for password field
     if (name === 'password') {
       setPasswordStrength(calculatePasswordStrength(newValue));
     }
-    
+
     // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
-    
+
     // Validate field
     const error = validateField(name, newValue);
     if (error) {
@@ -161,7 +161,7 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.acceptedTerms) {
       setErrors({ acceptedTerms: 'You must accept the terms and conditions' });
       return;
@@ -235,16 +235,14 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
           <div className="flex justify-between text-xs">
             {steps.map((step) => (
               <div key={step.id} className="flex flex-col items-center">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium mb-1 ${
-                  currentStep > step.id ? 'bg-green-500 text-white' :
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium mb-1 ${currentStep > step.id ? 'bg-green-500 text-white' :
                   currentStep === step.id ? 'bg-blue-600 text-white' :
-                  'bg-gray-200 text-gray-500'
-                }`}>
+                    'bg-gray-200 text-gray-500'
+                  }`}>
                   {currentStep > step.id ? '✓' : step.id}
                 </div>
-                <span className={`text-xs ${
-                  currentStep >= step.id ? 'text-blue-600 font-medium' : 'text-gray-400'
-                }`}>
+                <span className={`text-xs ${currentStep >= step.id ? 'text-blue-600 font-medium' : 'text-gray-400'
+                  }`}>
                   {step.title}
                 </span>
               </div>
@@ -252,7 +250,7 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-6 px-6 pb-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           {errors.submit && (
@@ -364,11 +362,10 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
               <div className="space-y-3">
                 <Label className="text-base font-semibold text-gray-800">Choose Your Account Type</Label>
                 <div className="grid grid-cols-1 gap-4">
-                  <label className={`group relative overflow-hidden border-2 rounded-xl cursor-pointer transition-all duration-200 ${
-                    formData.accountType === 'user' 
-                      ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md' 
-                      : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
-                  }`}>
+                  <label className={`group relative overflow-hidden border-2 rounded-xl cursor-pointer transition-all duration-200 ${formData.accountType === 'user'
+                    ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
+                    : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                    }`}>
                     <input
                       type="radio"
                       name="accountType"
@@ -378,12 +375,10 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
                       className="sr-only"
                     />
                     <div className="flex items-center p-4">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
-                        formData.accountType === 'user' ? 'bg-blue-100' : 'bg-gray-100 group-hover:bg-blue-50'
-                      }`}>
-                        <User className={`h-6 w-6 ${
-                          formData.accountType === 'user' ? 'text-blue-600' : 'text-gray-500 group-hover:text-blue-500'
-                        }`} />
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${formData.accountType === 'user' ? 'bg-blue-100' : 'bg-gray-100 group-hover:bg-blue-50'
+                        }`}>
+                        <User className={`h-6 w-6 ${formData.accountType === 'user' ? 'text-blue-600' : 'text-gray-500 group-hover:text-blue-500'
+                          }`} />
                       </div>
                       <div className="flex-1">
                         <div className="font-semibold text-gray-900 mb-1">Event Attendee</div>
@@ -394,12 +389,11 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
                       )}
                     </div>
                   </label>
-                  
-                  <label className={`group relative overflow-hidden border-2 rounded-xl cursor-pointer transition-all duration-200 ${
-                    formData.accountType === 'organizer' 
-                      ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md' 
-                      : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
-                  }`}>
+
+                  <label className={`group relative overflow-hidden border-2 rounded-xl cursor-pointer transition-all duration-200 ${formData.accountType === 'organizer'
+                    ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
+                    : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                    }`}>
                     <input
                       type="radio"
                       name="accountType"
@@ -409,12 +403,10 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
                       className="sr-only"
                     />
                     <div className="flex items-center p-4">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
-                        formData.accountType === 'organizer' ? 'bg-blue-100' : 'bg-gray-100 group-hover:bg-blue-50'
-                      }`}>
-                        <Users className={`h-6 w-6 ${
-                          formData.accountType === 'organizer' ? 'text-blue-600' : 'text-gray-500 group-hover:text-blue-500'
-                        }`} />
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${formData.accountType === 'organizer' ? 'bg-blue-100' : 'bg-gray-100 group-hover:bg-blue-50'
+                        }`}>
+                        <Users className={`h-6 w-6 ${formData.accountType === 'organizer' ? 'text-blue-600' : 'text-gray-500 group-hover:text-blue-500'
+                          }`} />
                       </div>
                       <div className="flex-1">
                         <div className="font-semibold text-gray-900 mb-1">Event Organizer</div>
@@ -456,75 +448,68 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                
+
                 {/* Password Strength Indicator */}
                 {formData.password && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Password strength:</span>
-                      <span className={`font-medium ${
-                        passwordStrength.color === 'red' ? 'text-red-600' :
+                      <span className={`font-medium ${passwordStrength.color === 'red' ? 'text-red-600' :
                         passwordStrength.color === 'orange' ? 'text-orange-600' :
-                        passwordStrength.color === 'yellow' ? 'text-yellow-600' :
-                        passwordStrength.color === 'blue' ? 'text-blue-600' :
-                        passwordStrength.color === 'green' ? 'text-green-600' :
-                        'text-gray-500'
-                      }`}>
+                          passwordStrength.color === 'yellow' ? 'text-yellow-600' :
+                            passwordStrength.color === 'blue' ? 'text-blue-600' :
+                              passwordStrength.color === 'green' ? 'text-green-600' :
+                                'text-gray-500'
+                        }`}>
                         {passwordStrength.level}
                       </span>
                     </div>
-                    
+
                     {/* Strength Bar */}
                     <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                      <div 
+                      <div
                         className={`h-full transition-all duration-300 ${passwordStrength.bgColor}`}
                         style={{ width: passwordStrength.width }}
                       ></div>
                     </div>
-                    
+
                     {/* Feedback */}
-                    <p className={`text-xs ${
-                      passwordStrength.score >= 4 ? 'text-green-600' : 'text-gray-600'
-                    }`}>
+                    <p className={`text-xs ${passwordStrength.score >= 4 ? 'text-green-600' : 'text-gray-600'
+                      }`}>
                       {passwordStrength.feedback}
                     </p>
-                    
+
                     {/* Requirements Checklist */}
                     <div className="grid grid-cols-2 gap-1 text-xs">
-                      <div className={`flex items-center gap-1 ${
-                        formData.password.length >= 8 ? 'text-green-600' : 'text-gray-400'
-                      }`}>
+                      <div className={`flex items-center gap-1 ${formData.password.length >= 8 ? 'text-green-600' : 'text-gray-400'
+                        }`}>
                         {formData.password.length >= 8 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                         <span>8+ characters</span>
                       </div>
-                      <div className={`flex items-center gap-1 ${
-                        /[A-Z]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
-                      }`}>
+                      <div className={`flex items-center gap-1 ${/[A-Z]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
+                        }`}>
                         {/[A-Z]/.test(formData.password) ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                         <span>Uppercase</span>
                       </div>
-                      <div className={`flex items-center gap-1 ${
-                        /[a-z]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
-                      }`}>
+                      <div className={`flex items-center gap-1 ${/[a-z]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
+                        }`}>
                         {/[a-z]/.test(formData.password) ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                         <span>Lowercase</span>
                       </div>
-                      <div className={`flex items-center gap-1 ${
-                        /\d/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
-                      }`}>
+                      <div className={`flex items-center gap-1 ${/\d/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
+                        }`}>
                         {/\d/.test(formData.password) ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                         <span>Number</span>
                       </div>
-                      <div className={`flex items-center gap-1 col-span-2 ${
-                        /[^\w\s]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
-                      }`}>
+                      <div className={`flex items-center gap-1 col-span-2 ${/[^\w\s]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
+                        }`}>
                         {/[^\w\s]/.test(formData.password) ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                         <span>Special character (!@#$%^&*)</span>
                       </div>
                     </div>
                   </div>
                 )}
-                
+
                 {errors.password && (
                   <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded-md">
                     <XCircle className="h-4 w-4" />
@@ -598,9 +583,8 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
                     name="gender"
                     value={formData.gender}
                     onChange={handleChange}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.gender ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.gender ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     required
                   >
                     <option value="">Select gender</option>
@@ -645,9 +629,8 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
                     name="country"
                     value={formData.country}
                     onChange={handleChange}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.country ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.country ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     required
                   >
                     <option value="">Select country</option>
@@ -731,7 +714,7 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
                 Back
               </Button>
             )}
-            
+
             {currentStep < 4 ? (
               <Button
                 type="button"
