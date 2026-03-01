@@ -68,8 +68,8 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', token);
         return { success: true, data: data.data };
       } else {
-        return { 
-          success: false, 
+        return {
+          success: false,
           message: data.message,
           attemptsRemaining: data.attemptsRemaining,
           lockTimeRemaining: data.lockTimeRemaining
@@ -269,6 +269,8 @@ export const AuthProvider = ({ children }) => {
     removeAllSessions,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
+    isOrganizer: user?.role === 'organizer',
+    isVenueAdmin: user?.role === 'venue_admin',
   };
 
   return (

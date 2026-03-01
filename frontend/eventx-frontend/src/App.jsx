@@ -5,6 +5,7 @@ import AuthPage from './pages/AuthPage';
 import HomePage from './pages/HomePage';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
+// Admin
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboard from './components/admin/AdminDashboard';
 import EventsManagement from './components/admin/EventsManagement';
@@ -20,6 +21,18 @@ import Notifications from './components/admin/Notifications';
 import Marketing from './components/admin/Marketing';
 import EventCategories from './components/admin/EventCategories';
 import ContactSupport from './components/admin/ContactSupport';
+// Organizer
+import OrganizerLayout from './components/organizer/OrganizerLayout';
+import OrganizerDashboard from './components/organizer/OrganizerDashboard';
+// Venue Admin
+import VenueAdminLayout from './components/venue/VenueAdminLayout';
+import VenueAdminDashboard from './components/venue/VenueAdminDashboard';
+import HallManagement from './components/venue/HallManagement';
+import BookingApproval from './components/venue/BookingApproval';
+// Shared
+import HallBrowser from './components/shared/HallBrowser';
+import HallDetail from './components/shared/HallDetail';
+// User
 import UserLayout from './components/user/UserLayout';
 import EventsBrowser from './components/user/EventsBrowser';
 import UserEventDetails from './components/user/EventDetails';
@@ -32,10 +45,11 @@ import useUpcomingNotifications from './hooks/useUpcomingNotifications';
 
 // Main App Content Component
 const AppContent = () => {
-  const { user, loading, isAuthenticated, isAdmin } = useAuth();
+  const { user, loading, isAuthenticated, isAdmin, isOrganizer, isVenueAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const [selectedHall, setSelectedHall] = useState(null);
   const navigate = useNavigate();
 
   // Always register notifications hook so Hooks order doesn't change between renders
@@ -76,11 +90,9 @@ const AppContent = () => {
     );
   }
 
-  // Admin Dashboard
+  // ──── Admin Dashboard ─────────────────────────────────────────────
   if (isAdmin) {
-
     const handleAdminNotificationAction = (actionUrl) => {
-      // Basic parser for action URLs like "/events/<id>" or "/admin/events/<id>"
       try {
         const match = String(actionUrl).match(/\/events\/(\w[\w-]*)/);
         if (match && match[1]) {
@@ -89,7 +101,6 @@ const AppContent = () => {
           return;
         }
       } catch { }
-      // Fallback: go to notifications if we can't parse
       setActiveTab('notifications');
     };
 
@@ -110,9 +121,7 @@ const AppContent = () => {
         case 'create-event':
           return (
             <EventForm
-              onSave={(event) => {
-                setActiveTab('events');
-              }}
+              onSave={() => setActiveTab('events')}
               onCancel={() => setActiveTab('events')}
             />
           );
@@ -120,9 +129,7 @@ const AppContent = () => {
           return (
             <EventForm
               event={selectedEvent}
-              onSave={(event) => {
-                setActiveTab('events');
-              }}
+              onSave={() => setActiveTab('events')}
               onCancel={() => setActiveTab('events')}
             />
           );
@@ -151,8 +158,12 @@ const AppContent = () => {
           return <UserManagement />;
         case 'settings':
           return <AdminSettings />;
+        case 'halls':
+          return <HallBrowser onSelectHall={(hall) => { setSelectedHall(hall); setActiveTab('hall-detail'); }} />;
+        case 'hall-detail':
+          return <HallDetail hall={selectedHall} onBack={() => setActiveTab('halls')} />;
         default:
-          return <AdminDashboard />;
+          return <AdminDashboard onTabChange={setActiveTab} />;
       }
     };
 
@@ -163,14 +174,90 @@ const AppContent = () => {
     );
   }
 
-  // User Dashboard
+  // ──── Venue Admin Dashboard ───────────────────────────────────────
+  if (isVenueAdmin) {
+    const renderVenueAdminContent = () => {
+      switch (activeTab) {
+        case 'dashboard':
+          return <VenueAdminDashboard onTabChange={setActiveTab} />;
+        case 'halls':
+          return <HallManagement onSelectHall={(hall) => { setSelectedHall(hall); setActiveTab('hall-detail'); }} />;
+        case 'hall-detail':
+          return <HallDetail hall={selectedHall} onBack={() => setActiveTab('halls')} />;
+        case 'bookings':
+          return <BookingApproval />;
+        case 'hall-browser':
+          return <HallBrowser onSelectHall={(hall) => { setSelectedHall(hall); setActiveTab('hall-detail'); }} />;
+        case 'profile':
+          return <UserProfile />;
+        default:
+          return <VenueAdminDashboard onTabChange={setActiveTab} />;
+      }
+    };
+
+    return (
+      <VenueAdminLayout activeTab={activeTab} onTabChange={setActiveTab}>
+        {renderVenueAdminContent()}
+      </VenueAdminLayout>
+    );
+  }
+
+  // ──── Organizer Dashboard ─────────────────────────────────────────
+  if (isOrganizer) {
+    const renderOrganizerContent = () => {
+      switch (activeTab) {
+        case 'dashboard':
+          return <OrganizerDashboard onTabChange={setActiveTab} />;
+        case 'events':
+          return (
+            <EventsManagement
+              onCreateEvent={() => setActiveTab('create-event')}
+              onEditEvent={(event) => {
+                setSelectedEvent(event);
+                setActiveTab('edit-event');
+              }}
+            />
+          );
+        case 'create-event':
+          return (
+            <EventForm
+              onSave={() => setActiveTab('events')}
+              onCancel={() => setActiveTab('events')}
+            />
+          );
+        case 'edit-event':
+          return (
+            <EventForm
+              event={selectedEvent}
+              onSave={() => setActiveTab('events')}
+              onCancel={() => setActiveTab('events')}
+            />
+          );
+        case 'hall-browser':
+          return <HallBrowser onSelectHall={(hall) => { setSelectedHall(hall); setActiveTab('hall-detail'); }} />;
+        case 'hall-detail':
+          return <HallDetail hall={selectedHall} onBack={() => setActiveTab('hall-browser')} />;
+        case 'profile':
+          return <UserProfile />;
+        default:
+          return <OrganizerDashboard onTabChange={setActiveTab} />;
+      }
+    };
+
+    return (
+      <OrganizerLayout activeTab={activeTab} onTabChange={setActiveTab}>
+        {renderOrganizerContent()}
+      </OrganizerLayout>
+    );
+  }
+
+  // ──── User (Attendee) Dashboard ───────────────────────────────────
   const handleEventSelect = (event) => {
     setSelectedEvent(event);
     setActiveTab('event-details');
   };
 
-  const handleBookTicket = async (bookingResult) => {
-    // Booking now handled in EventDetails; navigate to My Tickets on success
+  const handleBookTicket = async () => {
     setActiveTab('my-tickets');
   };
 
@@ -192,6 +279,10 @@ const AppContent = () => {
         return <Favorites onEventSelect={handleEventSelect} />;
       case 'profile':
         return <UserProfile />;
+      case 'hall-browser':
+        return <HallBrowser onSelectHall={(hall) => { setSelectedHall(hall); setActiveTab('hall-detail'); }} />;
+      case 'hall-detail':
+        return <HallDetail hall={selectedHall} onBack={() => setActiveTab('hall-browser')} />;
       default:
         return <EventsBrowser onEventSelect={handleEventSelect} />;
     }
@@ -216,4 +307,3 @@ function App() {
 }
 
 export default App;
-

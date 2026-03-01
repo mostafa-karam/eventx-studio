@@ -120,6 +120,10 @@ const eventSchema = new mongoose.Schema({
     url: String,
     alt: String
   }],
+  hall: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Hall'
+  },
   organizer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

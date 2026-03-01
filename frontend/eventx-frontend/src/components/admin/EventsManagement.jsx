@@ -19,7 +19,8 @@ import {
   Filter,
   ArrowRight,
   Clock,
-  Ticket
+  Ticket,
+  Copy
 } from 'lucide-react';
 
 const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
@@ -32,6 +33,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [specificDate, setSpecificDate] = useState('');
+  const [cloneLoading, setCloneLoading] = useState(null);
 
   const { token } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -128,6 +130,33 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
       setError('Network error. Please try again.');
     } finally {
       setDeleteLoading(null);
+    }
+  };
+
+  const handleCloneEvent = async (eventId) => {
+    setCloneLoading(eventId);
+    setError('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}/clone`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setEvents([data.data.event, ...events]);
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Failed to clone event');
+      }
+    } catch (error) {
+      console.error('Clone error:', error);
+      setError('Network error. Please try again.');
+    } finally {
+      setCloneLoading(null);
     }
   };
 
@@ -271,15 +300,15 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
         <div className="flex items-center space-x-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input 
-              placeholder="Search events..." 
+            <Input
+              placeholder="Search events..."
               className="pl-10 w-80"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <select 
-            value={categoryFilter} 
+          <select
+            value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
@@ -291,7 +320,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
             <option value="festival">🎪 Festival</option>
           </select>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="sm">
             <Filter className="w-4 h-4 mr-2" />
@@ -344,12 +373,12 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
                 const totalSeats = event?.seating?.totalSeats ?? 0;
                 const availableSeats = event?.seating?.availableSeats ?? 0;
                 const soldSeats = Math.max(0, totalSeats - availableSeats);
-                const eventEmoji = event.category === 'music' ? '🎵' : 
-                                  event.category === 'sports' ? '🏆' : 
-                                  event.category === 'conference' ? '💼' : 
-                                  event.category === 'workshop' ? '🛠️' : 
-                                  event.category === 'festival' ? '🎪' : '📅';
-                
+                const eventEmoji = event.category === 'music' ? '🎵' :
+                  event.category === 'sports' ? '🏆' :
+                    event.category === 'conference' ? '💼' :
+                      event.category === 'workshop' ? '🛠️' :
+                        event.category === 'festival' ? '🎪' : '📅';
+
                 return (
                   <div key={event._id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between">
@@ -367,7 +396,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
                               {eventStatus.label}
                             </Badge>
                           </div>
-                          
+
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                             <div className="flex items-center space-x-2">
                               <MapPin className="w-4 h-4 text-gray-400" />
@@ -386,11 +415,11 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
                               <span className="text-sm text-gray-600">{soldSeats}/{totalSeats} tickets</span>
                             </div>
                           </div>
-                          
+
                           {/* Progress Bar */}
                           <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                               style={{ width: `${totalSeats > 0 ? (soldSeats / totalSeats) * 100 : 0}%` }}
                             ></div>
                           </div>
@@ -399,18 +428,18 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
                           </p>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-2">
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={() => togglePublish(event)}
                           className={event.status === 'published' ? 'text-yellow-600 border-yellow-600 hover:bg-yellow-50' : 'text-green-600 border-green-600 hover:bg-green-50'}
                         >
                           {event.status === 'published' ? 'Unpublish' : 'Publish'}
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={() => onEditEvent(event)}
                           className="text-blue-600 border-blue-600 hover:bg-blue-50"
@@ -418,14 +447,26 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
                           <Edit className="w-4 h-4 mr-1" />
                           Edit
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleCloneEvent(event._id)}
+                          disabled={cloneLoading === event._id}
+                          className="text-purple-600 border-purple-600 hover:bg-purple-50 flex-1 whitespace-nowrap"
+                        >
+                          <Copy className="w-4 h-4 mr-1 hidden sm:block" />
+                          <span className="sm:hidden w-4 h-4 mr-1 flex items-center justify-center"><Copy size={16} /></span>
+                          {cloneLoading === event._id ? 'Cloning...' : 'Clone'}
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={() => handleDeleteEvent(event._id)}
                           disabled={deleteLoading === event._id}
-                          className="text-red-600 border-red-600 hover:bg-red-50"
+                          className="text-red-600 border-red-600 hover:bg-red-50 flex-1 whitespace-nowrap"
                         >
-                          <Trash2 className="w-4 h-4 mr-1" />
+                          <Trash2 className="w-4 h-4 mr-1 hidden sm:block" />
+                          <span className="sm:hidden w-4 h-4 mr-1 flex items-center justify-center"><Trash2 size={16} /></span>
                           {deleteLoading === event._id ? 'Deleting...' : 'Delete'}
                         </Button>
                       </div>

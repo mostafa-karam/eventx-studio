@@ -1,6 +1,7 @@
 const express = require('express');
 const Event = require('../models/Event');
-const { authenticate, requireAdmin, optionalAuth } = require('../middleware/auth');
+const Waitlist = require('../models/Waitlist');
+const { authenticate, requireAdmin, requireOrganizer, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -12,15 +13,15 @@ router.get('/', optionalAuth, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 12;
     const skip = (page - 1) * limit;
-    
+
     // Build query
     let query = { status: 'published' };
-    
+
     // Add filters
     if (req.query.category) {
       query.category = req.query.category;
     }
-    
+
     if (req.query.search) {
       query.$or = [
         { title: { $regex: req.query.search, $options: 'i' } },
@@ -29,11 +30,11 @@ router.get('/', optionalAuth, async (req, res) => {
         { 'venue.city': { $regex: req.query.search, $options: 'i' } }
       ];
     }
-    
+
     if (req.query.city) {
       query['venue.city'] = { $regex: req.query.city, $options: 'i' };
     }
-    
+
     if (req.query.dateFrom || req.query.dateTo) {
       query.date = {};
       if (req.query.dateFrom) {
@@ -43,7 +44,7 @@ router.get('/', optionalAuth, async (req, res) => {
         query.date.$lte = new Date(req.query.dateTo);
       }
     }
-    
+
     if (req.query.priceMin || req.query.priceMax) {
       query['pricing.amount'] = {};
       if (req.query.priceMin) {
@@ -100,9 +101,9 @@ router.get('/', optionalAuth, async (req, res) => {
 });
 
 // @route   GET /api/events/admin/my-events
-// @desc    Get events created by current admin
-// @access  Private/Admin
-router.get('/admin/my-events', authenticate, requireAdmin, async (req, res) => {
+// @desc    Get events created by current organizer/admin
+// @access  Private/Organizer
+router.get('/admin/my-events', authenticate, requireOrganizer, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -188,14 +189,14 @@ router.get('/:id', optionalAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Get event error:', error);
-    
+
     if (error.name === 'CastError') {
       return res.status(404).json({
         success: false,
         message: 'Event not found'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'Server error while fetching event'
@@ -205,8 +206,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
 // @route   POST /api/events
 // @desc    Create new event
-// @access  Private/Admin
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+// @access  Private/Organizer
+router.post('/', authenticate, requireOrganizer, async (req, res) => {
   try {
     const eventData = {
       ...req.body,
@@ -228,7 +229,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Create event error:', error);
-    
+
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
@@ -245,10 +246,72 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// @route   POST /api/events/:id/clone
+// @desc    Clone an existing event
+// @access  Private/Organizer
+router.post('/:id/clone', authenticate, requireOrganizer, async (req, res) => {
+  try {
+    const originalEvent = await Event.findById(req.params.id);
+
+    if (!originalEvent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found'
+      });
+    }
+
+    // Check if user is the organizer or admin
+    if (originalEvent.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to clone this event'
+      });
+    }
+
+    const eventData = originalEvent.toObject();
+
+    // Remove specific identifiers
+    delete eventData._id;
+    delete eventData.createdAt;
+    delete eventData.updatedAt;
+    delete eventData.__v;
+
+    // Reset status and specific fields
+    eventData.title = `${originalEvent.title} (Copy)`;
+    eventData.status = 'draft';
+    eventData.analytics = { views: 0, bookings: 0 };
+    if (eventData.seating) {
+      eventData.seating.availableSeats = eventData.seating.totalSeats;
+      eventData.seating.seatMap = [];
+    }
+
+    const newEvent = new Event(eventData);
+    await newEvent.save();
+
+    const populatedEvent = await Event.findById(newEvent._id)
+      .populate('organizer', 'name email');
+
+    res.status(201).json({
+      success: true,
+      message: 'Event cloned successfully',
+      data: {
+        event: populatedEvent
+      }
+    });
+
+  } catch (error) {
+    console.error('Clone event error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while cloning event'
+    });
+  }
+});
+
 // @route   PUT /api/events/:id
 // @desc    Update event
-// @access  Private/Admin
-router.put('/:id', authenticate, requireAdmin, async (req, res) => {
+// @access  Private/Organizer
+router.put('/:id', authenticate, requireOrganizer, async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
 
@@ -288,14 +351,14 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Update event error:', error);
-    
+
     if (error.name === 'CastError') {
       return res.status(404).json({
         success: false,
         message: 'Event not found'
       });
     }
-    
+
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
@@ -314,8 +377,8 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
 
 // @route   DELETE /api/events/:id
 // @desc    Delete event
-// @access  Private/Admin
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+// @access  Private/Organizer
+router.delete('/:id', authenticate, requireOrganizer, async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
 
@@ -342,14 +405,14 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Delete event error:', error);
-    
+
     if (error.name === 'CastError') {
       return res.status(404).json({
         success: false,
         message: 'Event not found'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'Server error while deleting event'
@@ -385,18 +448,137 @@ router.get('/:id/seats', async (req, res) => {
     });
   } catch (error) {
     console.error('Get seats error:', error);
-    
+
     if (error.name === 'CastError') {
       return res.status(404).json({
         success: false,
         message: 'Event not found'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'Server error while fetching seats'
     });
+  }
+});
+
+// @route   POST /api/events/:id/waitlist
+// @desc    Join the waitlist for a sold-out event
+// @access  Private
+router.post('/:id/waitlist', authenticate, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    if (event.status !== 'published') {
+      return res.status(400).json({ success: false, message: 'Event is not active' });
+    }
+
+    // Check if tickets are actually sold out
+    if (event.seating && event.seating.availableSeats > 0) {
+      return res.status(400).json({ success: false, message: 'Tickets are still available for this event' });
+    }
+
+    const waitlistEntry = new Waitlist({
+      event: event._id,
+      user: req.user._id,
+      status: 'pending'
+    });
+
+    await waitlistEntry.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Successfully joined the waitlist',
+      data: { waitlist: waitlistEntry }
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are already on the waitlist for this event'
+      });
+    }
+    console.error('Join waitlist error:', error);
+    res.status(500).json({ success: false, message: 'Server error while joining waitlist' });
+  }
+});
+
+// @route   GET /api/events/:id/waitlist
+// @desc    Get waitlist for an event
+// @access  Private (Admin/Organizer)
+router.get('/:id/waitlist', authenticate, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to view waitlist' });
+    }
+
+    const waitlist = await Waitlist.find({ event: event._id })
+      .populate('user', 'name email phone')
+      .sort({ createdAt: 1 }); // FIFO
+
+    res.json({
+      success: true,
+      data: { waitlist }
+    });
+  } catch (error) {
+    console.error('Get waitlist error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching waitlist' });
+  }
+});
+
+// @route   POST /api/events/:id/waitlist/:waitlistId/approve
+// @desc    Approve a waitlist entry
+// @access  Private (Admin/Organizer)
+router.post('/:id/waitlist/:waitlistId/approve', authenticate, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to approve waitlist' });
+    }
+
+    const waitlistEntry = await Waitlist.findOne({ _id: req.params.waitlistId, event: event._id });
+
+    if (!waitlistEntry) {
+      return res.status(404).json({ success: false, message: 'Waitlist entry not found' });
+    }
+
+    if (waitlistEntry.status !== 'pending') {
+      return res.status(400).json({ success: false, message: `Cannot approve entry in ${waitlistEntry.status} status` });
+    }
+
+    waitlistEntry.status = 'notified';
+    waitlistEntry.notifiedAt = new Date();
+    // Give them 24 hours to purchase
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 24);
+    waitlistEntry.expiresAt = expires;
+
+    await waitlistEntry.save();
+
+    res.json({
+      success: true,
+      message: 'Waitlist entry approved. User has 24 hours to purchase.',
+      data: { waitlist: waitlistEntry }
+    });
+  } catch (error) {
+    console.error('Approve waitlist error:', error);
+    res.status(500).json({ success: false, message: 'Server error while approving waitlist' });
   }
 });
 

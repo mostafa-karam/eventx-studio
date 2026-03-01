@@ -1,0 +1,316 @@
+const express = require('express');
+const Hall = require('../models/Hall');
+const { authenticate, requireVenueAdmin, requireAdmin } = require('../middleware/auth');
+
+const router = express.Router();
+
+// @route   GET /api/halls
+// @desc    Get all halls with optional filters
+// @access  Private (all authenticated users)
+router.get('/', authenticate, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 12;
+        const skip = (page - 1) * limit;
+
+        // Build query
+        let query = {};
+
+        // Filter by status (default: only active halls for non-admin users)
+        if (req.query.status) {
+            query.status = req.query.status;
+        } else if (req.user.role !== 'admin' && req.user.role !== 'venue_admin') {
+            query.status = 'active';
+        }
+
+        // Filter by capacity range
+        if (req.query.minCapacity || req.query.maxCapacity) {
+            query.capacity = {};
+            if (req.query.minCapacity) query.capacity.$gte = parseInt(req.query.minCapacity);
+            if (req.query.maxCapacity) query.capacity.$lte = parseInt(req.query.maxCapacity);
+        }
+
+        // Filter by equipment
+        if (req.query.equipment) {
+            const equipmentArr = req.query.equipment.split(',');
+            query.equipment = { $all: equipmentArr };
+        }
+
+        // Search by name
+        if (req.query.search) {
+            query.name = { $regex: req.query.search, $options: 'i' };
+        }
+
+        // Sort options
+        let sort = { name: 1 };
+        if (req.query.sort === 'capacity-asc') sort = { capacity: 1 };
+        else if (req.query.sort === 'capacity-desc') sort = { capacity: -1 };
+        else if (req.query.sort === 'price-asc') sort = { hourlyRate: 1 };
+        else if (req.query.sort === 'price-desc') sort = { hourlyRate: -1 };
+        else if (req.query.sort === 'newest') sort = { createdAt: -1 };
+
+        const halls = await Hall.find(query)
+            .populate('createdBy', 'name email')
+            .sort(sort)
+            .skip(skip)
+            .limit(limit);
+
+        const total = await Hall.countDocuments(query);
+
+        res.json({
+            success: true,
+            data: {
+                halls,
+                pagination: {
+                    current: page,
+                    pages: Math.ceil(total / limit),
+                    total
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Get halls error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while fetching halls'
+        });
+    }
+});
+
+// @route   GET /api/halls/:id
+// @desc    Get single hall by ID
+// @access  Private (all authenticated users)
+router.get('/:id', authenticate, async (req, res) => {
+    try {
+        const hall = await Hall.findById(req.params.id)
+            .populate('createdBy', 'name email');
+
+        if (!hall) {
+            return res.status(404).json({
+                success: false,
+                message: 'Hall not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: { hall }
+        });
+    } catch (error) {
+        console.error('Get hall error:', error);
+
+        if (error.name === 'CastError') {
+            return res.status(404).json({
+                success: false,
+                message: 'Hall not found'
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Server error while fetching hall'
+        });
+    }
+});
+
+// @route   GET /api/halls/:id/availability
+// @desc    Get hall availability for a date range
+// @access  Private (all authenticated users)
+router.get('/:id/availability', authenticate, async (req, res) => {
+    try {
+        const hall = await Hall.findById(req.params.id);
+
+        if (!hall) {
+            return res.status(404).json({
+                success: false,
+                message: 'Hall not found'
+            });
+        }
+
+        // Get approved bookings for this hall within the date range
+        const HallBooking = require('../models/HallBooking');
+        const { from, to } = req.query;
+
+        const startDate = from ? new Date(from) : new Date();
+        const endDate = to ? new Date(to) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default: next 30 days
+
+        const bookings = await HallBooking.find({
+            hall: req.params.id,
+            status: 'approved',
+            startDate: { $lt: endDate },
+            endDate: { $gt: startDate }
+        })
+            .populate('organizer', 'name')
+            .populate('event', 'title')
+            .select('startDate endDate organizer event status')
+            .sort({ startDate: 1 });
+
+        res.json({
+            success: true,
+            data: {
+                hall: {
+                    _id: hall._id,
+                    name: hall.name,
+                    capacity: hall.capacity,
+                    status: hall.status
+                },
+                bookings,
+                dateRange: { from: startDate, to: endDate }
+            }
+        });
+    } catch (error) {
+        console.error('Get availability error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while fetching availability'
+        });
+    }
+});
+
+// @route   POST /api/halls
+// @desc    Create a new hall
+// @access  Private (venue_admin, admin)
+router.post('/', authenticate, requireVenueAdmin, async (req, res) => {
+    try {
+        const hallData = {
+            ...req.body,
+            createdBy: req.user._id
+        };
+
+        const hall = new Hall(hallData);
+        await hall.save();
+
+        const populatedHall = await Hall.findById(hall._id)
+            .populate('createdBy', 'name email');
+
+        res.status(201).json({
+            success: true,
+            message: 'Hall created successfully',
+            data: { hall: populatedHall }
+        });
+    } catch (error) {
+        console.error('Create hall error:', error);
+
+        if (error.name === 'ValidationError') {
+            const errors = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                errors
+            });
+        }
+
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: 'A hall with this name already exists'
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Server error while creating hall'
+        });
+    }
+});
+
+// @route   PUT /api/halls/:id
+// @desc    Update a hall
+// @access  Private (venue_admin, admin)
+router.put('/:id', authenticate, requireVenueAdmin, async (req, res) => {
+    try {
+        const hall = await Hall.findById(req.params.id);
+
+        if (!hall) {
+            return res.status(404).json({
+                success: false,
+                message: 'Hall not found'
+            });
+        }
+
+        // Update fields
+        const allowedFields = [
+            'name', 'description', 'capacity', 'equipment', 'hourlyRate',
+            'dailyRate', 'images', 'status', 'location', 'amenities', 'rules'
+        ];
+
+        allowedFields.forEach(field => {
+            if (req.body[field] !== undefined) {
+                hall[field] = req.body[field];
+            }
+        });
+
+        await hall.save();
+
+        const populatedHall = await Hall.findById(hall._id)
+            .populate('createdBy', 'name email');
+
+        res.json({
+            success: true,
+            message: 'Hall updated successfully',
+            data: { hall: populatedHall }
+        });
+    } catch (error) {
+        console.error('Update hall error:', error);
+
+        if (error.name === 'CastError') {
+            return res.status(404).json({ success: false, message: 'Hall not found' });
+        }
+
+        if (error.name === 'ValidationError') {
+            const errors = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({ success: false, message: 'Validation error', errors });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Server error while updating hall'
+        });
+    }
+});
+
+// @route   DELETE /api/halls/:id
+// @desc    Delete a hall
+// @access  Private (admin only)
+router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+    try {
+        const hall = await Hall.findById(req.params.id);
+
+        if (!hall) {
+            return res.status(404).json({
+                success: false,
+                message: 'Hall not found'
+            });
+        }
+
+        // Check for active bookings before deleting
+        const HallBooking = require('../models/HallBooking');
+        const activeBookings = await HallBooking.countDocuments({
+            hall: req.params.id,
+            status: { $in: ['pending', 'approved'] },
+            endDate: { $gt: new Date() }
+        });
+
+        if (activeBookings > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot delete hall with ${activeBookings} active/pending booking(s). Cancel them first.`
+            });
+        }
+
+        await Hall.findByIdAndDelete(req.params.id);
+
+        res.json({
+            success: true,
+            message: 'Hall deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete hall error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while deleting hall'
+        });
+    }
+});
+
+module.exports = router;

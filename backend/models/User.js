@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'organizer', 'admin'],
+    enum: ['user', 'organizer', 'venue_admin', 'admin'],
     default: 'user'
   },
   phone: {
@@ -115,9 +115,9 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   try {
     // Store password in history before hashing new one
     if (this.password && !this.isNew) {
@@ -134,7 +134,7 @@ userSchema.pre('save', async function(next) {
         }
       }
     }
-    
+
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
     next();
@@ -144,17 +144,17 @@ userSchema.pre('save', async function(next) {
 });
 
 // Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 // Check if account is locked
-userSchema.virtual('isLocked').get(function() {
+userSchema.virtual('isLocked').get(function () {
   return !!(this.lockUntil && this.lockUntil > Date.now());
 });
 
 // Increment login attempts
-userSchema.methods.incLoginAttempts = function() {
+userSchema.methods.incLoginAttempts = function () {
   // If we have a previous lock that has expired, restart at 1
   if (this.lockUntil && this.lockUntil < Date.now()) {
     return this.updateOne({
@@ -162,28 +162,28 @@ userSchema.methods.incLoginAttempts = function() {
       $set: { loginAttempts: 1 }
     });
   }
-  
+
   const updates = { $inc: { loginAttempts: 1 } };
-  
+
   // Lock account after 5 failed attempts for 2 hours
   if (this.loginAttempts + 1 >= 5 && !this.isLocked) {
     updates.$set = { lockUntil: Date.now() + 2 * 60 * 60 * 1000 }; // 2 hours
   }
-  
+
   return this.updateOne(updates);
 };
 
 // Reset login attempts
-userSchema.methods.resetLoginAttempts = function() {
+userSchema.methods.resetLoginAttempts = function () {
   return this.updateOne({
     $unset: { loginAttempts: 1, lockUntil: 1 }
   });
 };
 
 // Check if password was used recently
-userSchema.methods.isPasswordRecentlyUsed = async function(password) {
+userSchema.methods.isPasswordRecentlyUsed = async function (password) {
   if (!this.passwordHistory || this.passwordHistory.length === 0) return false;
-  
+
   for (const oldPassword of this.passwordHistory) {
     const isMatch = await bcrypt.compare(password, oldPassword.password);
     if (isMatch) return true;
@@ -192,7 +192,7 @@ userSchema.methods.isPasswordRecentlyUsed = async function(password) {
 };
 
 // Generate email verification token
-userSchema.methods.generateEmailVerificationToken = function() {
+userSchema.methods.generateEmailVerificationToken = function () {
   const token = crypto.randomBytes(32).toString('hex');
   this.emailVerificationToken = crypto.createHash('sha256').update(token).digest('hex');
   this.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
@@ -200,7 +200,7 @@ userSchema.methods.generateEmailVerificationToken = function() {
 };
 
 // Generate password reset token
-userSchema.methods.generatePasswordResetToken = function() {
+userSchema.methods.generatePasswordResetToken = function () {
   const token = crypto.randomBytes(32).toString('hex');
   this.passwordResetToken = crypto.createHash('sha256').update(token).digest('hex');
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
@@ -208,12 +208,12 @@ userSchema.methods.generatePasswordResetToken = function() {
 };
 
 // Add session
-userSchema.methods.addSession = function(sessionId, deviceInfo) {
+userSchema.methods.addSession = function (sessionId, deviceInfo) {
   this.activeSessions = this.activeSessions || [];
-  
+
   // Remove existing session with same sessionId
   this.activeSessions = this.activeSessions.filter(s => s.sessionId !== sessionId);
-  
+
   // Add new session
   this.activeSessions.push({
     sessionId,
@@ -221,7 +221,7 @@ userSchema.methods.addSession = function(sessionId, deviceInfo) {
     lastActivity: new Date(),
     createdAt: new Date()
   });
-  
+
   // Keep only last 10 sessions
   if (this.activeSessions.length > 10) {
     this.activeSessions = this.activeSessions.slice(-10);
@@ -229,12 +229,12 @@ userSchema.methods.addSession = function(sessionId, deviceInfo) {
 };
 
 // Remove session
-userSchema.methods.removeSession = function(sessionId) {
+userSchema.methods.removeSession = function (sessionId) {
   this.activeSessions = this.activeSessions.filter(s => s.sessionId !== sessionId);
 };
 
 // Update session activity
-userSchema.methods.updateSessionActivity = function(sessionId) {
+userSchema.methods.updateSessionActivity = function (sessionId) {
   const session = this.activeSessions.find(s => s.sessionId === sessionId);
   if (session) {
     session.lastActivity = new Date();
@@ -242,7 +242,7 @@ userSchema.methods.updateSessionActivity = function(sessionId) {
 };
 
 // Get user without sensitive data
-userSchema.methods.toJSON = function() {
+userSchema.methods.toJSON = function () {
   const userObject = this.toObject();
   delete userObject.password;
   delete userObject.passwordHistory;

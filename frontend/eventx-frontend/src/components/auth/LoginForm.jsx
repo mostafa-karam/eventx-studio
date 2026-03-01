@@ -70,6 +70,8 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
   const handleDemoLogin = async (type) => {
     const demoCredentials = {
       admin: { email: 'mostafa.karam.work@gmail.com', password: 'admin123' },
+      venue_admin: { email: 'venueadmin@eventx.com', password: 'password123' },
+      organizer: { email: 'organizer@eventx.com', password: 'password123' },
       user: { email: 'user@eventx.com', password: 'user1234' }
     };
 
@@ -145,14 +147,46 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
                 variant="outline"
                 onClick={() => handleDemoLogin('admin')}
                 disabled={loading}
-                className="text-left p-3 h-auto"
+                className="text-left p-2 h-auto"
               >
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Shield className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium">Admin</span>
+                  <div className="flex items-center gap-1 mb-1">
+                    <Shield className="h-4 w-4 text-red-600" />
+                    <span className="text-xs font-bold">Admin</span>
                   </div>
-                  <div className="text-xs text-gray-600">Full access</div>
+                  <div className="text-[10px] text-gray-500 line-clamp-1">Full access control</div>
+                </div>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleDemoLogin('venue_admin')}
+                disabled={loading}
+                className="text-left p-2 h-auto"
+              >
+                <div>
+                  <div className="flex items-center gap-1 mb-1">
+                    <Shield className="h-4 w-4 text-purple-600" />
+                    <span className="text-xs font-bold">Venue Admin</span>
+                  </div>
+                  <div className="text-[10px] text-gray-500 line-clamp-1">Manage halls & bookings</div>
+                </div>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleDemoLogin('organizer')}
+                disabled={loading}
+                className="text-left p-2 h-auto"
+              >
+                <div>
+                  <div className="flex items-center gap-1 mb-1">
+                    <User className="h-4 w-4 text-green-600" />
+                    <span className="text-xs font-bold">Organizer</span>
+                  </div>
+                  <div className="text-[10px] text-gray-500 line-clamp-1">Create & manage events</div>
                 </div>
               </Button>
 
@@ -161,14 +195,14 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
                 variant="outline"
                 onClick={() => handleDemoLogin('user')}
                 disabled={loading}
-                className="text-left p-3 h-auto"
+                className="text-left p-2 h-auto"
               >
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-1 mb-1">
                     <User className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium">User</span>
+                    <span className="text-xs font-bold">User</span>
                   </div>
-                  <div className="text-xs text-gray-600">Standard access</div>
+                  <div className="text-[10px] text-gray-500 line-clamp-1">Browse & book tickets</div>
                 </div>
               </Button>
             </div>

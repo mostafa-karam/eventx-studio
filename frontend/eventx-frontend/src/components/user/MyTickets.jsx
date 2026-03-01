@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import jsPDF from 'jspdf';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -277,6 +278,75 @@ const MyTickets = () => {
     document.body.removeChild(a);
   };
 
+  const generatePDFTicket = async (ticket) => {
+    if (!ticket) return;
+    try {
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: [200, 100] // Custom ticket size
+      });
+
+      // Background color
+      doc.setFillColor(245, 247, 250);
+      doc.rect(0, 0, 200, 100, 'F');
+
+      // Left Panel (Dark Blue/Indigo)
+      doc.setFillColor(49, 46, 129); // indigo-900 equivalent
+      doc.rect(0, 0, 60, 100, 'F');
+
+      // QR Code on Left Panel
+      if (ticket.qrCodeImage) {
+        doc.addImage(ticket.qrCodeImage, 'PNG', 15, 15, 30, 30);
+      }
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.text("SCAN FOR ENTRY", 30, 55, { align: "center" });
+
+      doc.setFontSize(8);
+      doc.text(ticket.ticketNumber || ticket._id.slice(-8), 30, 65, { align: "center" });
+
+      // Right Panel text
+      doc.setTextColor(31, 41, 55); // gray-800
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+
+      const title = ticket.event?.title || 'Event Ticket';
+      const splitTitle = doc.splitTextToSize(title, 120);
+      doc.text(splitTitle, 70, 25);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.setTextColor(75, 85, 99); // gray-600
+
+      doc.text(`Date: ${formatDate(ticket.event?.date)}`, 70, 45);
+      doc.text(`Venue: ${ticket.event?.venue?.name || 'TBA'}, ${ticket.event?.venue?.city || ''}`, 70, 55);
+
+      // Divider
+      doc.setDrawColor(209, 213, 219);
+      doc.line(70, 65, 190, 65);
+
+      // Bottom Details
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("SEAT", 70, 75);
+      doc.text("TYPE", 110, 75);
+      doc.text("PRICE", 150, 75);
+
+      doc.setFont("helvetica", "normal");
+      doc.text(ticket.seatNumber || 'General', 70, 82);
+      doc.text(ticket.event?.category || 'Standard', 110, 82);
+      const price = ticket.payment?.amount === 0 || !ticket.payment?.amount ? 'Free' : `$${ticket.payment.amount}`;
+      doc.text(price, 150, 82);
+
+      doc.save(`Event-Ticket-${ticket.ticketNumber || ticket._id.slice(-8)}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF ticket.");
+    }
+  };
+
   // Bulk actions
   const handleSelectTicket = (ticketId) => {
     setSelectedTickets(prev =>
@@ -325,8 +395,8 @@ const MyTickets = () => {
   const handleBulkDownload = () => {
     selectedTickets.forEach(ticketId => {
       const ticket = tickets.find(t => t._id === ticketId);
-      if (ticket?.qrCodeImage) {
-        downloadQrFromDataUrl(ticket.qrCodeImage, `ticket-${ticketId}.png`);
+      if (ticket) {
+        generatePDFTicket(ticket);
       }
     });
   };
@@ -514,8 +584,7 @@ const MyTickets = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => downloadQrFromDataUrl(ticket.qrCodeImage, `ticket-${ticket._id}.png`)}
-                        disabled={!ticket.qrCodeImage}
+                        onClick={() => generatePDFTicket(ticket)}
                         className="h-8 px-3"
                       >
                         <Download className="h-4 w-4 mr-1" />
@@ -642,8 +711,7 @@ const MyTickets = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => downloadQrFromDataUrl(ticket.qrCodeImage, `ticket-${ticket._id}.png`)}
-                    disabled={!ticket.qrCodeImage}
+                    onClick={() => generatePDFTicket(ticket)}
                     className="h-8 px-2 text-xs"
                   >
                     <Download className="h-3 w-3 mr-1" />
@@ -762,12 +830,11 @@ const MyTickets = () => {
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="outline"
-                onClick={() => downloadQrFromDataUrl(ticket.qrCodeImage, `ticket-${ticket._id}.png`)}
-                disabled={!ticket.qrCodeImage}
+                onClick={() => generatePDFTicket(ticket)}
                 className="flex items-center justify-center h-12"
               >
                 <Download className="h-4 w-4 mr-2" />
-                Download
+                Download PDF
               </Button>
               <Button
                 variant="outline"

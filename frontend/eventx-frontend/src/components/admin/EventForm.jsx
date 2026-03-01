@@ -14,17 +14,28 @@ import {
   DollarSign,
   Save,
   ArrowLeft,
+  ArrowRight,
   Plus,
-  Image,
+  Image as ImageIcon,
   Clock,
   Tag,
   Building,
-  Globe
+  Globe,
+  CheckCircle2,
+  Circle
 } from 'lucide-react';
+
+const STEPS = [
+  { id: 'basic', label: 'Basic Info', icon: Tag },
+  { id: 'venue', label: 'Venue details', icon: MapPin },
+  { id: 'capacity', label: 'Capacity & Seating', icon: Users },
+  { id: 'tickets', label: 'Tickets & Media', icon: DollarSign }
+];
 
 const EventForm = ({ event, onSave, onCancel }) => {
   const validStatuses = ['draft', 'published', 'cancelled', 'completed'];
 
+  const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
     title: event?.title || '',
     description: event?.description || '',
@@ -49,7 +60,6 @@ const EventForm = ({ event, onSave, onCancel }) => {
     images: event?.images || []
   });
 
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -60,11 +70,9 @@ const EventForm = ({ event, onSave, onCancel }) => {
     const { name, value } = e.target;
     const newFormData = { ...formData };
 
-    // Handle nested properties
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
 
-      // Handle array indices in nested paths (e.g., 'seating.sections.0.price')
       const path = name.split('.');
       if (path.length > 2 && !isNaN(parseInt(path[1]))) {
         const arrayName = path[0];
@@ -77,29 +85,21 @@ const EventForm = ({ event, onSave, onCancel }) => {
           [field]: field === 'price' ? parseFloat(value) || 0 : value
         };
       } else {
-        newFormData[parent] = {
-          ...newFormData[parent],
-          [child]: value
-        };
+        newFormData[parent] = { ...newFormData[parent], [child]: value };
       }
 
-      // Special handling for seating configuration
+      // Sync rules
       if (parent === 'seating' && child === 'totalSeats') {
         const totalSeats = parseInt(value) || 0;
         const venueCapacity = parseInt(newFormData.venue?.capacity) || 0;
-
-        // Ensure totalSeats doesn't exceed venue capacity
         if (venueCapacity > 0 && totalSeats > venueCapacity) {
           newFormData.seating.totalSeats = venueCapacity;
         }
-
-        // Ensure availableSeats doesn't exceed totalSeats
         if (newFormData.seating.availableSeats > totalSeats) {
           newFormData.seating.availableSeats = totalSeats;
         }
       }
 
-      // When venue capacity changes, adjust totalSeats if needed
       if (parent === 'venue' && child === 'capacity') {
         const newCapacity = parseInt(value) || 0;
         if (newFormData.seating.totalSeats > newCapacity) {
@@ -110,7 +110,6 @@ const EventForm = ({ event, onSave, onCancel }) => {
         }
       }
 
-      // Ensure availableSeats doesn't exceed totalSeats
       if (parent === 'seating' && child === 'availableSeats') {
         const availableSeats = parseInt(value) || 0;
         const totalSeats = parseInt(newFormData.seating.totalSeats) || 0;
@@ -119,11 +118,9 @@ const EventForm = ({ event, onSave, onCancel }) => {
         }
       }
 
-      // Validate pricing for paid events
       if (parent === 'pricing' && child === 'amount') {
         const price = parseFloat(value) || 0;
         if (newFormData.pricing.type === 'paid' && price <= 0 && value !== '') {
-          // Don't update the value if it's 0 or negative for paid events
           return;
         }
       }
@@ -140,94 +137,82 @@ const EventForm = ({ event, onSave, onCancel }) => {
       const [parent, child] = name.split('.');
       setFormData({
         ...formData,
-        [parent]: {
-          ...formData[parent],
-          [child]: value
-        }
+        [parent]: { ...formData[parent], [child]: value }
       });
     } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
+      setFormData({ ...formData, [name]: value });
     }
     setError('');
   };
 
-  const validateForm = () => {
-    // Basic front-end validation aligned with backend constraints
-    if (!formData.category) {
-      throw new Error('Category is required');
-    }
-    if (!formData?.venue?.country) {
-      throw new Error('Country is required');
-    }
-
-    const totalSeatsNum = parseInt(formData.seating.totalSeats);
-    const availableSeatsNum = parseInt(formData.seating.availableSeats);
-    const venueCapacityNum = parseInt(formData.venue.capacity);
-
-    if (Number.isNaN(venueCapacityNum) || venueCapacityNum < 1) {
-      throw new Error('Venue capacity must be at least 1');
-    }
-
-    if (Number.isNaN(totalSeatsNum) || totalSeatsNum < 1) {
-      throw new Error('Total seats must be at least 1');
-    }
-
-    if (totalSeatsNum > venueCapacityNum) {
-      throw new Error('Total seats cannot exceed venue capacity');
-    }
-
-    if (Number.isNaN(availableSeatsNum) || availableSeatsNum < 0) {
-      throw new Error('Available seats cannot be negative');
-    }
-
-    if (availableSeatsNum > totalSeatsNum) {
-      throw new Error('Available seats cannot exceed total seats');
-    }
-
-    // Validate pricing
-    if (formData.pricing.type === 'paid') {
-      const priceNum = parseFloat(formData.pricing.amount);
-      if (Number.isNaN(priceNum) || priceNum <= 0) {
-        throw new Error('Paid events must have a price greater than 0');
+  const validateStep = (step) => {
+    if (step === 0) {
+      if (!formData.title) return 'Event Title is required';
+      if (!formData.description) return 'Description is required';
+      if (!formData.category) return 'Category is required';
+      if (!formData.date) return 'Date & Time is required';
+    } else if (step === 1) {
+      if (!formData.venue.name) return 'Venue Name is required';
+      if (!formData.venue.address) return 'Street Address is required';
+      if (!formData.venue.city) return 'City is required';
+      if (!formData.venue.country) return 'Country is required';
+      const venueCapacityNum = parseInt(formData.venue.capacity);
+      if (isNaN(venueCapacityNum) || venueCapacityNum < 1) return 'Venue capacity must be at least 1';
+    } else if (step === 2) {
+      const totalSeatsNum = parseInt(formData.seating.totalSeats);
+      const availableSeatsNum = parseInt(formData.seating.availableSeats);
+      const venueCapacityNum = parseInt(formData.venue.capacity);
+      if (isNaN(totalSeatsNum) || totalSeatsNum < 1) return 'Total seats must be at least 1';
+      if (totalSeatsNum > venueCapacityNum) return 'Total seats cannot exceed venue capacity';
+      if (isNaN(availableSeatsNum) || availableSeatsNum < 0) return 'Available seats cannot be negative';
+      if (availableSeatsNum > totalSeatsNum) return 'Available seats cannot exceed total seats';
+    } else if (step === 3) {
+      if (formData.pricing.type === 'paid') {
+        const priceNum = parseFloat(formData.pricing.amount);
+        if (isNaN(priceNum) || priceNum <= 0) return 'Paid events must have a price greater than 0';
       }
     }
+    return null;
+  };
 
-    return { totalSeatsNum, availableSeatsNum, venueCapacityNum };
+  const handleNext = () => {
+    const errorMsg = validateStep(currentStep);
+    if (errorMsg) {
+      setError(errorMsg);
+      return;
+    }
+    setError('');
+    setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
+  };
+
+  const handleBack = () => {
+    setError('');
+    setCurrentStep(prev => Math.max(prev - 1, 0));
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+
+    // Final validation of current step before submitting
+    const errorMsg = validateStep(currentStep);
+    if (errorMsg) {
+      setError(errorMsg);
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      // Validate form data
-      const { totalSeatsNum, availableSeatsNum, venueCapacityNum } = validateForm();
-
+      const { venue, seating, pricing } = formData;
       const eventData = {
         ...formData,
-        venue: {
-          ...formData.venue,
-          capacity: venueCapacityNum
-        },
-        seating: {
-          ...formData.seating,
-          totalSeats: totalSeatsNum,
-          availableSeats: availableSeatsNum
-        },
-        pricing: {
-          ...formData.pricing,
-          amount: formData.pricing.type === 'free' ? 0 : parseFloat(formData.pricing.amount)
-        }
+        venue: { ...venue, capacity: parseInt(venue.capacity) },
+        seating: { ...seating, totalSeats: parseInt(seating.totalSeats), availableSeats: parseInt(seating.availableSeats) },
+        pricing: { ...pricing, amount: pricing.type === 'free' ? 0 : parseFloat(pricing.amount) }
       };
 
-      const url = event
-        ? `${API_BASE_URL}/events/${event._id}`
-        : `${API_BASE_URL}/events`;
-
+      const url = event ? `${API_BASE_URL}/events/${event._id}` : `${API_BASE_URL}/events`;
       const method = event ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -248,28 +233,49 @@ const EventForm = ({ event, onSave, onCancel }) => {
         setError(backendErrors || data.message || 'Failed to save event');
       }
     } catch (error) {
-      console.error('Event save error:', error);
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const categories = [
-    'conference',
-    'workshop',
-    'seminar',
-    'concert',
-    'sports',
-    'exhibition',
-    'networking',
-    'other'
-  ];
+  const renderStepper = () => (
+    <div className="mb-8">
+      <div className="flex items-center justify-between relative">
+        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 -z-10 rounded-full" />
+        <div
+          className="absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-blue-600 transition-all duration-300 ease-in-out -z-10 rounded-full"
+          style={{ width: `${(currentStep / (STEPS.length - 1)) * 100}%` }}
+        />
+
+        {STEPS.map((step, idx) => {
+          const StepIcon = step.icon;
+          const isCompleted = idx < currentStep;
+          const isCurrent = idx === currentStep;
+
+          return (
+            <div key={idx} className="flex flex-col items-center cursor-pointer" onClick={() => {
+              // Only allow jumping back, not jumping forward
+              if (idx < currentStep) setCurrentStep(idx);
+            }}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 border-white transition-colors duration-200 ${isCompleted ? 'bg-blue-600 text-white' : isCurrent ? 'bg-blue-600 text-white ring-2 ring-blue-100' : 'bg-gray-200 text-gray-500'
+                }`}>
+                {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-4 h-4" />}
+              </div>
+              <span className={`mt-2 text-xs font-medium ${isCurrent || isCompleted ? 'text-gray-900' : 'text-gray-500'}`}>
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center space-x-3">
           <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
             <Plus className="w-6 h-6 text-blue-600" />
@@ -279,90 +285,53 @@ const EventForm = ({ event, onSave, onCancel }) => {
               {event ? 'Edit Event' : 'Create New Event'}
             </h1>
             <p className="text-gray-600">
-              {event ? 'Update your event details and settings' : 'Fill in the details to create an amazing event'}
+              Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].label}
             </p>
           </div>
         </div>
-
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" onClick={onCancel}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            form="event-form"
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {loading ? (
-              'Saving...'
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                {event ? 'Update Event' : 'Create Event'}
-              </>
-            )}
-          </Button>
-        </div>
+        <Button variant="outline" onClick={onCancel}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Cancel
+        </Button>
       </div>
 
-      <form id="event-form" onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+      {renderStepper()}
 
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Tag className="w-5 h-5 text-blue-600" />
-              <span>Basic Information</span>
-            </CardTitle>
-            <CardDescription>
-              Enter the essential details about your event
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 min-h-[400px]">
+        {/* Step 0: Basic Info */}
+        {currentStep === 0 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="space-y-2">
               <Label htmlFor="title" className="text-sm font-medium text-gray-700">Event Title *</Label>
               <Input
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
+                id="title" name="title"
+                value={formData.title} onChange={handleChange}
                 placeholder="e.g., Annual Tech Conference 2024"
-                className="text-lg"
-                required
+                className="text-lg" required
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="description" className="text-sm font-medium text-gray-700">Event Description *</Label>
               <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
+                id="description" name="description"
+                value={formData.description} onChange={handleChange}
                 placeholder="Provide a detailed description of your event, including what attendees can expect..."
-                rows={5}
-                className="resize-none"
-                required
+                rows={5} className="resize-none" required
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="category" className="text-sm font-medium text-gray-700">Category *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => handleSelectChange('category', value)}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Choose category" />
-                  </SelectTrigger>
+                <Select value={formData.category} onValueChange={(value) => handleSelectChange('category', value)}>
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Choose category" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="conference">🏢 Conference</SelectItem>
                     <SelectItem value="workshop">🛠️ Workshop</SelectItem>
@@ -381,26 +350,17 @@ const EventForm = ({ event, onSave, onCancel }) => {
                 <div className="relative">
                   <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
-                    id="date"
-                    name="date"
-                    type="datetime-local"
-                    value={formData.date}
-                    onChange={handleChange}
-                    className="pl-10 h-11"
-                    required
+                    id="date" name="date" type="datetime-local"
+                    value={formData.date} onChange={handleChange}
+                    className="pl-10 h-11" required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="status" className="text-sm font-medium text-gray-700">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) => handleSelectChange('status', value)}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
+                <Label htmlFor="status" className="text-sm font-medium text-gray-700">Initial Status</Label>
+                <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Select status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="draft">📝 Draft</SelectItem>
                     <SelectItem value="published">✅ Published</SelectItem>
@@ -410,33 +370,21 @@ const EventForm = ({ event, onSave, onCancel }) => {
                 </Select>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        )}
 
-        {/* Venue Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <MapPin className="w-5 h-5 text-green-600" />
-              <span>Venue Information</span>
-            </CardTitle>
-            <CardDescription>
-              Specify where your event will take place
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        {/* Step 1: Venue Info */}
+        {currentStep === 1 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="space-y-2">
               <Label htmlFor="venue.name" className="text-sm font-medium text-gray-700">Venue Name *</Label>
               <div className="relative">
                 <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  id="venue.name"
-                  name="venue.name"
-                  value={formData.venue.name}
-                  onChange={handleChange}
+                  id="venue.name" name="venue.name"
+                  value={formData.venue.name} onChange={handleChange}
                   placeholder="e.g., Grand Convention Center"
-                  className="pl-10 h-11"
-                  required
+                  className="pl-10 h-11" required
                 />
               </div>
             </div>
@@ -446,13 +394,10 @@ const EventForm = ({ event, onSave, onCancel }) => {
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  id="venue.address"
-                  name="venue.address"
-                  value={formData.venue.address}
-                  onChange={handleChange}
+                  id="venue.address" name="venue.address"
+                  value={formData.venue.address} onChange={handleChange}
                   placeholder="e.g., 123 Main Street, Suite 100"
-                  className="pl-10 h-11"
-                  required
+                  className="pl-10 h-11" required
                 />
               </div>
             </div>
@@ -461,13 +406,9 @@ const EventForm = ({ event, onSave, onCancel }) => {
               <div className="space-y-2">
                 <Label htmlFor="venue.city" className="text-sm font-medium text-gray-700">City *</Label>
                 <Input
-                  id="venue.city"
-                  name="venue.city"
-                  value={formData.venue.city}
-                  onChange={handleChange}
-                  placeholder="e.g., New York"
-                  className="h-11"
-                  required
+                  id="venue.city" name="venue.city"
+                  value={formData.venue.city} onChange={handleChange}
+                  placeholder="e.g., New York" className="h-11" required
                 />
               </div>
 
@@ -476,274 +417,190 @@ const EventForm = ({ event, onSave, onCancel }) => {
                 <div className="relative">
                   <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
-                    id="venue.country"
-                    name="venue.country"
-                    value={formData.venue.country}
-                    onChange={handleChange}
-                    placeholder="e.g., United States"
-                    className="pl-10 h-11"
-                    required
+                    id="venue.country" name="venue.country"
+                    value={formData.venue.country} onChange={handleChange}
+                    placeholder="e.g., United States" className="pl-10 h-11" required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <Label htmlFor="venue.capacity" className="text-sm font-medium text-gray-700">Venue Capacity *</Label>
-                  <span className="text-xs text-gray-500">
-                    Max: {formData.venue.capacity} {formData.venue.capacity === '1' ? 'person' : 'people'}
-                  </span>
+                  <Label htmlFor="venue.capacity" className="text-sm font-medium text-gray-700">Max Venue Capacity *</Label>
                 </div>
                 <div className="relative">
                   <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
-                    id="venue.capacity"
-                    name="venue.capacity"
-                    type="number"
-                    min="1"
-                    value={formData.venue.capacity}
-                    onChange={handleChange}
-                    placeholder="e.g., 500"
-                    className={`pl-10 h-11 ${parseInt(formData.venue.capacity) < parseInt(formData.seating.totalSeats) ? 'border-red-500' : ''}`}
-                    required
+                    id="venue.capacity" name="venue.capacity" type="number" min="1"
+                    value={formData.venue.capacity} onChange={handleChange}
+                    placeholder="e.g., 500" className="pl-10 h-11" required
                   />
                 </div>
-                {parseInt(formData.venue.capacity) < parseInt(formData.seating.totalSeats) && (
-                  <p className="text-xs text-red-500 mt-1">
-                    Venue capacity cannot be less than total seats
-                  </p>
-                )}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        )}
 
-        {/* Seating, Pricing & Images */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Users className="w-5 h-5 text-purple-600" />
-                <span>Seating Configuration</span>
-              </CardTitle>
-              <CardDescription>
-                Configure event capacity and seating
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="seating.totalSeats" className="text-sm font-medium text-gray-700">Total Seats *</Label>
-                  <span className="text-xs text-gray-500">
-                    {formData.venue.capacity - formData.seating.totalSeats} seats remaining
-                  </span>
-                </div>
-                <Input
-                  id="seating.totalSeats"
-                  name="seating.totalSeats"
-                  type="number"
-                  value={formData.seating.totalSeats}
-                  onChange={handleChange}
-                  min="1"
-                  max={formData.venue.capacity}
-                  placeholder="e.g., 100"
-                  className={`h-11 ${parseInt(formData.seating.totalSeats) > parseInt(formData.venue.capacity) ? 'border-red-500' : ''}`}
-                  required
-                />
-                {parseInt(formData.seating.totalSeats) > parseInt(formData.venue.capacity) && (
-                  <p className="text-xs text-red-500 mt-1">
-                    Cannot exceed venue capacity of {formData.venue.capacity}
-                  </p>
-                )}
+        {/* Step 2: Capacity & Seating */}
+        {currentStep === 2 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-6">
+              <p className="text-sm text-indigo-800 flex items-center">
+                <Building className="w-4 h-4 mr-2" />
+                Your max venue capacity is set to <strong>{formData.venue.capacity}</strong>. Total seats cannot exceed this.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="seating.totalSeats" className="text-sm font-medium text-gray-700">Total Event Seats *</Label>
+                <span className="text-xs text-gray-500">{formData.venue.capacity - formData.seating.totalSeats} seats remaining in venue</span>
               </div>
+              <Input
+                id="seating.totalSeats" name="seating.totalSeats" type="number"
+                value={formData.seating.totalSeats} onChange={handleChange}
+                min="1" max={formData.venue.capacity}
+                className={`h-11 ${parseInt(formData.seating.totalSeats) > parseInt(formData.venue.capacity) ? 'border-red-500' : ''}`}
+                required
+              />
+            </div>
 
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="seating.availableSeats" className="text-sm font-medium text-gray-700">Initial Available Seats *</Label>
+                <span className="text-xs text-gray-500">{formData.seating.availableSeats} of {formData.seating.totalSeats} available for sale</span>
+              </div>
+              <Input
+                id="seating.availableSeats" name="seating.availableSeats" type="number"
+                value={formData.seating.availableSeats} onChange={handleChange}
+                min="0" max={formData.seating.totalSeats}
+                className={`h-11 ${parseInt(formData.seating.availableSeats) > parseInt(formData.seating.totalSeats) ? 'border-red-500' : ''}`}
+                required
+              />
+
+              <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2 overflow-hidden">
+                <div className="bg-green-500 h-2.5 rounded-full transition-all duration-300" style={{
+                  width: `${Math.min(100, (formData.seating.availableSeats / formData.seating.totalSeats) * 100 || 0)}%`
+                }}></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Tickets & Media */}
+        {currentStep === 3 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="space-y-2">
+              <Label htmlFor="pricing.type" className="text-sm font-medium text-gray-700">Pricing Type *</Label>
+              <Select value={formData.pricing.type} onValueChange={(value) => handleSelectChange('pricing.type', value)}>
+                <SelectTrigger className="h-11"><SelectValue placeholder="Choose pricing model" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">🆓 Free Event</SelectItem>
+                  <SelectItem value="paid">💰 Paid Event</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {formData.pricing.type === 'paid' && (
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="seating.availableSeats" className="text-sm font-medium text-gray-700">Available Seats *</Label>
-                  <span className="text-xs text-gray-500">
-                    {formData.seating.availableSeats} of {formData.seating.totalSeats} available
-                  </span>
+                <Label htmlFor="pricing.amount" className="text-sm font-medium text-gray-700">Ticket Price (USD) *</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    id="pricing.amount" name="pricing.amount" type="number" step="0.01" min="0.01"
+                    value={formData.pricing.amount} onChange={handleChange}
+                    placeholder="0.00"
+                    className="pl-10 h-11" required
+                  />
                 </div>
-                <Input
-                  id="seating.availableSeats"
-                  name="seating.availableSeats"
-                  type="number"
-                  value={formData.seating.availableSeats}
-                  onChange={handleChange}
-                  min="0"
-                  max={formData.seating.totalSeats}
-                  placeholder="e.g., 100"
-                  className={`h-11 ${parseInt(formData.seating.availableSeats) > parseInt(formData.seating.totalSeats) ? 'border-red-500' : ''}`}
-                  required
-                />
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                  <div
-                    className="bg-green-500 h-2.5 rounded-full"
-                    style={{
-                      width: `${Math.min(100, (formData.seating.availableSeats / formData.seating.totalSeats) * 100)}%`
+              </div>
+            )}
+
+            {formData.pricing.type === 'free' && (
+              <div className="bg-green-50 p-4 rounded-lg">
+                <p className="text-sm text-green-700">🎉 This will be a free event - no payment required.</p>
+              </div>
+            )}
+
+            <div className="pt-6 border-t mt-6 border-gray-100">
+              <Label className="text-sm font-medium text-gray-700 mb-2 block">Event Images</Label>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    id="imageUrl" name="imageUrl"
+                    placeholder="https://example.com/image.jpg"
+                    className="h-11 flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.target.value) {
+                        e.preventDefault();
+                        setFormData({ ...formData, images: [...formData.images, { url: e.target.value }] });
+                        e.target.value = '';
+                      }
                     }}
-                  ></div>
+                  />
                 </div>
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>0</span>
-                  <span>Capacity: {formData.seating.totalSeats}</span>
-                </div>
+                <p className="text-xs text-gray-500">Press Enter in the field above to add image URLs.</p>
 
-                {parseInt(formData.seating.availableSeats) > parseInt(formData.seating.totalSeats) && (
-                  <p className="text-xs text-red-500 mt-1">
-                    Available seats cannot exceed total seats
-                  </p>
-                )}
-
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <DollarSign className="w-5 h-5 text-green-600" />
-                <span>Ticket Pricing</span>
-              </CardTitle>
-              <CardDescription>
-                Set your ticket pricing strategy
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="pricing.type" className="text-sm font-medium text-gray-700">Pricing Type *</Label>
-                <Select
-                  value={formData.pricing.type}
-                  onValueChange={(value) => handleSelectChange('pricing.type', value)}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Choose pricing model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="free">🆓 Free Event</SelectItem>
-                    <SelectItem value="paid">💰 Paid Event</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {formData.pricing.type === 'paid' && (
-                <div className="space-y-2">
-                  <Label htmlFor="pricing.amount" className="text-sm font-medium text-gray-700">Ticket Price (USD) *</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      id="pricing.amount"
-                      name="pricing.amount"
-                      type="number"
-                      step="0.01"
-                      value={formData.pricing.amount}
-                      onChange={handleChange}
-                      min="0.01"
-                      placeholder="0.00"
-                      className={`pl-10 h-11 ${parseFloat(formData.pricing.amount) <= 0 && formData.pricing.amount !== '' ? 'border-red-500' : ''}`}
-                      required
-                    />
-                  </div>
-                  {parseFloat(formData.pricing.amount) <= 0 && formData.pricing.amount !== '' && (
-                    <p className="text-xs text-red-500 mt-1">
-                      Paid events must have a price greater than $0.00
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    Minimum price: $0.01
-                  </p>
-                </div>
-              )}
-
-              {formData.pricing.type === 'free' && (
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <p className="text-sm text-green-700">
-                    🎉 This will be a free event - no payment required
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Image className="w-5 h-5 text-orange-600" />
-                <span>Event Images</span>
-              </CardTitle>
-              <CardDescription>Add images to showcase your event</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="imageUrl" className="text-sm font-medium text-gray-700">Image URL</Label>
-                <Input
-                  id="imageUrl"
-                  name="imageUrl"
-                  placeholder="https://example.com/image.jpg"
-                  className="h-11"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.target.value) {
-                      e.preventDefault();
-                      setFormData({
-                        ...formData,
-                        images: [...(formData.images || []), { url: e.target.value }]
-                      });
-                      e.target.value = '';
-                    }
-                  }}
-                />
-                <p className="text-xs text-gray-500">Press Enter to add the image</p>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">Images Added</span>
-                  <span className="text-sm text-gray-600">{(formData.images || []).length}</span>
-                </div>
-                {(formData.images || []).length > 0 && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    {(formData.images || []).map((img, idx) => (
-                      <div key={idx} className="truncate">{img.url}</div>
+                {formData.images.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                    {formData.images.map((img, idx) => (
+                      <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border border-gray-200">
+                        <img src={img.url} alt="Event preview" className="w-full h-full object-cover" />
+                      </div>
                     ))}
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Form Actions */}
-        <Card className="bg-gray-50">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                {event ? 'Update your event details' : 'Ready to create your event?'}
-              </div>
-              <div className="flex items-center space-x-3">
-                <Button type="button" variant="outline" onClick={onCancel}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      {event ? 'Update Event' : 'Create Event'}
-                    </>
-                  )}
-                </Button>
-              </div>
             </div>
-          </CardContent>
-        </Card>
-      </form>
+          </div>
+        )}
+      </div>
+
+      {/* Footer / Navigation */}
+      <div className="flex items-center justify-between pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleBack}
+          disabled={currentStep === 0}
+          className="w-24 border-gray-300 text-gray-700"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+
+        {currentStep < STEPS.length - 1 ? (
+          <Button
+            type="button"
+            onClick={handleNext}
+            className="w-24 bg-blue-600 hover:bg-blue-700"
+          >
+            Next
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-40 bg-green-600 hover:bg-green-700 shadow-sm"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                {event ? 'Update Event' : 'Create Event'}
+              </>
+            )}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
 
 export default EventForm;
-

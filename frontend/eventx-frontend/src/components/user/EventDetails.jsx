@@ -39,6 +39,11 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
   const [myTicketsError, setMyTicketsError] = useState('');
   const [myTicketsReloadKey, setMyTicketsReloadKey] = useState(0);
 
+  // Waitlist states
+  const [isWaitlisted, setIsWaitlisted] = useState(false);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistSuccess, setWaitlistSuccess] = useState('');
+
   // payment removed per request
 
   const { user, token } = useAuth();
@@ -155,6 +160,33 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
     run();
     return () => { aborted = true; };
   }, [event?._id, user, token, myTicketsReloadKey]);
+
+  // Pre-check: is the user on the waitlist?
+  useEffect(() => {
+    let aborted = false;
+    const checkWaitlist = async () => {
+      if (!user || !token || !event?._id) return;
+      try {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+        const res = await fetch(`${API_BASE_URL}/events/${event._id}/waitlist`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const waitlist = data?.data?.waitlist || [];
+          const onWaitlist = waitlist.some(w => w.user?._id === user._id || w.user === user._id);
+          if (!aborted) setIsWaitlisted(onWaitlist);
+        }
+      } catch (err) {
+        console.warn('Failed to check waitlist status', err);
+      }
+    };
+    // Only check if sold out to avoid unnecessary requests
+    if (eventStatus.status === 'sold-out') {
+      checkWaitlist();
+    }
+    return () => { aborted = true; };
+  }, [event?._id, user, token, eventStatus.status]);
 
   const formatDate = (dateString) => {
     try {
@@ -286,6 +318,33 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
       toast.error(e.message || 'Booking failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleJoinWaitlist = async () => {
+    if (!user) {
+      toast.error('Please log in to join the waitlist');
+      return;
+    }
+    setWaitlistLoading(true);
+    setBookingError('');
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${API_BASE_URL}/events/${event._id}/waitlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to join waitlist');
+
+      setIsWaitlisted(true);
+      setWaitlistSuccess('You have been added to the waitlist!');
+      toast.success('Successfully joined the waitlist');
+    } catch (e) {
+      setBookingError(e.message || 'Failed to join waitlist');
+      toast.error(e.message || 'Failed to join waitlist');
+    } finally {
+      setWaitlistLoading(false);
     }
   };
 
@@ -543,8 +602,43 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
 
                 {!canBook && (
                   <div className="text-center py-4">
-                    <p className="text-gray-600 mb-2">{eventStatus.status === 'past' ? 'This event has already passed' : 'This event is sold out'}</p>
-                    <Button disabled className="w-full">{eventStatus.status === 'past' ? 'Event Ended' : 'Sold Out'}</Button>
+                    {eventStatus.status === 'past' ? (
+                      <>
+                        <p className="text-gray-600 mb-2">This event has already passed</p>
+                        <Button disabled className="w-full">Event Ended</Button>
+                      </>
+                    ) : (
+                      <>
+                        {isWaitlisted || waitlistSuccess ? (
+                          <>
+                            <Alert className="mb-4 bg-blue-50 border-blue-200">
+                              <AlertDescription className="text-blue-800 flex items-center justify-center">
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                {waitlistSuccess || 'You are on the waitlist'}
+                              </AlertDescription>
+                            </Alert>
+                            <Button disabled className="w-full" variant="outline">Waitlisted</Button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-gray-600 mb-4">This event is sold out, but you can join the waitlist.</p>
+                            {bookingError && (
+                              <Alert variant="destructive" className="mb-4">
+                                <AlertDescription>{bookingError}</AlertDescription>
+                              </Alert>
+                            )}
+                            <Button
+                              onClick={handleJoinWaitlist}
+                              disabled={waitlistLoading || !user}
+                              className="w-full"
+                              variant="outline"
+                            >
+                              {waitlistLoading ? 'Joining...' : 'Join Waitlist'}
+                            </Button>
+                          </>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
               </CardContent>

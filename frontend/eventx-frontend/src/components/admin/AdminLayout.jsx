@@ -9,16 +9,22 @@ import {
   LogOut,
   Plus,
   Ticket,
+  User as UserIcon,
   Home,
   FileText,
   Bell,
   Search,
   ChevronDown,
-  User as UserIcon
+  CalendarDays,
+  Moon,
+  Sun
 } from 'lucide-react';
+import PageTransition from '../animations/PageTransition';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const AdminLayout = ({ children, activeTab, onTabChange }) => {
   const { user, logout } = useAuth();
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const navigationItems = [
     { id: 'dashboard', icon: Home, label: 'Dashboard' },
@@ -106,9 +112,8 @@ const AdminLayout = ({ children, activeTab, onTabChange }) => {
                   <button
                     key={item.id}
                     onClick={() => onTabChange(item.id)}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                    }`}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
@@ -132,9 +137,8 @@ const AdminLayout = ({ children, activeTab, onTabChange }) => {
                   <button
                     key={item.id}
                     onClick={() => onTabChange(item.id)}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                    }`}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
@@ -153,18 +157,16 @@ const AdminLayout = ({ children, activeTab, onTabChange }) => {
             <nav className="space-y-1">
               <button
                 onClick={() => onTabChange('marketing')}
-                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  activeTab === 'marketing' ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                }`}
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${activeTab === 'marketing' ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  }`}
               >
                 <FileText className="w-4 h-4" />
                 <span>Marketing</span>
               </button>
               <button
                 onClick={() => onTabChange('categories')}
-                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  activeTab === 'categories' ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                }`}
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${activeTab === 'categories' ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  }`}
               >
                 <Calendar className="w-4 h-4" />
                 <span>Event Categories</span>
@@ -182,9 +184,8 @@ const AdminLayout = ({ children, activeTab, onTabChange }) => {
           <nav className="space-y-1">
             <button
               onClick={() => onTabChange('users')}
-              className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                activeTab === 'users' ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              }`}
+              className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${activeTab === 'users' ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }`}
             >
               <Users className="w-4 h-4" />
               <span>Manage Users</span>
@@ -213,13 +214,19 @@ const AdminLayout = ({ children, activeTab, onTabChange }) => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   placeholder="Search..."
-                  className="pl-10 w-64 border rounded-md h-9 text-sm px-3"
+                  className="pl-10 w-64 border rounded-md h-9 text-sm px-3 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                 />
               </div>
-              <Button variant="outline" size="sm">
+              <button
+                onClick={toggleTheme}
+                className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors dark:hover:bg-gray-800 dark:text-gray-400"
+              >
+                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+              <Button variant="outline" size="sm" className="hidden sm:flex">
                 <Bell className="w-4 h-4" />
               </Button>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 border-l pl-4 dark:border-gray-700">
                 <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                   <UserIcon className="w-4 h-4 text-gray-600" />
                 </div>
@@ -233,8 +240,10 @@ const AdminLayout = ({ children, activeTab, onTabChange }) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1">
-          {children}
+        <main className="flex-1 overflow-y-auto relative">
+          <PageTransition transitionKey={activeTab}>
+            {children}
+          </PageTransition>
         </main>
       </div>
     </div>

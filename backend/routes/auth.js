@@ -11,7 +11,7 @@ const router = express.Router();
 const generateToken = (userId, sessionId = null) => {
   const payload = { id: userId };
   if (sessionId) payload.sessionId = sessionId;
-  
+
   return jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '7d'
   });
@@ -21,7 +21,7 @@ const generateToken = (userId, sessionId = null) => {
 const getDeviceInfo = (req) => {
   const parser = new UAParser(req.headers['user-agent']);
   const result = parser.getResult();
-  
+
   return {
     userAgent: req.headers['user-agent'],
     ip: req.ip || req.connection.remoteAddress,
@@ -71,12 +71,15 @@ router.post('/register', async (req, res) => {
       timezone: location?.timezone || 'UTC'
     };
 
-    // Create new user
+    // Create new user — only allow 'user' and 'organizer' via public registration
+    const allowedRoles = ['user', 'organizer'];
+    const safeRole = allowedRoles.includes(role) ? role : 'user';
+
     const user = new User({
       name,
       email: email.toLowerCase(),
       password,
-      role: role || 'user',
+      role: safeRole,
       phone,
       age,
       gender,
@@ -91,7 +94,7 @@ router.post('/register', async (req, res) => {
     // Generate session token
     const sessionId = crypto.randomUUID();
     const token = generateToken(user._id, sessionId);
-    
+
     // Add session info
     const deviceInfo = getDeviceInfo(req);
     user.addSession(sessionId, deviceInfo);
@@ -111,7 +114,7 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    
+
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
@@ -144,7 +147,7 @@ router.post('/login', async (req, res) => {
 
     // Find user and include password for comparison
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-    
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -188,14 +191,14 @@ router.post('/login', async (req, res) => {
 
     // Check if email is verified (optional enforcement)
     const emailVerificationRequired = !user.emailVerified && user.role === 'admin';
-    
+
     // Update last login
     user.lastLogin = new Date();
-    
+
     // Generate session token
     const sessionId = crypto.randomUUID();
     const token = generateToken(user._id, sessionId);
-    
+
     // Add session info
     const deviceInfo = getDeviceInfo(req);
     user.addSession(sessionId, deviceInfo);
@@ -251,9 +254,9 @@ router.get('/me', authenticate, async (req, res) => {
 router.put('/profile', authenticate, async (req, res) => {
   try {
     const { name, phone, age, gender, interests, location } = req.body;
-    
+
     const user = await User.findById(req.user._id);
-    
+
     if (name) user.name = name;
     if (phone) user.phone = phone;
     if (age) user.age = age;
@@ -272,7 +275,7 @@ router.put('/profile', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Update profile error:', error);
-    
+
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
@@ -304,7 +307,7 @@ router.put('/change-password', authenticate, async (req, res) => {
     }
 
     const user = await User.findById(req.user._id).select('+password');
-    
+
     // Verify current password
     const isCurrentPasswordValid = await user.comparePassword(currentPassword);
     if (!isCurrentPasswordValid) {
@@ -374,7 +377,7 @@ router.get('/users', authenticate, requireAdmin, async (req, res) => {
 router.post('/verify-email', async (req, res) => {
   try {
     const { token } = req.body;
-    
+
     if (!token) {
       return res.status(400).json({
         success: false,
@@ -383,7 +386,7 @@ router.post('/verify-email', async (req, res) => {
     }
 
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    
+
     const user = await User.findOne({
       emailVerificationToken: hashedToken,
       emailVerificationExpires: { $gt: Date.now() }
@@ -420,9 +423,9 @@ router.post('/verify-email', async (req, res) => {
 router.post('/resend-verification', async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     const user = await User.findOne({ email: email.toLowerCase() });
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -462,9 +465,9 @@ router.post('/resend-verification', async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     const user = await User.findOne({ email: email.toLowerCase() });
-    
+
     // Always return success to prevent email enumeration
     if (!user) {
       return res.json({
@@ -498,7 +501,7 @@ router.post('/forgot-password', async (req, res) => {
 router.post('/reset-password', async (req, res) => {
   try {
     const { token, password } = req.body;
-    
+
     if (!token || !password) {
       return res.status(400).json({
         success: false,
@@ -507,7 +510,7 @@ router.post('/reset-password', async (req, res) => {
     }
 
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    
+
     const user = await User.findOne({
       passwordResetToken: hashedToken,
       passwordResetExpires: { $gt: Date.now() }
@@ -555,7 +558,7 @@ router.post('/reset-password', async (req, res) => {
 router.get('/sessions', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('activeSessions');
-    
+
     const sessions = user.activeSessions.map(session => ({
       sessionId: session.sessionId,
       deviceInfo: session.deviceInfo,
@@ -584,7 +587,7 @@ router.delete('/sessions/:sessionId', authenticate, async (req, res) => {
   try {
     const { sessionId } = req.params;
     const user = await User.findById(req.user._id);
-    
+
     user.removeSession(sessionId);
     await user.save();
 
@@ -607,7 +610,7 @@ router.delete('/sessions/:sessionId', authenticate, async (req, res) => {
 router.delete('/sessions', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
-    
+
     // Keep only current session
     user.activeSessions = user.activeSessions.filter(s => s.sessionId === req.sessionId);
     await user.save();
