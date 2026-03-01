@@ -42,6 +42,7 @@ import Favorites from './components/user/Favorites';
 import './App.css';
 import ErrorBoundary from './components/ErrorBoundary';
 import useUpcomingNotifications from './hooks/useUpcomingNotifications';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // Main App Content Component
 const AppContent = () => {
@@ -301,6 +302,7 @@ function App() {
     <AuthProvider>
       <ErrorBoundary>
         <AppContent />
+        <SpeedInsights />
       </ErrorBoundary>
     </AuthProvider>
   );

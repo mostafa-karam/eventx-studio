@@ -1,0 +1,63 @@
+# Vercel Speed Insights Implementation
+
+## Summary
+Successfully implemented Vercel Speed Insights in the EventX Studio frontend application following the official Vercel documentation for React applications.
+
+## Changes Made
+
+### 1. Package Installation
+- Added `@vercel/speed-insights` package (v1.3.1) to the project dependencies
+- Updated `package.json` and `pnpm-lock.yaml` with the new package
+
+### 2. SpeedInsights Component Integration
+- Modified `src/App.jsx` to integrate Speed Insights tracking
+- Added import statement: `import { SpeedInsights } from '@vercel/speed-insights/react';`
+- Added `<SpeedInsights />` component to the main App component, wrapped inside the ErrorBoundary for proper error handling
+
+### Implementation Details
+
+The SpeedInsights component was placed inside the App function component, after the AppContent component but still within the ErrorBoundary wrapper. This ensures:
+
+1. **Global Coverage**: Speed Insights will track performance across all routes and pages
+2. **Error Handling**: The component is protected by the ErrorBoundary
+3. **Minimal Intrusion**: The implementation follows React best practices and doesn't affect existing functionality
+
+### Files Modified
+- `package.json` - Added @vercel/speed-insights dependency
+- `pnpm-lock.yaml` - Updated lockfile with new package and its dependencies
+- `src/App.jsx` - Added SpeedInsights import and component
+
+### Build Verification
+✅ Build completed successfully (7.41s)
+✅ No new linting errors introduced
+✅ Bundle size: 1,749.65 kB (494.33 kB gzipped)
+
+## Next Steps for Deployment
+
+To complete the Speed Insights setup:
+
+1. **Enable Speed Insights in Vercel Dashboard**
+   - Go to the Vercel dashboard
+   - Select the EventX Studio project
+   - Navigate to the Speed Insights tab
+   - Click "Enable"
+
+2. **Deploy to Vercel**
+   - Run `vercel deploy` or push to the connected git repository
+   - Vercel will automatically add the `/_vercel/speed-insights/*` routes
+
+3. **Verify Installation**
+   - After deployment, check the page source
+   - Look for the `/_vercel/speed-insights/script.js` script in the body tag
+
+4. **View Metrics**
+   - Visit the Vercel dashboard after deployment
+   - Select the project and click the Speed Insights tab
+   - Metrics will appear after users visit the site
+
+## Technical Notes
+
+- The implementation uses `@vercel/speed-insights/react` which provides seamless React integration
+- The component is lightweight and automatically tracks Core Web Vitals metrics
+- No additional configuration is required for basic functionality
+- The tracking script only runs on Vercel deployments (no impact on local development)
