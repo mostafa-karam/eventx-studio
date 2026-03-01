@@ -108,8 +108,7 @@ cd eventx-studio
 
 ```bash
 cd backend
-npm install
-cp .env.example .env   # Add MongoDB URI & JWT secret
+npm install  
 npm run dev
 ```
 
