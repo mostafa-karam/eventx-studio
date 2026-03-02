@@ -4,7 +4,10 @@ const User = require('../models/User');
 // Middleware to verify JWT token
 const authenticate = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    // Support Authorization header OR httpOnly cookie named `accessToken`
+    const headerToken = req.header('Authorization')?.replace('Bearer ', '');
+    const cookieToken = req.cookies?.accessToken || req.cookies?.token;
+    const token = headerToken || cookieToken;
 
     if (!token) {
       return res.status(401).json({
@@ -42,9 +45,14 @@ const authenticate = async (req, res, next) => {
     if (decoded.sessionId) {
       req.sessionId = decoded.sessionId;
 
-      // Update session activity
-      user.updateSessionActivity(decoded.sessionId);
-      await user.save();
+      // Debounced session activity update: only save if last activity > 60s ago
+      const session = user.activeSessions?.find(s => s.sessionId === decoded.sessionId);
+      const now = Date.now();
+      const DEBOUNCE_MS = 60 * 1000;
+      if (!session || !session.lastActivity || (now - new Date(session.lastActivity).getTime()) > DEBOUNCE_MS) {
+        user.updateSessionActivity(decoded.sessionId);
+        await user.save();
+      }
     }
 
     req.user = user;
@@ -177,7 +185,9 @@ const requireRole = (roles) => {
 // Optional authentication - doesn't fail if no token
 const optionalAuth = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const headerToken = req.header('Authorization')?.replace('Bearer ', '');
+    const cookieToken = req.cookies?.accessToken || req.cookies?.token;
+    const token = headerToken || cookieToken;
 
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);

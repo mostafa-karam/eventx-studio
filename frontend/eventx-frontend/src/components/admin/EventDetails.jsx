@@ -5,7 +5,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
-import { 
+import {
   ArrowLeft,
   MapPin,
   Calendar,
@@ -14,7 +14,8 @@ import {
   Users,
   Ticket,
   Star,
-  QrCode
+  QrCode,
+  Download
 } from 'lucide-react';
 
 const EventDetails = ({ eventId, onBack, onEdit }) => {
@@ -54,7 +55,33 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
       setLoading(false);
     }
   };
+  const handleExportCSV = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}/attendees/export`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+      });
 
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Attendees_${event.title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Failed to export attendees');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      setError('Network error during export. Please try again.');
+    }
+  };
   const getSeatColor = (seat) => {
     if (seat.isBooked) return 'bg-purple-600';
     return 'bg-gray-200';
@@ -72,14 +99,14 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
   const formatTime = (dateString) => {
     const date = new Date(dateString);
     const endDate = new Date(date.getTime() + 4 * 60 * 60 * 1000); // Add 4 hours
-    return `${date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      hour12: true 
-    })} - ${endDate.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      hour12: true 
+    return `${date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    })} - ${endDate.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
     })}`;
   };
 
@@ -163,7 +190,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                     Event Name
                   </label>
                   <div className="flex items-center space-x-2">
-                    <Input 
+                    <Input
                       value={event.title}
                       readOnly
                       className="flex-1"
@@ -178,7 +205,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                     Event Date
                   </label>
                   <div className="flex items-center space-x-2">
-                    <Input 
+                    <Input
                       value={formatDate(event.date)}
                       readOnly
                       className="flex-1"
@@ -193,7 +220,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                     Event Venue
                   </label>
                   <div className="flex items-center space-x-2">
-                    <Input 
+                    <Input
                       value={`${event.venue?.name || 'Unknown venue'}, ${event.venue?.city || 'Unknown city'}`}
                       readOnly
                       className="flex-1"
@@ -208,7 +235,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                     Event Time
                   </label>
                   <div className="flex items-center space-x-2">
-                    <Input 
+                    <Input
                       value={formatTime(event.date)}
                       readOnly
                       className="flex-1"
@@ -228,7 +255,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Event Description
               </label>
-              <textarea 
+              <textarea
                 value={event.description}
                 readOnly
                 className="w-full p-3 border border-gray-300 rounded-lg resize-none h-32 text-sm"
@@ -294,7 +321,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                   </div>
                 </div>
               </div>
-              
+
               {event.seating?.seatMap && event.seating.seatMap.length > 0 ? (
                 <div className="grid grid-cols-12 gap-1 max-w-md">
                   {event.seating.seatMap.slice(0, 64).map((seat, index) => (
@@ -331,7 +358,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                     </Button>
                   </div>
                 </div>
-                
+
                 {event.tags && event.tags.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -357,7 +384,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                     Expected Attendance
                   </label>
                   <div className="flex items-center space-x-2">
-                    <Input 
+                    <Input
                       value={`${soldSeats}/${totalSeats}`}
                       readOnly
                       className="flex-1"
@@ -404,7 +431,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
 
           {/* Action Buttons */}
           <div className="space-y-3">
-            <Button 
+            <Button
               className="w-full bg-orange-500 hover:bg-orange-600 text-white"
               onClick={() => onEdit(event)}
             >
@@ -412,6 +439,13 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
             </Button>
             <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
               Attendee Insights
+            </Button>
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
+              onClick={handleExportCSV}
+            >
+              <Download className="w-4 h-4" />
+              Export Attendees (CSV)
             </Button>
           </div>
         </div>

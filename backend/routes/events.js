@@ -1,6 +1,7 @@
 const express = require('express');
 const Event = require('../models/Event');
 const Waitlist = require('../models/Waitlist');
+const Ticket = require('../models/Ticket');
 const { authenticate, requireAdmin, requireOrganizer, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -581,6 +582,64 @@ router.post('/:id/waitlist/:waitlistId/approve', authenticate, async (req, res) 
     res.status(500).json({ success: false, message: 'Server error while approving waitlist' });
   }
 });
+
+// @route   GET /api/events/:id/attendees/export
+// @desc    Export attendees list as CSV
+// @access  Private (Admin/Organizer)
+router.get('/:id/attendees/export', authenticate, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to export attendees' });
+    }
+
+    const tickets = await Ticket.find({
+      event: event._id,
+      status: { $in: ['booked', 'used'] }
+    }).populate('user', 'name email phone').sort({ bookingDate: 1 });
+
+    // Build CSV Headers
+    let csvData = 'Ticket ID,Name,Email,Phone,Seat Number,Booking Date,Status,Payment Amount\n';
+
+    // Build CSV Rows
+    tickets.forEach(ticket => {
+      const tId = escapeCSV(ticket.ticketId);
+      const name = ticket.user ? escapeCSV(ticket.user.name) : 'Unknown';
+      const email = ticket.user ? escapeCSV(ticket.user.email) : 'Unknown';
+      const phone = ticket.user?.phone ? escapeCSV(ticket.user.phone) : 'N/A';
+      const seat = escapeCSV(ticket.seatNumber);
+      const date = escapeCSV(new Date(ticket.bookingDate).toLocaleDateString());
+      const status = escapeCSV(ticket.status);
+      const amount = ticket.payment?.amount ? escapeCSV('$' + ticket.payment.amount) : 'Free';
+
+      csvData += `${tId},${name},${email},${phone},${seat},${date},${status},${amount}\n`;
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=Attendees_${event.title.replace(/\s+/g, '_')}.csv`);
+
+    res.send(csvData);
+
+  } catch (error) {
+    console.error('Export attendees error:', error);
+    res.status(500).json({ success: false, message: 'Server error while exporting attendees' });
+  }
+});
+
+// Helper to escape CSV fields
+function escapeCSV(str) {
+  if (str === null || str === undefined) return '';
+  const strVal = String(str);
+  if (strVal.includes(',') || strVal.includes('"') || strVal.includes('\n')) {
+    return `"${strVal.replace(/"/g, '""')}"`;
+  }
+  return strVal;
+}
 
 module.exports = router;
 

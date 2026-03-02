@@ -348,6 +348,29 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
     }
   };
 
+  const handleShare = async () => {
+    const url = window.location.href;
+    const title = event.title || 'Event Details';
+    const text = `Check out ${title} on EventX!`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Share failed', err);
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copied to clipboard!');
+      } catch (err) {
+        toast.error('Failed to copy link');
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Flat Header Card */}
@@ -376,7 +399,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
               <span className="px-3 py-1 rounded-md bg-blue-50 text-blue-700 text-sm font-semibold">
                 {formatPrice(event)}
               </span>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleShare}>
                 <Share2 className="h-4 w-4 mr-2" /> Share
               </Button>
               <Button variant="ghost" size="sm">

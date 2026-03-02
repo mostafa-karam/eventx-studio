@@ -31,7 +31,7 @@ const hallBookingSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'approved', 'rejected', 'cancelled'],
+        enum: ['pending', 'approved', 'rejected', 'cancelled', 'maintenance'],
         default: 'pending'
     },
     totalCost: {
@@ -58,14 +58,13 @@ const hallBookingSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Pre-save: check for booking conflicts (only for approved bookings)
+// Pre-save: check for booking conflicts (only for approved or maintenance bookings)
 hallBookingSchema.pre('save', async function (next) {
-    // Only check conflicts when approving a booking
-    if (this.isModified('status') && this.status === 'approved') {
+    if (this.isModified('status') && ['approved', 'maintenance'].includes(this.status)) {
         const conflicting = await mongoose.model('HallBooking').findOne({
             hall: this.hall,
             _id: { $ne: this._id },
-            status: 'approved',
+            status: { $in: ['approved', 'maintenance'] },
             $or: [
                 {
                     startDate: { $lt: this.endDate },
@@ -75,7 +74,7 @@ hallBookingSchema.pre('save', async function (next) {
         });
 
         if (conflicting) {
-            const error = new Error('Hall is already booked for the selected time period');
+            const error = new Error('Hall is already booked or scheduled for maintenance during the selected time period');
             error.name = 'ConflictError';
             return next(error);
         }

@@ -109,7 +109,24 @@ const userSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
-  }]
+  }],
+  // Refresh token
+  refreshToken: {
+    type: String,
+    select: false
+  },
+  refreshTokenExpires: Date,
+  // Role upgrade requests
+  roleUpgradeRequest: {
+    reason: String,
+    organizationName: String,
+    requestedAt: Date,
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'denied'],
+      default: 'pending'
+    }
+  }
 }, {
   timestamps: true
 });

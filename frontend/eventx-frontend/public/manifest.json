@@ -1,0 +1,49 @@
+{
+  "name": "EventX Studio",
+  "short_name": "EventX",
+  "description": "Manage and discover events, book halls, and purchase tickets — all in one platform.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "categories": [
+    "entertainment",
+    "business",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse Events",
+      "short_name": "Events",
+      "url": "/events",
+      "icons": [
+        {
+          "src": "/icons/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "My Tickets",
+      "short_name": "Tickets",
+      "url": "/user/tickets",
+      "icons": [
+        {
+          "src": "/icons/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}

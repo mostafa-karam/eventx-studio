@@ -53,7 +53,8 @@ const HallBrowser = ({ onSelectHall }) => {
             if (filters.minCapacity) queryParams.append('minCapacity', filters.minCapacity);
 
             const res = await fetch(`${API_BASE_URL}/halls?${queryParams.toString()}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
             });
             const data = await res.json();
 

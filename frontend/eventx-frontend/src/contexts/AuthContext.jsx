@@ -12,7 +12,8 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  // Token is handled via httpOnly cookies; frontend should not store it
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -20,64 +21,67 @@ export const AuthProvider = ({ children }) => {
   // Check if user is authenticated on app load
   useEffect(() => {
     const checkAuth = async () => {
-      if (token) {
-        try {
-          const response = await fetch(`${API_BASE_URL}/auth/me`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          });
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/me`, {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
 
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.data.user);
-          } else {
-            // Token is invalid, remove it
-            localStorage.removeItem('token');
-            setToken(null);
-          }
-        } catch (error) {
-          console.error('Auth check failed:', error);
-          localStorage.removeItem('token');
-          setToken(null);
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.data.user);
+        } else {
+          setUser(null);
         }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setUser(null);
       }
       setLoading(false);
     };
 
     checkAuth();
-  }, [token]);
+  }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, twoFactorCode) => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+        body: JSON.stringify({ email, password, twoFactorCode }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (err) {
+        return { success: false, message: 'Server returned an invalid response. Please try again later.' };
+      }
 
       if (response.ok) {
-        const { user, token } = data.data;
+        // Handle 2FA required (200 but not fully logged in yet)
+        if (data.twoFactorRequired) {
+          return { success: true, twoFactorRequired: true, message: data.message };
+        }
+        const { user } = data.data;
         setUser(user);
-        setToken(token);
-        localStorage.setItem('token', token);
         return { success: true, data: data.data };
       } else {
         return {
           success: false,
-          message: data.message,
+          message: data.message || 'Login failed',
           attemptsRemaining: data.attemptsRemaining,
-          lockTimeRemaining: data.lockTimeRemaining
+          lockTimeRemaining: data.lockTimeRemaining,
+          emailVerificationRequired: data.emailVerificationRequired,
+          email: data.email,
         };
       }
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, message: 'Network error. Please try again.' };
+      return { success: false, message: 'Network error. Please make sure the backend server is running.' };
     }
   };
 
@@ -88,16 +92,15 @@ export const AuthProvider = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(userData),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        const { user, token } = data.data;
+        const { user } = data.data;
         setUser(user);
-        setToken(token);
-        localStorage.setItem('token', token);
         return { success: true, data: data.data };
       } else {
         return { success: false, message: data.message, errors: data.errors };
@@ -109,9 +112,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Inform server to clear cookies and server-side refresh token
+    fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => { });
     setUser(null);
     setToken(null);
-    localStorage.removeItem('token');
     // Also clear remembered email so login form doesn't prefill after logout
     localStorage.removeItem('eventx_remember_email');
     localStorage.removeItem('eventx_remember_opt_in');
@@ -204,9 +208,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/sessions`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -222,9 +226,9 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_BASE_URL}/auth/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       const data = await response.json();

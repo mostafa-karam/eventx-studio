@@ -136,7 +136,7 @@ router.post('/', authenticate, requireOrganizer, async (req, res) => {
         // Check for existing conflicts (even pending ones, to warn organizer)
         const existingBooking = await HallBooking.findOne({
             hall: hallId,
-            status: { $in: ['approved', 'pending'] },
+            status: { $in: ['approved', 'pending', 'maintenance'] },
             startDate: { $lt: new Date(endDate) },
             endDate: { $gt: new Date(startDate) }
         });
@@ -144,7 +144,9 @@ router.post('/', authenticate, requireOrganizer, async (req, res) => {
         if (existingBooking) {
             return res.status(409).json({
                 success: false,
-                message: 'Hall already has a booking (approved or pending) for the selected time period',
+                message: existingBooking.status === 'maintenance'
+                    ? 'Hall is scheduled for maintenance during the selected time period'
+                    : 'Hall already has a booking (approved or pending) for the selected time period',
                 conflictingBooking: {
                     startDate: existingBooking.startDate,
                     endDate: existingBooking.endDate,
@@ -196,6 +198,67 @@ router.post('/', authenticate, requireOrganizer, async (req, res) => {
             success: false,
             message: 'Server error while creating hall booking'
         });
+    }
+});
+
+// @route   POST /api/hall-bookings/maintenance
+// @desc    Schedule maintenance for a hall
+// @access  Private (venue_admin, admin)
+router.post('/maintenance', authenticate, requireVenueAdmin, async (req, res) => {
+    try {
+        const { hall: hallId, startDate, endDate, notes } = req.body;
+
+        if (!hallId || !startDate || !endDate) {
+            return res.status(400).json({ success: false, message: 'Hall, start date, and end date are required' });
+        }
+
+        // Verify hall exists
+        const hall = await Hall.findById(hallId);
+        if (!hall) {
+            return res.status(404).json({ success: false, message: 'Hall not found' });
+        }
+
+        // Check for existing conflicts (approved or maintenance)
+        const existingBooking = await HallBooking.findOne({
+            hall: hallId,
+            status: { $in: ['approved', 'maintenance'] },
+            startDate: { $lt: new Date(endDate) },
+            endDate: { $gt: new Date(startDate) }
+        });
+
+        if (existingBooking) {
+            return res.status(409).json({
+                success: false,
+                message: existingBooking.status === 'maintenance'
+                    ? 'Hall is already scheduled for maintenance during this time'
+                    : 'Hall already has an approved booking during this time. Cannot schedule maintenance.'
+            });
+        }
+
+        const maintenanceBlock = new HallBooking({
+            hall: hallId,
+            organizer: req.user._id, // Venue admin acts as organizer for the block
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
+            status: 'maintenance',
+            notes: notes || 'Scheduled maintenance',
+            totalCost: 0
+        });
+
+        await maintenanceBlock.save();
+
+        const populatedBlock = await HallBooking.findById(maintenanceBlock._id)
+            .populate('hall', 'name capacity')
+            .populate('organizer', 'name email');
+
+        res.status(201).json({
+            success: true,
+            message: 'Maintenance scheduled successfully',
+            data: { maintenance: populatedBlock }
+        });
+    } catch (error) {
+        console.error('Schedule maintenance error:', error);
+        res.status(500).json({ success: false, message: 'Server error while scheduling maintenance' });
     }
 });
 

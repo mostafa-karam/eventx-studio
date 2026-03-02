@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { CalendarDays, BarChart3, Megaphone, Ticket, ShieldCheck, Sparkles, Star, ArrowRight, Users, Globe, Zap, TrendingUp } from 'lucide-react';
 
-const HomePage = ({ onGetStarted }) => {
+const HomePage = () => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [animatedStats, setAnimatedStats] = useState({ tickets: 0, rating: 0, uplift: 0 });
 
@@ -41,33 +42,33 @@ const HomePage = ({ onGetStarted }) => {
       const duration = 2000;
       const steps = 60;
       const stepTime = duration / steps;
-      
+
       let step = 0;
       const timer = setInterval(() => {
         const progress = step / steps;
         const easeOut = 1 - Math.pow(1 - progress, 3);
-        
+
         setAnimatedStats({
           tickets: Math.floor(120000 * easeOut),
           rating: (9.4 * easeOut).toFixed(1),
           uplift: Math.floor(37 * easeOut)
         });
-        
+
         step++;
         if (step > steps) clearInterval(timer);
       }, stepTime);
     };
-    
+
     const observer = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting) {
         animateStats();
         observer.disconnect();
       }
     });
-    
+
     const statsSection = document.getElementById('stats-section');
     if (statsSection) observer.observe(statsSection);
-    
+
     return () => observer.disconnect();
   }, []);
 
@@ -87,8 +88,8 @@ const HomePage = ({ onGetStarted }) => {
             <a href="/privacy" className="hover:text-gray-900">Privacy</a>
           </nav>
           <div className="flex items-center gap-3">
-            <button className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50" onClick={onGetStarted}>Sign in</button>
-            <button className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 shadow" onClick={onGetStarted}>Get started</button>
+            <Link to="/auth" className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center">Sign in</Link>
+            <Link to="/auth" className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 shadow flex items-center justify-center">Get started</Link>
           </div>
         </div>
       </header>
@@ -101,17 +102,17 @@ const HomePage = ({ onGetStarted }) => {
               <Sparkles className="h-3.5 w-3.5 animate-pulse" /> All‑in‑one event platform
             </div>
             <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-gray-900 leading-tight">
-              Plan, promote, and 
+              Plan, promote, and
               <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">sell out</span> your events
             </h1>
             <p className="mt-5 text-lg text-gray-600 leading-relaxed">
               Create beautiful event pages, run targeted campaigns, accept payments, and track success — all in one powerful dashboard.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <button className="group px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2" onClick={onGetStarted}>
+              <Link to="/auth" className="group px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2">
                 Create your account
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </button>
+              </Link>
               <a href="#features" className="px-6 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">Learn more</a>
             </div>
             <div className="mt-8 grid grid-cols-3 gap-4 text-sm text-gray-600">
@@ -258,9 +259,8 @@ const HomePage = ({ onGetStarted }) => {
               {testimonials.map((_, index) => (
                 <button
                   key={index}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    index === currentTestimonial ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
+                  className={`w-2 h-2 rounded-full transition-colors ${index === currentTestimonial ? 'bg-blue-600' : 'bg-gray-300'
+                    }`}
                   onClick={() => setCurrentTestimonial(index)}
                 />
               ))}
@@ -301,10 +301,10 @@ const HomePage = ({ onGetStarted }) => {
             <h3 className="text-3xl font-bold text-gray-900 mb-4">Ready to host your best event yet?</h3>
             <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">Join EventX Studio today and transform how you create, promote, and manage events. Get started in minutes.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button className="group px-8 py-4 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2" onClick={onGetStarted}>
+              <Link to="/auth" className="group px-8 py-4 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2">
                 Get started — it's free
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </button>
+              </Link>
               <a href="#features" className="text-gray-600 hover:text-gray-800 underline-offset-4 hover:underline transition-colors">See features first</a>
             </div>
             <div className="mt-8 flex justify-center items-center gap-8 text-sm text-gray-500">

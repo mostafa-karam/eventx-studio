@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const { authenticate } = require('../middleware/auth');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
+const mongoose = require('mongoose');
+const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
 
@@ -36,81 +38,82 @@ router.post('/initiate', authenticate, async (req, res) => {
 
 // POST /api/booking/confirm
 // Confirms a booking by creating a ticket; expects a valid paymentId and token header
-router.post('/confirm', authenticate, async (req, res) => {
-    try {
+router.post('/confirm',
+    authenticate,
+    body('eventId').isMongoId().withMessage('Valid eventId is required'),
+    body('paymentId').notEmpty().withMessage('paymentId is required'),
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+
         const { eventId, paymentId, bookingId, paymentMethod = 'credit_card' } = req.body || {};
-        if (!eventId || !paymentId) return res.status(400).json({ success: false, message: 'eventId and paymentId are required' });
 
-        const event = await Event.findById(eventId);
-        if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-        if (event.status !== 'published') return res.status(400).json({ success: false, message: 'Event not available' });
-        if (event.date < new Date()) return res.status(400).json({ success: false, message: 'Event already occurred' });
+        const session = await mongoose.startSession();
+        try {
+            let result;
+            await session.withTransaction(async () => {
+                const event = await Event.findById(eventId).session(session);
+                if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
+                if (event.status !== 'published') throw Object.assign(new Error('Event not available'), { status: 400 });
+                if (event.date < new Date()) throw Object.assign(new Error('Event already occurred'), { status: 400 });
 
-        // Verify payment token if provided via Authorization Bearer
-        const authHeader = req.headers && req.headers.authorization;
-        if (authHeader) {
-            try {
-                const token = authHeader.split(' ')[1];
-                const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
-                const payload = jwt.verify(token, secret);
-                if (payload.txId !== paymentId || payload.userId.toString() !== req.user._id.toString()) {
-                    return res.status(400).json({ success: false, message: 'Invalid or mismatched payment token' });
+                // Ensure seat map exists
+                if (!event.seating || !Array.isArray(event.seating.seatMap) || event.seating.seatMap.length === 0) {
+                    event.seating = event.seating || { totalSeats: 0, availableSeats: 0, seatMap: [] };
+                    if (!event.seating.totalSeats) event.seating.totalSeats = 100;
+                    const generated = [];
+                    for (let i = 1; i <= event.seating.totalSeats; i++) {
+                        generated.push({ seatNumber: `S${i.toString().padStart(3, '0')}`, isBooked: false, bookedBy: null });
+                    }
+                    event.seating.seatMap = generated;
+                    if (event.seating.availableSeats === undefined || event.seating.availableSeats === null) {
+                        event.seating.availableSeats = event.seating.totalSeats;
+                    }
                 }
-            } catch (e) {
-                return res.status(400).json({ success: false, message: 'Invalid payment token' });
-            }
+
+                const seatIndex = event.seating.seatMap.findIndex(s => !s.isBooked);
+                if (seatIndex === -1) throw Object.assign(new Error('No seats available'), { status: 400 });
+
+                // Book the seat atomically in this transaction
+                event.seating.seatMap[seatIndex].isBooked = true;
+                event.seating.seatMap[seatIndex].bookedBy = req.user._id;
+                event.seating.availableSeats = Math.max(0, (event.seating.availableSeats || event.seating.totalSeats) - 1);
+
+                await event.save({ session });
+
+                const ticket = new Ticket({
+                    event: event._id,
+                    user: req.user._id,
+                    seatNumber: event.seating.seatMap[seatIndex].seatNumber,
+                    payment: {
+                        amount: event.pricing?.amount || 0,
+                        currency: event.pricing?.currency || 'USD',
+                        paymentMethod,
+                        transactionId: paymentId,
+                        status: 'completed',
+                        paymentDate: new Date(),
+                    },
+                    metadata: { bookingId: bookingId || null },
+                });
+
+                await ticket.save({ session });
+
+                result = await Ticket.findById(ticket._id)
+                    .populate('event', 'title date venue pricing')
+                    .populate('user', 'name email')
+                    .session(session);
+            });
+
+            session.endSession();
+            return res.json({ success: true, message: 'Booking confirmed', data: { booking: { _id: bookingId }, ticket: result, payment: { id: paymentId } } });
+        } catch (error) {
+            session.endSession();
+            console.error('Booking confirm error:', error);
+            if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+            return res.status(500).json({ success: false, message: 'Failed to confirm booking' });
         }
-
-        // Ensure seat map and choose first available seat
-        if (!event.seating || !Array.isArray(event.seating.seatMap) || event.seating.seatMap.length === 0) {
-            event.seating = event.seating || { totalSeats: 0, availableSeats: 0, seatMap: [] };
-            if (!event.seating.totalSeats) {
-                event.seating.totalSeats = 100;
-            }
-            const generated = [];
-            for (let i = 1; i <= event.seating.totalSeats; i++) {
-                generated.push({ seatNumber: `S${i.toString().padStart(3, '0')}`, isBooked: false, bookedBy: null });
-            }
-            event.seating.seatMap = generated;
-            // Only set availableSeats to totalSeats if it's not already set
-            if (event.seating.availableSeats === undefined || event.seating.availableSeats === null) {
-                event.seating.availableSeats = event.seating.totalSeats;
-            }
-            await event.save();
-        }
-
-        const firstAvailable = event.seating.seatMap.find((s) => !s.isBooked);
-        if (!firstAvailable) return res.status(400).json({ success: false, message: 'No seats available' });
-
-        event.bookSeat(firstAvailable.seatNumber, req.user._id);
-        await event.save();
-
-        const ticket = new Ticket({
-            event: event._id,
-            user: req.user._id,
-            seatNumber: firstAvailable.seatNumber,
-            payment: {
-                amount: event.pricing.amount,
-                currency: event.pricing.currency,
-                paymentMethod,
-                transactionId: paymentId,
-                status: 'completed',
-                paymentDate: new Date(),
-            },
-            metadata: { bookingId: bookingId || null },
-        });
-        await ticket.save();
-
-        const populated = await Ticket.findById(ticket._id)
-            .populate('event', 'title date venue pricing')
-            .populate('user', 'name email');
-
-        return res.json({ success: true, message: 'Booking confirmed', data: { booking: { _id: bookingId }, ticket: populated, payment: { id: paymentId } } });
-    } catch (error) {
-        console.error('Booking confirm error:', error);
-        return res.status(500).json({ success: false, message: 'Failed to confirm booking' });
     }
-});
+);
 
 module.exports = router;
 
