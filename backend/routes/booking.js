@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const jwt = require('jsonwebtoken');
 const { authenticate } = require('../middleware/auth');
 const Event = require('../models/Event');
@@ -31,7 +32,7 @@ router.post('/initiate', authenticate, async (req, res) => {
 
         return res.json({ success: true, data: { bookingSession } });
     } catch (error) {
-        console.error('Booking initiate error:', error);
+        logger.error('Booking initiate error:', error);
         return res.status(500).json({ success: false, message: 'Failed to initiate booking' });
     }
 });
@@ -108,7 +109,7 @@ router.post('/confirm',
             return res.json({ success: true, message: 'Booking confirmed', data: { booking: { _id: bookingId }, ticket: result, payment: { id: paymentId } } });
         } catch (error) {
             session.endSession();
-            console.error('Booking confirm error:', error);
+            logger.error('Booking confirm error:', error);
             if (error.status) return res.status(error.status).json({ success: false, message: error.message });
             return res.status(500).json({ success: false, message: 'Failed to confirm booking' });
         }

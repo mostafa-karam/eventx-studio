@@ -1,8 +1,11 @@
 const express = require('express');
+const logger = require('../utils/logger');
+const mongoose = require('mongoose');
 const QRCode = require('qrcode');
 const jwt = require('jsonwebtoken');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
+const Notification = require('../models/Notification');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -128,18 +131,22 @@ router.post('/book', authenticate, async (req, res) => {
     }
 
     // Verify transaction token if provided (prevents client spoofing simulated txIds)
-    if (transactionId && req.body && req.headers && req.headers.authorization) {
+    // Token is sent in request body as 'paymentToken' from the payment simulation flow
+    const paymentToken = req.body.paymentToken;
+    if (transactionId) {
+      if (!paymentToken) {
+        return res.status(400).json({ success: false, message: 'Payment token is required to complete a paid booking' });
+      }
       try {
-        const token = req.headers.authorization.split(' ')[1];
         const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
-        const payload = jwt.verify(token, secret);
-        // ensure the token matches provided transactionId and user
+        const payload = jwt.verify(paymentToken, secret);
+        // Ensure the token matches the provided transactionId, user, and event
         if (payload.txId !== transactionId || payload.userId.toString() !== req.user._id.toString() || (payload.eventId && payload.eventId !== eventId)) {
           return res.status(400).json({ success: false, message: 'Invalid payment token' });
         }
       } catch (err) {
-        console.warn('Payment token verification failed', err);
-        return res.status(400).json({ success: false, message: 'Invalid payment token' });
+        logger.warn('Payment token verification failed: ' + err.message);
+        return res.status(400).json({ success: false, message: 'Invalid or expired payment token' });
       }
     }
 
@@ -173,6 +180,15 @@ router.post('/book', authenticate, async (req, res) => {
     const ticket = new Ticket(ticketData);
     await ticket.save();
 
+    // Increment analytics revenue counter
+    if (event.pricing?.type !== 'free' && event.pricing?.amount > 0) {
+      await Event.findByIdAndUpdate(eventId, {
+        $inc: { 'analytics.revenue': event.pricing.amount, 'analytics.bookings': 1 }
+      });
+    } else {
+      await Event.findByIdAndUpdate(eventId, { $inc: { 'analytics.bookings': 1 } });
+    }
+
     // Generate QR code image
     const qrCodeData = ticket.qrCode;
     const qrCodeImage = await QRCode.toDataURL(qrCodeData, {
@@ -200,7 +216,7 @@ router.post('/book', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Book ticket error:', error);
+    logger.error('Book ticket error:', error);
 
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
@@ -223,8 +239,25 @@ router.post('/book', authenticate, async (req, res) => {
 // @access  Private
 router.post('/book-multi', authenticate, async (req, res) => {
   try {
-    const { eventId, quantity = 1, seatNumbers = [], paymentMethod = 'free', transactionId } = req.body || {};
+    const { eventId, quantity = 1, seatNumbers = [], paymentMethod = 'free', transactionId, paymentToken } = req.body || {};
     const qty = Math.max(1, Math.min(parseInt(quantity, 10) || 1, 10));
+
+    // Verify payment token upfront for multi-book
+    if (transactionId) {
+      if (!paymentToken) {
+        return res.status(400).json({ success: false, message: 'Payment token is required to complete a paid booking' });
+      }
+      try {
+        const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
+        const payload = jwt.verify(paymentToken, secret);
+        if (payload.txId !== transactionId || payload.userId.toString() !== req.user._id.toString() || (payload.eventId && payload.eventId !== eventId)) {
+          return res.status(400).json({ success: false, message: 'Invalid payment token' });
+        }
+      } catch (err) {
+        logger.warn('Multi-book payment token verification failed: ' + err.message);
+        return res.status(400).json({ success: false, message: 'Invalid or expired payment token' });
+      }
+    }
 
     if (!eventId) {
       return res.status(400).json({ success: false, message: 'Event ID is required' });
@@ -282,20 +315,7 @@ router.post('/book-multi', authenticate, async (req, res) => {
     const createdTickets = [];
     for (const seatNumber of seatsChosen) {
       event.bookSeat(seatNumber, req.user._id);
-      // Verify transaction token for multi-book if provided
-      if (transactionId && req.body && req.headers && req.headers.authorization) {
-        try {
-          const token = req.headers.authorization.split(' ')[1];
-          const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
-          const payload = require('jsonwebtoken').verify(token, secret);
-          if (payload.txId !== transactionId || payload.userId.toString() !== req.user._id.toString() || (payload.eventId && payload.eventId !== eventId)) {
-            return res.status(400).json({ success: false, message: 'Invalid payment token' });
-          }
-        } catch (err) {
-          console.warn('Payment token verification failed (multi)', err);
-          return res.status(400).json({ success: false, message: 'Invalid payment token' });
-        }
-      }
+      // Transaction token is verified once before the loop (not per-seat)
 
       const ticket = new Ticket({
         event: eventId,
@@ -321,13 +341,20 @@ router.post('/book-multi', authenticate, async (req, res) => {
     }
     await event.save();
 
+    // Increment analytics revenue for multi-bookings
+    const pricePerTicket = event.pricing?.amount || 0;
+    const revenueIncrement = event.pricing?.type !== 'free' ? pricePerTicket * seatsChosen.length : 0;
+    await Event.findByIdAndUpdate(eventId, {
+      $inc: { 'analytics.revenue': revenueIncrement, 'analytics.bookings': seatsChosen.length }
+    });
+
     const populated = await Ticket.find({ _id: { $in: createdTickets.map(t => t._id) } })
       .populate('event', 'title date venue pricing')
       .populate('user', 'name email');
 
     return res.status(201).json({ success: true, message: 'Tickets booked successfully', data: { tickets: populated } });
   } catch (error) {
-    console.error('Book multiple tickets error:', error);
+    logger.error('Book multiple tickets error:', error);
     return res.status(500).json({ success: false, message: 'Server error while booking tickets' });
   }
 });
@@ -370,7 +397,7 @@ router.get('/my-tickets', authenticate, async (req, res) => {
               margin: 1
             });
           } catch (e) {
-            console.warn('Failed to generate QR for ticket', ticket._id, e);
+            logger.warn('Failed to generate QR for ticket ' + ticket._id + ': ' + e.message);
             qrCodeImage = null;
           }
         }
@@ -394,7 +421,7 @@ router.get('/my-tickets', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get my tickets error:', error);
+    logger.error('Get my tickets error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching tickets'
@@ -471,7 +498,7 @@ router.get('/admin', authenticate, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Admin tickets fetch error:', error);
+    logger.error('Admin tickets fetch error:', error);
     res.status(500).json({ success: false, message: 'Server error while fetching tickets' });
   }
 });
@@ -494,7 +521,7 @@ router.get('/admin/orphans', authenticate, requireAdmin, async (req, res) => {
 
     res.json({ success: true, data: { tickets, pagination: { current: page, pages: Math.max(1, Math.ceil(total / limit)), total } } });
   } catch (error) {
-    console.error('Admin orphans fetch error:', error);
+    logger.error('Admin orphans fetch error:', error);
     res.status(500).json({ success: false, message: 'Server error while fetching orphan tickets' });
   }
 });
@@ -517,7 +544,7 @@ router.post('/admin/orphans/:id/assign', authenticate, requireAdmin, async (req,
     const populated = await Ticket.findById(ticket._id).populate('event', 'title date venue').populate('user', 'name email');
     res.json({ success: true, data: { ticket: populated } });
   } catch (error) {
-    console.error('Assign orphan error:', error);
+    logger.error('Assign orphan error:', error);
     res.status(500).json({ success: false, message: 'Server error while assigning orphan ticket' });
   }
 });
@@ -533,7 +560,7 @@ router.post('/admin/orphans/:id/cancel', authenticate, requireAdmin, async (req,
 
     res.json({ success: true, message: 'Ticket cancelled', data: { ticket } });
   } catch (error) {
-    console.error('Cancel orphan error:', error);
+    logger.error('Cancel orphan error:', error);
     res.status(500).json({ success: false, message: 'Server error while cancelling orphan ticket' });
   }
 });
@@ -563,7 +590,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
     res.json({ success: true, data: { ticket, qrCodeImage } });
   } catch (error) {
-    console.error('Get ticket error:', error);
+    logger.error('Get ticket error:', error);
     if (error.name === 'CastError') {
       return res.status(404).json({ success: false, message: 'Ticket not found' });
     }
@@ -623,9 +650,28 @@ router.put('/:id/cancel', authenticate, async (req, res) => {
     await ticket.save();
 
     // Free up the seat in the event
-    const event = await Event.findById(ticket.event._id);
+    const event = await Event.findById(ticket.event._id).populate('organizer');
     event.cancelSeat(ticket.seatNumber);
     await event.save();
+
+    // Handle waitlist auto-notify if someone is waitlisted
+    try {
+      const waitlistEntry = await require('../models/Waitlist').findOne({ event: event._id }).sort({ createdAt: 1 });
+      if (waitlistEntry) {
+        // Notify the first person on the waitlist
+        await Notification.create({
+          user: waitlistEntry.user,
+          type: 'waitlist_spot_available',
+          title: 'A Spot Opened Up!',
+          message: `A ticket is now available for "${event.title}". Book quickly before it's gone!`,
+          data: { eventId: event._id }
+        });
+        // Remove them from waitlist since they are notified
+        await waitlistEntry.deleteOne();
+      }
+    } catch (wlError) {
+      logger.error('Waitlist processing error on ticket cancel: ' + wlError.message);
+    }
 
     res.json({
       success: true,
@@ -635,7 +681,7 @@ router.put('/:id/cancel', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Cancel ticket error:', error);
+    logger.error('Cancel ticket error:', error);
 
     if (error.name === 'CastError') {
       return res.status(404).json({
@@ -686,7 +732,7 @@ router.post('/:id/checkin', authenticate, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Check in ticket error:', error);
+    logger.error('Check in ticket error:', error);
 
     if (error.name === 'CastError') {
       return res.status(404).json({
@@ -721,7 +767,7 @@ router.get('/event/:eventId', authenticate, requireAdmin, async (req, res) => {
 
     // Get ticket statistics
     const stats = await Ticket.aggregate([
-      { $match: { event: mongoose.Types.ObjectId(req.params.eventId) } },
+      { $match: { event: new mongoose.Types.ObjectId(req.params.eventId) } },
       {
         $group: {
           _id: '$status',
@@ -744,11 +790,97 @@ router.get('/event/:eventId', authenticate, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get event tickets error:', error);
+    logger.error('Get event tickets error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching event tickets'
     });
+  }
+});
+
+// @route   GET /api/tickets/qr/:qrCode
+// @desc    Look up ticket by QR code content
+// @access  Private (Admin/Organizer)
+router.get('/qr/:qrCode', authenticate, async (req, res) => {
+  try {
+    const { qrCode } = req.params;
+
+    // Attempt to parse the QR Code content if it's JSON (the frontend eventx-rn might use different formats)
+    // If it's a direct ticket ID string or JSON like { ticketId: 'xxx' }
+    let ticketId = qrCode;
+    try {
+      const parsed = JSON.parse(qrCode);
+      if (parsed.ticketId) ticketId = parsed.ticketId;
+    } catch (e) { /* ignore JSON parse error */ }
+
+    // Find ticket by ID or unique identifier if that exists
+    const ticket = await Ticket.findById(ticketId).populate('event user', 'title name email');
+    if (!ticket) {
+      return res.status(404).json({ success: false, message: 'Ticket not found from QR' });
+    }
+
+    // Role check: admin, or organizer of the specific event
+    const isAdmin = req.user.role === 'admin';
+    const isOrganizer = ticket.event.organizer && ticket.event.organizer.toString() === req.user._id.toString();
+    if (!isAdmin && !isOrganizer) {
+      return res.status(403).json({ success: false, message: 'Not authorized to scan tickets for this event' });
+    }
+
+    res.json({ success: true, data: { ticket } });
+  } catch (error) {
+    logger.error('QR Lookup error:', error);
+    res.status(500).json({ success: false, message: 'Server error looking up QR code' });
+  }
+});
+
+// @route   PUT /api/tickets/:id/refund
+// @desc    Refund a ticket (changes status and triggers external refund logic in a real app)
+// @access  Private
+router.put('/:id/refund', authenticate, async (req, res) => {
+  try {
+    const ticket = await Ticket.findById(req.params.id).populate('event');
+
+    if (!ticket) {
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
+    }
+
+    // Must be admin or the ticket owner
+    if (ticket.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to refund this ticket' });
+    }
+
+    if (ticket.status === 'cancelled' || ticket.status === 'refunded') {
+      return res.status(400).json({ success: false, message: `Ticket is already ${ticket.status}` });
+    }
+
+    if (ticket.status === 'used') {
+      return res.status(400).json({ success: false, message: 'Cannot refund a used ticket' });
+    }
+
+    // In a real app, integrate Stripe/PayPal refund here
+    // ...
+
+    ticket.status = 'refunded';
+    await ticket.save();
+
+    // Free up seat
+    const event = await Event.findById(ticket.event._id);
+    event.cancelSeat(ticket.seatNumber);
+    await event.save();
+
+    // Notify user
+    await Notification.create({
+      user: ticket.user,
+      type: 'ticket_refunded',
+      title: 'Ticket Refund Processed',
+      message: `Your ticket for "${event.title}" has been successfully refunded.`,
+      data: { ticketId: ticket._id, eventId: event._id }
+    }).catch(err => logger.error('Notification error (refund): ' + err.message));
+
+    res.json({ success: true, message: 'Ticket refunded successfully', data: { ticket } });
+  } catch (error) {
+    logger.error('Refund ticket error:', error);
+    res.status(500).json({ success: false, message: 'Server error while refunding ticket' });
   }
 });
 

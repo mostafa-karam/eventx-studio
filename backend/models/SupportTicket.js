@@ -57,11 +57,17 @@ const supportTicketSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate ticket number before saving
-supportTicketSchema.pre('save', async function(next) {
+// Generate ticket number atomically before saving to prevent race conditions
+supportTicketSchema.pre('save', async function (next) {
   if (!this.ticketNumber) {
-    const count = await mongoose.model('SupportTicket').countDocuments();
-    this.ticketNumber = `SUP-${String(count + 1).padStart(4, '0')}`;
+    // Use an atomic counter to avoid duplicate ticket numbers under concurrency
+    const Counter = mongoose.connection.collection('counters');
+    const result = await Counter.findOneAndUpdate(
+      { _id: 'support_ticket' },
+      { $inc: { seq: 1 } },
+      { upsert: true, returnDocument: 'after' }
+    );
+    this.ticketNumber = `SUP-${String(result.seq).padStart(4, '0')}`;
   }
   next();
 });

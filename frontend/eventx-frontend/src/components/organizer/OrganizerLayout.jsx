@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
     Calendar, Home, Plus, Search, Bell, User as UserIcon,
-    BarChart3, Building2, Moon, Sun, LogOut, Menu
+    BarChart3, Building2, Moon, Sun, LogOut, Menu, Ticket, ClipboardList
 } from 'lucide-react';
 import { Toaster } from '../ui/sonner';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -23,6 +23,9 @@ const OrganizerLayout = () => {
         { to: '/organizer/dashboard', icon: Home, label: 'Dashboard' },
         { to: '/organizer/events', icon: Calendar, label: 'My Events' },
         { to: '/organizer/halls', icon: Building2, label: 'Browse Halls' },
+        { to: '/organizer/analytics', icon: BarChart3, label: 'Analytics' },
+        { to: '/organizer/tickets', icon: Ticket, label: 'Ticket Management' },
+        { to: '/organizer/bookings', icon: ClipboardList, label: 'My Bookings' },
         { to: '/organizer/profile', icon: UserIcon, label: 'Profile' },
     ];
 

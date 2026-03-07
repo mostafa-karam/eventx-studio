@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const router = express.Router();
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
@@ -103,7 +104,7 @@ router.get('/', authenticate, async (req, res) => {
       notifications: limitedNotifications
     });
   } catch (error) {
-    console.error('Error fetching notifications:', error);
+    logger.error('Error fetching notifications:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch notifications'
@@ -121,7 +122,7 @@ router.patch('/:id/read', authenticate, async (req, res) => {
       message: 'Notification marked as read'
     });
   } catch (error) {
-    console.error('Error marking notification as read:', error);
+    logger.error('Error marking notification as read:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to mark notification as read'
@@ -137,7 +138,7 @@ router.patch('/mark-all-read', authenticate, async (req, res) => {
       message: 'All notifications marked as read'
     });
   } catch (error) {
-    console.error('Error marking all notifications as read:', error);
+    logger.error('Error marking all notifications as read:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to mark all notifications as read'
@@ -153,7 +154,7 @@ router.delete('/:id', authenticate, async (req, res) => {
       message: 'Notification deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting notification:', error);
+    logger.error('Error deleting notification:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete notification'
@@ -194,7 +195,7 @@ router.post('/', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error creating notification:', error);
+    logger.error('Error creating notification:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create notification'
@@ -217,7 +218,7 @@ const createSystemNotification = async (userId, title, message, type = 'system',
     await notification.save();
     return notification;
   } catch (error) {
-    console.error('Error creating system notification:', error);
+    logger.error('Error creating system notification:', error);
     return null;
   }
 };
@@ -241,7 +242,7 @@ router.post('/send-booking-confirmation', authenticate, async (req, res) => {
     );
     return res.json({ success: true, message: 'Booking confirmation notification queued' });
   } catch (error) {
-    console.error('Failed to send booking confirmation notification:', error);
+    logger.error('Failed to send booking confirmation notification:', error);
     return res.status(500).json({ success: false, message: 'Failed to send booking confirmation' });
   }
 });

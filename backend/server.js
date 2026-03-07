@@ -4,8 +4,11 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
+const csrf = require('csurf');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const compression = require('compression');
 const logger = require('./utils/logger');
 
 dotenv.config();
@@ -21,7 +24,7 @@ app.use(helmet());
 app.use(helmet.contentSecurityPolicy({
   directives: {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https:'],
+    scriptSrc: ["'self'", "'unsafe-inline'", 'https:'],
     styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
     imgSrc: ["'self'", 'data:', 'https:'],
     connectSrc: ["'self'", 'https:', 'ws:'],
@@ -54,7 +57,7 @@ const authLimiter = rateLimit({
 });
 
 // ─── CORS ────────────────────────────────────────────────────────────
-const allowedOrigins = (process.env.FRONTEND_ORIGIN || 'http://localhost:5173')
+const allowedOrigins = (process.env.FRONTEND_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
   .map(o => o.trim());
 
@@ -63,7 +66,7 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, false);
+      callback(new Error(`CORS policy: Origin ${origin} is not allowed`), false);
     }
   },
   credentials: true,
@@ -72,7 +75,22 @@ app.use(cors({
 // ─── Body Parsing & Sanitization ────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+// Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
+// Data sanitization against XSS (Cross-Site Scripting)
+app.use(xss());
+app.use(compression());
+
+// CSRF Protection
+const csrfProtection = csrf({ cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' } });
+// We apply this selectively later, or globally except for certain endpoints.
+// For SPA API usage, we will apply it globally to all /api routes that mutate state, which csurf does automatically.
+app.use('/api', csrfProtection);
+
+// CSRF Token Provider Endpoint
+app.get('/api/auth/csrf-token', csrfProtection, (req, res) => {
+  res.json({ success: true, csrfToken: req.csrfToken() });
+});
 
 // ─── Request Logging ─────────────────────────────────────────────────
 app.use((req, _res, next) => {
@@ -110,6 +128,9 @@ const hallRoutes = require('./routes/halls');
 const hallBookingRoutes = require('./routes/hallBookings');
 const publicRoutes = require('./routes/public');
 const auditLogRoutes = require('./routes/auditLog');
+const searchRoutes = require('./routes/search');
+const uploadRoutes = require('./routes/upload');
+const reviewsRoutes = require('./routes/reviews');
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/events', eventRoutes);
@@ -126,11 +147,28 @@ app.use('/api/halls', hallRoutes);
 app.use('/api/hall-bookings', hallBookingRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/audit-log', auditLogRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/events/:eventId/reviews', reviewsRoutes);
 
 app.get('/', (_req, res) => res.json({ message: 'EventX Studio API is running!', version: '2.0.0' }));
 
+// ─── Health Check ────────────────────────────────────────────────────
+app.get('/api/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+  });
+});
+
 // ─── Error Handling ──────────────────────────────────────────────────
 app.use((err, req, res, _next) => {
+  if (err.code === 'EBADCSRFTOKEN') {
+    return res.status(403).json({ success: false, message: 'Invalid or missing CSRF token' });
+  }
+
   logger.error(`${err.status || 500} — ${err.message} — ${req.originalUrl}`);
   const statusCode = err.statusCode || 500;
   res.status(statusCode).json({
@@ -143,7 +181,29 @@ app.use('*', (_req, res) => res.status(404).json({ success: false, message: 'Rou
 
 const startServer = async () => {
   await connectDB();
-  app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
+  const server = app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
+  server.timeout = 30000; // 30 second request timeout
+
+  // ─── Graceful Shutdown ──────────────────────────────────────────────
+  const shutdown = async (signal) => {
+    logger.info(`${signal} received. Shutting down gracefully...`);
+    server.close(async () => {
+      try {
+        await mongoose.connection.close();
+        logger.info('MongoDB connection closed.');
+      } catch (err) {
+        logger.error('Error closing MongoDB connection:', err);
+      }
+      process.exit(0);
+    });
+    // Force shutdown after 10 seconds
+    setTimeout(() => {
+      logger.error('Forcefully shutting down after timeout.');
+      process.exit(1);
+    }, 10000);
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 };
 
 startServer();

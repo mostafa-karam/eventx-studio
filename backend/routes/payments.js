@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const jwt = require('jsonwebtoken');
 const { authenticate } = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
@@ -42,7 +43,7 @@ router.post('/process', authenticate, async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('Payment process error:', err);
+        logger.error('Payment process error:', err);
         return res.status(500).json({ success: false, message: 'Payment processing failed' });
     }
 });
@@ -66,7 +67,7 @@ router.post('/test-token', authenticate, async (req, res) => {
 
         return res.json({ success: true, data: { transactionId: txId, token } });
     } catch (err) {
-        console.error('Issue test payment token error:', err);
+        logger.error('Issue test payment token error:', err);
         return res.status(500).json({ success: false, message: 'Failed to issue test payment token' });
     }
 });

@@ -17,7 +17,8 @@ import { DashboardStatsSkeleton } from '../shared/LoadingSkeletons';
 import EmptyState from '../shared/EmptyState';
 
 const OrganizerDashboard = ({ onTabChange }) => {
-    const { token } = useAuth();
+    const { user } = useAuth();
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     const [stats, setStats] = useState({
         totalEvents: 0,
         totalRevenue: 0,
@@ -27,7 +28,6 @@ const OrganizerDashboard = ({ onTabChange }) => {
     const [recentEvents, setRecentEvents] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
     useEffect(() => {
         fetchDashboardData();
@@ -37,7 +37,7 @@ const OrganizerDashboard = ({ onTabChange }) => {
         try {
             // Fetch organizer's events
             const eventsRes = await fetch(`${API_BASE_URL}/events/admin/my-events?limit=5`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                credentials: 'include',
             });
             const eventsData = await eventsRes.json();
 

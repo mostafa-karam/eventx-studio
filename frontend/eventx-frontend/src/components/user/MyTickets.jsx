@@ -71,7 +71,7 @@ const MyTickets = () => {
   const [ticketsPerPage] = useState(6);
   const [totalTickets, setTotalTickets] = useState(0);
 
-  const { token } = useAuth();
+  const { user } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
@@ -88,8 +88,8 @@ const MyTickets = () => {
       });
 
       const response = await fetch(`${API_BASE_URL}/tickets/my-tickets?${params}`, {
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -247,8 +247,8 @@ const MyTickets = () => {
       setCancelLoadingId(ticketId);
       const res = await fetch(`${API_BASE_URL}/tickets/${ticketId}/cancel`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -372,8 +372,8 @@ const MyTickets = () => {
       const cancelPromises = selectedTickets.map(ticketId =>
         fetch(`${API_BASE_URL}/tickets/${ticketId}/cancel`, {
           method: 'PUT',
+          credentials: 'include',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         })
@@ -484,24 +484,24 @@ const MyTickets = () => {
 
     if (viewMode === 'list') {
       return (
-        <Card className={`hover:shadow-lg transition-all duration-200 pb-0 ${isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}>
-          <div className="flex">
-            <div className="relative w-48 h-32 bg-gradient-to-br from-gray-100 to-gray-200 flex-shrink-0">
+        <Card className={`group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 pb-0 rounded-2xl bg-white ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/30' : ''}`}>
+          <div className="flex flex-col md:flex-row">
+            <div className="relative w-full md:w-56 h-48 md:h-auto bg-gradient-to-br from-indigo-50 to-purple-50 flex-shrink-0 overflow-hidden">
               {thumbnail ? (
-                <img src={thumbnail} alt={ticket.event?.title} className="w-full h-full object-cover" />
+                <img src={thumbnail} alt={ticket.event?.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 p-4">
-                  <div className="w-12 h-12 bg-white rounded-lg shadow-sm flex items-center justify-center mb-2">
-                    <Ticket className="w-6 h-6 text-gray-400" />
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 p-4">
+                  <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-2">
+                    <Ticket className="w-6 h-6 text-indigo-300" />
                   </div>
                   <div className="text-center">
-                    <p className="text-xs font-medium text-gray-600">Event Image</p>
-                    <p className="text-xs text-gray-400 mt-1">Not Available</p>
+                    <p className="text-xs font-semibold text-indigo-900">Event Image</p>
+                    <p className="text-xs text-indigo-400 mt-1">Not Available</p>
                   </div>
                 </div>
               )}
-              <div className="absolute top-2 left-2">
-                <Badge className={`${ticketStatus.color} shadow-sm text-xs`}>
+              <div className="absolute top-3 left-3">
+                <Badge className={`${ticketStatus.color} shadow-md text-xs font-bold border-0 px-2.5 py-1 backdrop-blur-md bg-opacity-90`}>
                   <StatusIcon className="h-3 w-3 mr-1" />
                   {ticketStatus.label}
                 </Badge>
@@ -509,63 +509,65 @@ const MyTickets = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="absolute top-2 right-2 w-8 h-8 p-0 bg-white/80 hover:bg-white"
+                className="absolute top-3 right-3 w-9 h-9 p-0 bg-white/90 backdrop-blur-sm hover:bg-white shadow-sm rounded-full transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleFavorite(ticket._id); }}
               >
-                <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+                <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-500 text-red-500 scale-110' : 'text-gray-600'} transition-transform`} />
               </Button>
             </div>
 
-            <div className="flex-1 p-6">
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => handleSelectTicket(ticket._id)}
-                      className="mt-1 w-5 h-5 border-2 border-gray-300 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
-                    />
-                    {isSelected && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
-                    )}
+            <div className="flex-1 p-6 md:p-8 flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-start space-x-4">
+                    <div className="relative mt-1">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => handleSelectTicket(ticket._id)}
+                        className="w-5 h-5 border-2 border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 data-[state=checked]:text-white rounded"
+                      />
+                      {isSelected && (
+                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-white shadow-sm"></div>
+                      )}
+                    </div>
+                    <div className="flex-1 pr-4">
+                      <h3 className="text-xl md:text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors mb-2 tracking-tight">
+                        {ticket.event?.title || 'Unknown Event'}
+                      </h3>
+                      <p className="text-gray-500 text-sm font-medium">
+                        Booked on {formatDate(ticket.bookingDate)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      {ticket.event?.title || 'Unknown Event'}
-                    </h3>
-                    <p className="text-gray-600 text-sm mb-2">
-                      Booked on {formatDate(ticket.bookingDate)}
-                    </p>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-xl md:text-2xl font-extrabold text-indigo-600 mb-1">
+                      {ticket.payment?.amount === 0 || !ticket.payment?.amount ? 'Free' : `$${ticket.payment.amount}`}
+                    </div>
+                    <div className="text-xs text-gray-400 font-mono font-medium tracking-wide">
+                      #{ticket.ticketNumber || ticket._id.slice(-8)}
+                    </div>
                   </div>
                 </div>
-                <div className="text-right ml-4">
-                  <div className="text-lg font-bold text-green-600 mb-1">
-                    {ticket.payment?.amount === 0 || !ticket.payment?.amount ? 'Free' : `$${ticket.payment.amount}`}
+
+                <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-gray-600 mb-6">
+                  <div className="flex items-center bg-gray-50 px-3 py-1.5 rounded-lg">
+                    <Calendar className="h-4 w-4 mr-2 text-indigo-500" />
+                    {formatDate(ticket.event?.date)}
                   </div>
-                  <div className="text-xs text-gray-500 font-mono">
-                    #{ticket.ticketNumber || ticket._id.slice(-8)}
+                  <div className="flex items-center bg-gray-50 px-3 py-1.5 rounded-lg max-w-[200px] truncate">
+                    <MapPin className="h-4 w-4 mr-2 text-indigo-500" />
+                    <span className="truncate">{ticket.event?.venue ? `${ticket.event.venue.name}, ${ticket.event.venue.city}` : 'Venue TBA'}</span>
+                  </div>
+                  <div className="flex items-center bg-gray-50 px-3 py-1.5 rounded-lg">
+                    <Users className="h-4 w-4 mr-2 text-indigo-500" />
+                    Seat: {ticket.seatNumber || 'N/A'}
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-6 text-sm text-gray-600 mb-4">
-                <div className="flex items-center">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  {formatDate(ticket.event?.date)}
-                </div>
-                <div className="flex items-center">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  {ticket.event?.venue ? `${ticket.event.venue.name}, ${ticket.event.venue.city}` : 'Venue TBA'}
-                </div>
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-2" />
-                  Seat: {ticket.seatNumber || 'N/A'}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center pt-4 border-t border-gray-100 mt-auto">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs font-semibold bg-white border-gray-200 text-gray-600 px-3 py-1 rounded-full">
                     {ticket.event?.category || 'General'}
                   </Badge>
                 </div>
@@ -576,19 +578,19 @@ const MyTickets = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => setSelectedTicket(ticket)}
-                        className="h-8 px-3"
+                        className="bg-white hover:bg-indigo-50 text-indigo-600 border-indigo-100 shadow-sm font-semibold transition-all hover:border-indigo-200"
                       >
-                        <QrCode className="h-4 w-4 mr-1" />
-                        QR
+                        <QrCode className="h-4 w-4 mr-1.5" />
+                        Show QR
                       </Button>
                       <Button
-                        variant="outline"
+                        variant="default"
                         size="sm"
                         onClick={() => generatePDFTicket(ticket)}
-                        className="h-8 px-3"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md font-semibold transition-all group-hover:shadow-lg"
                       >
-                        <Download className="h-4 w-4 mr-1" />
-                        PDF
+                        <Download className="h-4 w-4 mr-1.5" />
+                        Download PDF
                       </Button>
                     </>
                   )}
@@ -598,9 +600,9 @@ const MyTickets = () => {
                       size="sm"
                       onClick={() => handleCancelTicket(ticket._id)}
                       disabled={cancelLoadingId === ticket._id}
-                      className="h-8 px-3"
+                      className="shadow-sm font-semibold"
                     >
-                      {cancelLoadingId === ticket._id ? '...' : 'Cancel'}
+                      {cancelLoadingId === ticket._id ? '...' : 'Cancel Ticket'}
                     </Button>
                   )}
                 </div>
@@ -613,123 +615,128 @@ const MyTickets = () => {
 
     // Grid view
     return (
-      <Card className={`group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 ${isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}>
-        <div className="relative w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200">
+      <Card className={`group overflow-hidden border-0 shadow-md hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 bg-white flex flex-col h-full rounded-2xl ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/10' : ''}`}>
+        <div className="relative w-full h-56 bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden">
           {thumbnail ? (
-            <img src={thumbnail} alt={ticket.event?.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            <img src={thumbnail} alt={ticket.event?.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 p-6">
-              <div className="w-16 h-16 bg-white rounded-xl shadow-sm flex items-center justify-center mb-3">
-                <Ticket className="w-8 h-8 text-gray-400" />
+            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 p-6 group-hover:scale-105 transition-transform duration-700">
+              <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-3">
+                <Ticket className="w-8 h-8 text-indigo-300" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-600">Event Image</p>
-                <p className="text-xs text-gray-400 mt-1">Not Available</p>
+                <p className="text-sm font-semibold text-indigo-900">Event Image</p>
+                <p className="text-xs text-indigo-400 mt-1">Not Available</p>
               </div>
             </div>
           )}
           <div className="absolute top-3 left-3">
-            <Badge className={`${ticketStatus.color} shadow-sm`}>
-              <StatusIcon className="h-3 w-3 mr-1" />
+            <Badge className={`${ticketStatus.color} shadow-lg text-xs font-bold border-0 px-2.5 py-1 backdrop-blur-md bg-opacity-90`}>
+              <StatusIcon className="h-3.5 w-3.5 mr-1" />
               {ticketStatus.label}
             </Badge>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="absolute top-3 right-3 w-8 h-8 p-0 bg-white/80 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-3 right-3 w-9 h-9 p-0 bg-white/90 backdrop-blur-sm hover:bg-white opacity-0 group-hover:opacity-100 transition-all shadow-sm rounded-full translate-y-2 group-hover:translate-y-0"
             onClick={(e) => { e.stopPropagation(); toggleFavorite(ticket._id); }}
           >
-            <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+            <Heart className={`w-4.5 h-4.5 ${isFavorite ? 'fill-red-500 text-red-500 scale-110' : 'text-gray-600'} transition-transform`} />
           </Button>
-          <div className="absolute bottom-3 right-3 bg-black/50 text-white px-2 py-1 rounded text-xs">
+          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+          <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-md text-indigo-900 font-extrabold px-3 py-1.5 rounded-lg shadow-lg transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
             {ticket.payment?.amount === 0 || !ticket.payment?.amount ? 'Free' : `$${ticket.payment.amount}`}
           </div>
         </div>
 
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between mb-2">
+        <CardHeader className="pb-3 pt-5 flex-shrink-0 relative">
+          <div className="flex items-start justify-between mt-1 mb-3">
             <div className="relative">
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={() => handleSelectTicket(ticket._id)}
-                className="mt-1 w-5 h-5 border-2 border-gray-300 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
+                className="w-5 h-5 border-2 border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 data-[state=checked]:text-white rounded"
               />
               {isSelected && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-white shadow-sm"></div>
               )}
             </div>
             <div className="text-right">
-              <span className="text-xs text-gray-500 font-mono">
+              <span className="text-xs text-gray-400 font-mono font-medium tracking-wide">
                 #{ticket.ticketNumber || ticket._id.slice(-8)}
               </span>
             </div>
           </div>
-          <CardTitle className="text-base font-semibold line-clamp-2 group-hover:text-blue-600 transition-colors">
+          <CardTitle className="text-xl font-bold line-clamp-1 group-hover:text-indigo-600 transition-colors tracking-tight text-gray-900">
             {ticket.event?.title || 'Unknown Event'}
           </CardTitle>
-          <CardDescription className="text-sm">
+          <CardDescription className="text-sm font-medium mt-1">
             Booked on {formatDate(ticket.bookingDate)}
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-0">
-          <div className="space-y-2 text-sm text-gray-600 mb-4">
+        <CardContent className="pt-0 flex-1 flex flex-col justify-end">
+          <div className="space-y-3 text-sm font-medium text-gray-600 mb-5">
             <div className="flex items-center">
-              <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-              <span className="text-xs">{formatDate(ticket.event?.date)}</span>
+              <Calendar className="h-4 w-4 mr-2 text-indigo-400" />
+              <span>{formatDate(ticket.event?.date)}</span>
             </div>
             <div className="flex items-center">
-              <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-              <span className="text-xs truncate">
+              <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
+              <span className="truncate">
                 {ticket.event?.venue ? `${ticket.event.venue.name}, ${ticket.event.venue.city}` : 'Venue TBA'}
               </span>
             </div>
             <div className="flex items-center">
-              <Users className="h-4 w-4 mr-2 text-gray-400" />
-              <span className="text-xs">Seat: {ticket.seatNumber || 'N/A'}</span>
+              <Users className="h-4 w-4 mr-2 text-indigo-400" />
+              <span>Seat: {ticket.seatNumber || 'N/A'}</span>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto min-h-[52px]">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs font-semibold bg-gray-50 border-gray-200 text-gray-600 px-2.5 py-0.5 rounded-full">
                 {ticket.event?.category || 'General'}
               </Badge>
             </div>
-            <div className="flex space-x-1">
+            <div className="flex space-x-2 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               {ticket.status !== 'cancelled' && (
                 <>
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
                     onClick={() => setSelectedTicket(ticket)}
-                    className="h-8 px-2 text-xs"
+                    className="h-8 w-8 bg-white hover:bg-indigo-50 text-indigo-600 border-indigo-100 shadow-sm transition-all rounded-lg"
+                    title="Show QR Code"
                   >
-                    <QrCode className="h-3 w-3 mr-1" />
-                    QR
+                    <QrCode className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="default"
+                    size="icon"
                     onClick={() => generatePDFTicket(ticket)}
-                    className="h-8 px-2 text-xs"
+                    className="h-8 w-8 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all rounded-lg"
+                    title="Download PDF"
                   >
-                    <Download className="h-3 w-3 mr-1" />
-                    PDF
+                    <Download className="h-4 w-4" />
                   </Button>
                 </>
               )}
               {canCancelTicket(ticket) && (
                 <Button
                   variant="destructive"
-                  size="sm"
+                  size="icon"
                   onClick={() => handleCancelTicket(ticket._id)}
                   disabled={cancelLoadingId === ticket._id}
-                  className="h-8 px-2 text-xs"
+                  className="h-8 w-8 shadow-sm rounded-lg relative group/btn"
+                  title="Cancel Ticket"
                 >
-                  {cancelLoadingId === ticket._id ? '...' : 'Cancel'}
+                  {cancelLoadingId === ticket._id ? <span className="animate-spin text-xs">...</span> : <Trash2 className="h-4 w-4" />}
                 </Button>
               )}
+            </div>
+            <div className="text-lg font-bold text-indigo-600 lg:group-hover:hidden transition-all duration-300 lg:block hidden">
+              {ticket.payment?.amount === 0 || !ticket.payment?.amount ? 'Free' : `$${ticket.payment.amount}`}
             </div>
           </div>
         </CardContent>

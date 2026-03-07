@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const router = express.Router();
 const SupportTicket = require('../models/SupportTicket');
 const { authenticate } = require('../middleware/auth');
@@ -29,7 +30,7 @@ router.get('/tickets', authenticate, async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error fetching support tickets:', error);
+    logger.error('Error fetching support tickets:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch support tickets'
@@ -69,7 +70,7 @@ router.post('/tickets', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error creating support ticket:', error);
+    logger.error('Error creating support ticket:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create support ticket'
@@ -112,7 +113,7 @@ router.get('/tickets/:id', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching support ticket:', error);
+    logger.error('Error fetching support ticket:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch support ticket'
@@ -155,7 +156,7 @@ router.post('/tickets/:id/responses', authenticate, async (req, res) => {
       message: 'Response added successfully'
     });
   } catch (error) {
-    console.error('Error adding response to support ticket:', error);
+    logger.error('Error adding response to support ticket:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to add response'
@@ -193,7 +194,7 @@ router.patch('/tickets/:id/status', authenticate, async (req, res) => {
       message: 'Ticket status updated successfully'
     });
   } catch (error) {
-    console.error('Error updating support ticket status:', error);
+    logger.error('Error updating support ticket status:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update ticket status'

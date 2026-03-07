@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const Event = require('../models/Event');
 const Waitlist = require('../models/Waitlist');
 const Ticket = require('../models/Ticket');
@@ -6,13 +7,16 @@ const { authenticate, requireAdmin, requireOrganizer, optionalAuth } = require('
 
 const router = express.Router();
 
+// Escape special regex characters to prevent ReDoS
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // @route   GET /api/events
 // @desc    Get all events (public with optional auth for personalization)
 // @access  Public
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 12;
+    const limit = Math.min(parseInt(req.query.limit) || 12, 100);
     const skip = (page - 1) * limit;
 
     // Build query
@@ -24,16 +28,17 @@ router.get('/', optionalAuth, async (req, res) => {
     }
 
     if (req.query.search) {
+      const safeSearch = escapeRegex(req.query.search);
       query.$or = [
-        { title: { $regex: req.query.search, $options: 'i' } },
-        { description: { $regex: req.query.search, $options: 'i' } },
-        { 'venue.name': { $regex: req.query.search, $options: 'i' } },
-        { 'venue.city': { $regex: req.query.search, $options: 'i' } }
+        { title: { $regex: safeSearch, $options: 'i' } },
+        { description: { $regex: safeSearch, $options: 'i' } },
+        { 'venue.name': { $regex: safeSearch, $options: 'i' } },
+        { 'venue.city': { $regex: safeSearch, $options: 'i' } }
       ];
     }
 
     if (req.query.city) {
-      query['venue.city'] = { $regex: req.query.city, $options: 'i' };
+      query['venue.city'] = { $regex: escapeRegex(req.query.city), $options: 'i' };
     }
 
     if (req.query.dateFrom || req.query.dateTo) {
@@ -93,7 +98,7 @@ router.get('/', optionalAuth, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get events error:', error);
+    logger.error('Get events error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching events'
@@ -107,7 +112,7 @@ router.get('/', optionalAuth, async (req, res) => {
 router.get('/admin/my-events', authenticate, requireOrganizer, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 100);
     const skip = (page - 1) * limit;
 
     // Base query: events created by the current admin
@@ -115,11 +120,12 @@ router.get('/admin/my-events', authenticate, requireOrganizer, async (req, res) 
 
     // Optional text search across a few fields
     if (req.query.search) {
+      const safeSearch = escapeRegex(req.query.search);
       query.$or = [
-        { title: { $regex: req.query.search, $options: 'i' } },
-        { description: { $regex: req.query.search, $options: 'i' } },
-        { 'venue.name': { $regex: req.query.search, $options: 'i' } },
-        { 'venue.city': { $regex: req.query.search, $options: 'i' } }
+        { title: { $regex: safeSearch, $options: 'i' } },
+        { description: { $regex: safeSearch, $options: 'i' } },
+        { 'venue.name': { $regex: safeSearch, $options: 'i' } },
+        { 'venue.city': { $regex: safeSearch, $options: 'i' } }
       ];
     }
 
@@ -155,7 +161,7 @@ router.get('/admin/my-events', authenticate, requireOrganizer, async (req, res) 
       }
     });
   } catch (error) {
-    console.error('Get my events error:', error);
+    logger.error('Get my events error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching events'
@@ -178,9 +184,17 @@ router.get('/:id', optionalAuth, async (req, res) => {
       });
     }
 
-    // Increment view count
-    event.analytics.views += 1;
-    await event.save();
+    // Only non-draft/published events visible publicly (unless admin/organizer)
+    if (event.status !== 'published') {
+      const isOwner = req.user && event.organizer.toString() === req.user._id.toString();
+      const isAdmin = req.user && req.user.role === 'admin';
+      if (!isOwner && !isAdmin) {
+        return res.status(404).json({ success: false, message: 'Event not found' });
+      }
+    }
+
+    // Increment view count atomically (avoids race condition and unnecessary full-doc saves)
+    await Event.findByIdAndUpdate(req.params.id, { $inc: { 'analytics.views': 1 } });
 
     res.json({
       success: true,
@@ -189,7 +203,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get event error:', error);
+    logger.error('Get event error:', error);
 
     if (error.name === 'CastError') {
       return res.status(404).json({
@@ -229,7 +243,7 @@ router.post('/', authenticate, requireOrganizer, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Create event error:', error);
+    logger.error('Create event error:', error);
 
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
@@ -301,7 +315,7 @@ router.post('/:id/clone', authenticate, requireOrganizer, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Clone event error:', error);
+    logger.error('Clone event error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while cloning event'
@@ -331,9 +345,15 @@ router.put('/:id', authenticate, requireOrganizer, async (req, res) => {
       });
     }
 
-    // Update event
-    Object.keys(req.body).forEach(key => {
-      if (key !== 'organizer') { // Don't allow changing organizer
+    // Update event — only allow a safe subset of fields
+    const ALLOWED_UPDATE_FIELDS = [
+      'title', 'description', 'category', 'date', 'endDate', 'venue',
+      'pricing', 'seating', 'images', 'status', 'tags', 'requirements',
+      'socialMedia', 'hall'
+    ];
+
+    ALLOWED_UPDATE_FIELDS.forEach(key => {
+      if (req.body[key] !== undefined && key !== 'organizer') {
         event[key] = req.body[key];
       }
     });
@@ -351,7 +371,7 @@ router.put('/:id', authenticate, requireOrganizer, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Update event error:', error);
+    logger.error('Update event error:', error);
 
     if (error.name === 'CastError') {
       return res.status(404).json({
@@ -405,7 +425,7 @@ router.delete('/:id', authenticate, requireOrganizer, async (req, res) => {
       message: 'Event deleted successfully'
     });
   } catch (error) {
-    console.error('Delete event error:', error);
+    logger.error('Delete event error:', error);
 
     if (error.name === 'CastError') {
       return res.status(404).json({
@@ -448,7 +468,7 @@ router.get('/:id/seats', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get seats error:', error);
+    logger.error('Get seats error:', error);
 
     if (error.name === 'CastError') {
       return res.status(404).json({
@@ -504,7 +524,7 @@ router.post('/:id/waitlist', authenticate, async (req, res) => {
         message: 'You are already on the waitlist for this event'
       });
     }
-    console.error('Join waitlist error:', error);
+    logger.error('Join waitlist error:', error);
     res.status(500).json({ success: false, message: 'Server error while joining waitlist' });
   }
 });
@@ -533,7 +553,7 @@ router.get('/:id/waitlist', authenticate, async (req, res) => {
       data: { waitlist }
     });
   } catch (error) {
-    console.error('Get waitlist error:', error);
+    logger.error('Get waitlist error:', error);
     res.status(500).json({ success: false, message: 'Server error while fetching waitlist' });
   }
 });
@@ -578,7 +598,7 @@ router.post('/:id/waitlist/:waitlistId/approve', authenticate, async (req, res) 
       data: { waitlist: waitlistEntry }
     });
   } catch (error) {
-    console.error('Approve waitlist error:', error);
+    logger.error('Approve waitlist error:', error);
     res.status(500).json({ success: false, message: 'Server error while approving waitlist' });
   }
 });
@@ -626,8 +646,37 @@ router.get('/:id/attendees/export', authenticate, async (req, res) => {
     res.send(csvData);
 
   } catch (error) {
-    console.error('Export attendees error:', error);
+    logger.error('Export attendees error:', error);
     res.status(500).json({ success: false, message: 'Server error while exporting attendees' });
+  }
+});
+
+// @route   POST /api/events/:id/publish
+// @desc    Publish a draft event
+// @access  Private (organizer, admin)
+router.post('/:id/publish', authenticate, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
+
+    // Check ownership
+    const isOwner = event.organizer.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Not authorized to publish this event' });
+    }
+
+    if (event.status === 'published') {
+      return res.status(400).json({ success: false, message: 'Event is already published' });
+    }
+
+    event.status = 'published';
+    await event.save();
+
+    res.json({ success: true, message: 'Event published successfully', data: { event } });
+  } catch (error) {
+    logger.error('Publish event error:', error);
+    res.status(500).json({ success: false, message: 'Server error while publishing event' });
   }
 });
 

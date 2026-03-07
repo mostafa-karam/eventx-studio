@@ -239,6 +239,52 @@ const UserProfile = () => {
         }
     };
 
+    const handleAvatarUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formDataObj = new FormData();
+        formDataObj.append('images', file); // The backend upload route expects 'images'
+
+        try {
+            setSavingProfile(true);
+            setProfileMsg('');
+            const res = await fetch(`${API_BASE_URL}/upload`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formDataObj
+            });
+            const data = await res.json();
+
+            if (data.success && data.urls && data.urls.length > 0) {
+                // Now save it to the profile
+                const avatarUrl = data.urls[0];
+                const profileRes = await fetch(`${API_BASE_URL}/auth/profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ avatar: avatarUrl })
+                });
+                const profileData = await profileRes.json();
+                if (profileRes.ok && profileData.data?.user) {
+                    setUser?.(profileData.data.user);
+                    setProfileMsg('Avatar uploaded successfully!');
+                    loadRecentActivity();
+                } else {
+                    setProfileMsg('Failed to save avatar to profile');
+                }
+            } else {
+                setProfileMsg('Avatar upload failed: ' + data.message);
+            }
+        } catch (err) {
+            setProfileMsg('Network error during upload');
+        } finally {
+            setSavingProfile(false);
+        }
+    };
+
     const handleChangePassword = async (e) => {
         e.preventDefault();
         setChangingPwd(true);
@@ -433,17 +479,22 @@ const UserProfile = () => {
                                     {/* Avatar Section */}
                                     <div className="flex flex-col items-center">
                                         <div className="relative group">
-                                            <div className="w-36 h-36 bg-white rounded-full shadow-2xl border-4 border-white flex items-center justify-center ring-4 ring-indigo-100">
-                                                <div className="w-28 h-28 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
-                                                    <User className="w-14 h-14 text-white" />
-                                                </div>
+                                            <div className="w-36 h-36 bg-white rounded-full shadow-2xl border-4 border-white flex items-center justify-center ring-4 ring-indigo-100 overflow-hidden">
+                                                {user?.avatar ? (
+                                                    <img src={user.avatar} className="w-full h-full object-cover" alt="Avatar" />
+                                                ) : (
+                                                    <div className="w-28 h-28 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                                                        <User className="w-14 h-14 text-white" />
+                                                    </div>
+                                                )}
                                             </div>
-                                            <Button
-                                                size="sm"
-                                                className="absolute -bottom-2 -right-2 w-12 h-12 rounded-full bg-white border-2 border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
+                                            <Label
+                                                htmlFor="avatarUpload"
+                                                className={`cursor-pointer absolute -bottom-2 -right-2 w-12 h-12 rounded-full bg-white border-2 border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 flex items-center justify-center ${savingProfile ? 'opacity-50 pointer-events-none' : ''}`}
                                             >
                                                 <Camera className="w-5 h-5 text-gray-600" />
-                                            </Button>
+                                                <input type="file" id="avatarUpload" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={savingProfile} />
+                                            </Label>
                                         </div>
 
                                         {/* Quick Stats */}

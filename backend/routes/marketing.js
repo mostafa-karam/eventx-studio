@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const router = express.Router();
 const Campaign = require('../models/Campaign');
 const { authenticate } = require('../middleware/auth');
@@ -61,7 +62,7 @@ router.get('/campaigns', authenticate, async (req, res) => {
       stats
     });
   } catch (error) {
-    console.error('Error fetching marketing campaigns:', error);
+    logger.error('Error fetching marketing campaigns:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch marketing campaigns'
@@ -101,7 +102,7 @@ router.post('/campaigns', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error creating campaign:', error);
+    logger.error('Error creating campaign:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create campaign'
@@ -143,7 +144,7 @@ router.get('/campaigns/:id', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching campaign:', error);
+    logger.error('Error fetching campaign:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch campaign'
@@ -189,7 +190,7 @@ router.put('/campaigns/:id', authenticate, async (req, res) => {
       message: 'Campaign updated successfully'
     });
   } catch (error) {
-    console.error('Error updating campaign:', error);
+    logger.error('Error updating campaign:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update campaign'
@@ -217,7 +218,7 @@ router.delete('/campaigns/:id', authenticate, async (req, res) => {
       message: 'Campaign deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting campaign:', error);
+    logger.error('Error deleting campaign:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete campaign'
@@ -265,7 +266,7 @@ router.post('/campaigns/:id/launch', authenticate, async (req, res) => {
       message: 'Campaign launched successfully'
     });
   } catch (error) {
-    console.error('Error launching campaign:', error);
+    logger.error('Error launching campaign:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to launch campaign'

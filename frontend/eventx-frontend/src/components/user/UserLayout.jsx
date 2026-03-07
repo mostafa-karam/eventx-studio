@@ -22,6 +22,7 @@ const UserLayout = () => {
     { to: '/user/events', icon: Search, label: 'Browse Events' },
     { to: '/user/tickets', icon: Ticket, label: 'My Tickets' },
     { to: '/user/favorites', icon: Heart, label: 'Favorites' },
+    { to: '/user/notifications', icon: Bell, label: 'Notifications' },
     { to: '/user/profile', icon: UserIcon, label: 'Profile' },
   ];
 
@@ -100,7 +101,7 @@ const UserLayout = () => {
               <button onClick={toggleTheme} className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors">
                 {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
-              <NavLink to="/user/tickets" className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+              <NavLink to="/user/notifications" className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
                 <Bell className="w-5 h-5" />
               </NavLink>
               <div className="hidden sm:flex items-center space-x-2 border-l pl-4">

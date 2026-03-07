@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const User = require('../models/User');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
@@ -65,7 +66,7 @@ router.get('/', authenticate, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get users error:', error);
+    logger.error('Get users error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching users'
@@ -94,7 +95,7 @@ router.get('/:id', authenticate, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get user error:', error);
+    logger.error('Get user error:', error);
     
     if (error.name === 'CastError') {
       return res.status(404).json({
@@ -144,7 +145,7 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Update user error:', error);
+    logger.error('Update user error:', error);
     
     if (error.name === 'CastError') {
       return res.status(404).json({
@@ -205,7 +206,7 @@ router.put('/:id/status', authenticate, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Update user status error:', error);
+    logger.error('Update user status error:', error);
     
     if (error.name === 'CastError') {
       return res.status(404).json({
@@ -250,7 +251,7 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
       message: 'User deleted successfully'
     });
   } catch (error) {
-    console.error('Delete user error:', error);
+    logger.error('Delete user error:', error);
     
     if (error.name === 'CastError') {
       return res.status(404).json({
@@ -280,7 +281,7 @@ router.get('/profile/me', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get profile error:', error);
+    logger.error('Get profile error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching profile'
@@ -322,7 +323,7 @@ router.put('/profile/me', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Update profile error:', error);
+    logger.error('Update profile error:', error);
     
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);

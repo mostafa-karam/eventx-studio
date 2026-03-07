@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 
 const BookingPage = () => {
   const { eventId } = useParams();
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -43,8 +43,8 @@ const BookingPage = () => {
         const eventResponse = await fetch(
           `${import.meta.env.VITE_API_BASE_URL}/events/${eventId}`,
           {
+            credentials: 'include',
             headers: {
-              Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
           }
@@ -62,8 +62,8 @@ const BookingPage = () => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
             },
+            credentials: 'include',
             body: JSON.stringify({ eventId }),
           }
         );
@@ -80,10 +80,10 @@ const BookingPage = () => {
       }
     };
 
-    if (token && eventId) {
+    if (eventId) {
       fetchEvent();
     }
-  }, [eventId, token, navigate]);
+  }, [eventId, navigate]);
 
   const handlePaymentChange = (e) => {
     const { name, value } = e.target;
@@ -107,8 +107,8 @@ const BookingPage = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
+          credentials: 'include',
           body: JSON.stringify({
             amount: event.pricing.amount,
             currency: event.pricing.currency || 'USD',
@@ -135,8 +135,8 @@ const BookingPage = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
+          credentials: 'include',
           body: JSON.stringify({
             eventId,
             paymentId: paymentData.data.paymentId,
@@ -165,8 +165,8 @@ const BookingPage = () => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
             },
+            credentials: 'include',
             body: JSON.stringify({
               bookingId: bookingData.data.booking._id,
               eventId: event._id,
@@ -493,7 +493,7 @@ const BookingPage = () => {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button variant="outline" onClick={() => navigate('/my-tickets')}>View My Tickets</Button>
+                <Button variant="outline" onClick={() => navigate('/user/tickets')}>View My Tickets</Button>
                 <Button onClick={() => navigate('/')}>Back to Home</Button>
               </CardFooter>
             </Card>

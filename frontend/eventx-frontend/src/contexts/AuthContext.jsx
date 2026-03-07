@@ -12,8 +12,6 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  // Token is handled via httpOnly cookies; frontend should not store it
-  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -115,7 +113,6 @@ export const AuthProvider = ({ children }) => {
     // Inform server to clear cookies and server-side refresh token
     fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => { });
     setUser(null);
-    setToken(null);
     // Also clear remembered email so login form doesn't prefill after logout
     localStorage.removeItem('eventx_remember_email');
     localStorage.removeItem('eventx_remember_opt_in');
@@ -126,9 +123,9 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(profileData),
       });
 
@@ -154,6 +151,7 @@ export const AuthProvider = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ email }),
       });
 
@@ -172,6 +170,7 @@ export const AuthProvider = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ token, password }),
       });
 
@@ -190,6 +189,7 @@ export const AuthProvider = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ token }),
       });
 
@@ -200,6 +200,25 @@ export const AuthProvider = ({ children }) => {
       return { success: data.success, message: data.message };
     } catch (error) {
       console.error('Email verification error:', error);
+      return { success: false, message: 'Network error. Please try again.' };
+    }
+  };
+
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await response.json();
+      return { success: data.success, message: data.message };
+    } catch (error) {
+      console.error('Change password error:', error);
       return { success: false, message: 'Network error. Please try again.' };
     }
   };
@@ -244,9 +263,9 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_BASE_URL}/auth/sessions`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -259,12 +278,12 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
-    token,
     loading,
     login,
     register,
     logout,
     updateProfile,
+    changePassword,
     forgotPassword,
     resetPassword,
     verifyEmail,
@@ -283,4 +302,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-

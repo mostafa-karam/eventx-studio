@@ -1,7 +1,10 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const HallBooking = require('../models/HallBooking');
 const Hall = require('../models/Hall');
+const Notification = require('../models/Notification');
 const { authenticate, requireOrganizer, requireVenueAdmin, requireRole } = require('../middleware/auth');
+
 
 const router = express.Router();
 
@@ -58,7 +61,7 @@ router.get('/', authenticate, requireVenueAdmin, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Get hall bookings error:', error);
+        logger.error('Get hall bookings error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error while fetching hall bookings'
@@ -102,7 +105,7 @@ router.get('/my', authenticate, requireOrganizer, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Get my hall bookings error:', error);
+        logger.error('Get my hall bookings error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error while fetching your hall bookings'
@@ -183,7 +186,7 @@ router.post('/', authenticate, requireOrganizer, async (req, res) => {
             data: { booking: populatedBooking }
         });
     } catch (error) {
-        console.error('Create hall booking error:', error);
+        logger.error('Create hall booking error:', error);
 
         if (error.name === 'ValidationError') {
             const errors = Object.values(error.errors).map(err => err.message);
@@ -257,7 +260,7 @@ router.post('/maintenance', authenticate, requireVenueAdmin, async (req, res) =>
             data: { maintenance: populatedBlock }
         });
     } catch (error) {
-        console.error('Schedule maintenance error:', error);
+        logger.error('Schedule maintenance error:', error);
         res.status(500).json({ success: false, message: 'Server error while scheduling maintenance' });
     }
 });
@@ -294,13 +297,22 @@ router.put('/:id/approve', authenticate, requireVenueAdmin, async (req, res) => 
             .populate('organizer', 'name email')
             .populate('reviewedBy', 'name');
 
+        // Notify organizer (non-blocking)
+        Notification.create({
+            user: booking.organizer,
+            type: 'hall_booking_approved',
+            title: 'Hall Booking Approved',
+            message: `Your booking for hall "${populatedBooking.hall?.name}" has been approved.`,
+            data: { bookingId: booking._id, hallId: booking.hall },
+        }).catch(err => logger.error('Notification error (approve): ' + err.message));
+
         res.json({
             success: true,
             message: 'Booking approved successfully',
             data: { booking: populatedBooking }
         });
     } catch (error) {
-        console.error('Approve booking error:', error);
+        logger.error('Approve booking error:', error);
 
         if (error.name === 'ConflictError') {
             return res.status(409).json({
@@ -349,13 +361,22 @@ router.put('/:id/reject', authenticate, requireVenueAdmin, async (req, res) => {
             .populate('organizer', 'name email')
             .populate('reviewedBy', 'name');
 
+        // Notify organizer (non-blocking)
+        Notification.create({
+            user: booking.organizer,
+            type: 'hall_booking_rejected',
+            title: 'Hall Booking Rejected',
+            message: `Your booking for hall "${populatedBooking.hall?.name}" was rejected. Reason: ${booking.rejectionReason}`,
+            data: { bookingId: booking._id, hallId: booking.hall, reason: booking.rejectionReason },
+        }).catch(err => logger.error('Notification error (reject): ' + err.message));
+
         res.json({
             success: true,
             message: 'Booking rejected',
             data: { booking: populatedBooking }
         });
     } catch (error) {
-        console.error('Reject booking error:', error);
+        logger.error('Reject booking error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error while rejecting booking'
@@ -403,7 +424,7 @@ router.delete('/:id', authenticate, async (req, res) => {
             message: 'Booking cancelled successfully'
         });
     } catch (error) {
-        console.error('Cancel booking error:', error);
+        logger.error('Cancel booking error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error while cancelling booking'

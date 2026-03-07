@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, BarChart3, Megaphone, Ticket, ShieldCheck, Sparkles, Star, ArrowRight, Users, Globe, Zap, TrendingUp } from 'lucide-react';
+import { CalendarDays, BarChart3, Megaphone, Ticket, ShieldCheck, Sparkles, Star, ArrowRight, Users, Globe, Zap, TrendingUp, Menu, X } from 'lucide-react';
 
 const HomePage = () => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [animatedStats, setAnimatedStats] = useState({ tickets: 0, rating: 0, uplift: 0 });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const testimonials = [
     {
@@ -82,16 +83,38 @@ const HomePage = () => {
             <span className="text-lg sm:text-xl font-semibold text-gray-900">EventX Studio</span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm text-gray-700">
+            <Link to="/events" className="hover:text-gray-900">Events</Link>
+            <Link to="/halls" className="hover:text-gray-900">Halls</Link>
+            <Link to="/calendar" className="hover:text-gray-900">Calendar</Link>
             <a href="#features" className="hover:text-gray-900">Features</a>
-            <a href="#pricing" className="hover:text-gray-900">Pricing</a>
-            <a href="#faq" className="hover:text-gray-900">FAQ</a>
-            <a href="/privacy" className="hover:text-gray-900">Privacy</a>
+            <Link to="/about" className="hover:text-gray-900">About</Link>
+            <Link to="/contact" className="hover:text-gray-900">Contact</Link>
           </nav>
           <div className="flex items-center gap-3">
-            <Link to="/auth" className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center">Sign in</Link>
+            <Link to="/auth" className="hidden sm:flex px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 items-center justify-center">Sign in</Link>
             <Link to="/auth" className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 shadow flex items-center justify-center">Get started</Link>
+            {/* Mobile hamburger */}
+            <button onClick={() => setMobileMenuOpen(v => !v)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Toggle menu">
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+        {/* Mobile drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t bg-white px-6 py-4 space-y-3 text-sm text-gray-700 shadow-lg">
+            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">Events</Link>
+            <Link to="/halls" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">Halls</Link>
+            <Link to="/calendar" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">Calendar</Link>
+            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">Features</a>
+            <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">About</Link>
+            <Link to="/contact" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">Contact</Link>
+            <Link to="/faq" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">FAQ</Link>
+            <div className="pt-2 border-t flex gap-3">
+              <Link to="/auth" className="flex-1 text-center py-2 rounded-md border border-gray-300 hover:bg-gray-50">Sign in</Link>
+              <Link to="/auth" className="flex-1 text-center py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">Get started</Link>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Hero */}
@@ -206,23 +229,26 @@ const HomePage = () => {
         </section>
 
         {/* Animated Stats */}
-        <section id="stats-section" className="mt-20 grid sm:grid-cols-3 gap-6">
-          <div className="p-8 rounded-xl border bg-gradient-to-br from-white to-blue-50 text-center hover:shadow-lg transition-shadow">
-            <div className="text-4xl font-bold text-blue-600">{animatedStats.tickets.toLocaleString()}+</div>
-            <div className="text-sm text-gray-600 mt-2 flex items-center justify-center gap-1">
-              <Ticket className="h-4 w-4" /> Tickets processed
+        <section id="stats-section" className="mt-20">
+          <p className="text-center text-xs text-gray-400 mb-4 uppercase tracking-wider">Platform highlights (demo data)</p>
+          <div className="grid sm:grid-cols-3 gap-6">
+            <div className="p-8 rounded-xl border bg-gradient-to-br from-white to-blue-50 text-center hover:shadow-lg transition-shadow">
+              <div className="text-4xl font-bold text-blue-600">{animatedStats.tickets.toLocaleString()}+</div>
+              <div className="text-sm text-gray-600 mt-2 flex items-center justify-center gap-1">
+                <Ticket className="h-4 w-4" /> Tickets processed
+              </div>
             </div>
-          </div>
-          <div className="p-8 rounded-xl border bg-gradient-to-br from-white to-emerald-50 text-center hover:shadow-lg transition-shadow">
-            <div className="text-4xl font-bold text-emerald-600">{animatedStats.rating}/10</div>
-            <div className="text-sm text-gray-600 mt-2 flex items-center justify-center gap-1">
-              <Star className="h-4 w-4" /> Average organizer rating
+            <div className="p-8 rounded-xl border bg-gradient-to-br from-white to-emerald-50 text-center hover:shadow-lg transition-shadow">
+              <div className="text-4xl font-bold text-emerald-600">{animatedStats.rating}/10</div>
+              <div className="text-sm text-gray-600 mt-2 flex items-center justify-center gap-1">
+                <Star className="h-4 w-4" /> Average organizer rating
+              </div>
             </div>
-          </div>
-          <div className="p-8 rounded-xl border bg-gradient-to-br from-white to-indigo-50 text-center hover:shadow-lg transition-shadow">
-            <div className="text-4xl font-bold text-indigo-600">+{animatedStats.uplift}%</div>
-            <div className="text-sm text-gray-600 mt-2 flex items-center justify-center gap-1">
-              <TrendingUp className="h-4 w-4" /> Attendance uplift
+            <div className="p-8 rounded-xl border bg-gradient-to-br from-white to-indigo-50 text-center hover:shadow-lg transition-shadow">
+              <div className="text-4xl font-bold text-indigo-600">+{animatedStats.uplift}%</div>
+              <div className="text-sm text-gray-600 mt-2 flex items-center justify-center gap-1">
+                <TrendingUp className="h-4 w-4" /> Attendance uplift
+              </div>
             </div>
           </div>
         </section>
@@ -322,12 +348,51 @@ const HomePage = () => {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-7xl mx-auto px-6 py-10 text-sm text-gray-500">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>© {new Date().getFullYear()} EventX Studio</div>
-          <div className="flex items-center gap-4">
-            <a href="/terms" className="hover:text-gray-700">Terms</a>
-            <a href="/privacy" className="hover:text-gray-700">Privacy</a>
+      <footer className="border-t bg-white">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-8 w-8 rounded-lg bg-blue-600 text-white grid place-items-center font-bold text-sm">EX</div>
+                <span className="font-semibold text-gray-900">EventX Studio</span>
+              </div>
+              <p className="text-sm text-gray-500 leading-relaxed">The all-in-one platform for venue management and event hosting.</p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3 text-sm">Platform</h4>
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li><Link to="/events" className="hover:text-gray-700">Browse Events</Link></li>
+                <li><Link to="/halls" className="hover:text-gray-700">Explore Halls</Link></li>
+                <li><Link to="/calendar" className="hover:text-gray-700">Event Calendar</Link></li>
+                <li><Link to="/auth" className="hover:text-gray-700">Sign Up</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3 text-sm">Company</h4>
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li><Link to="/about" className="hover:text-gray-700">About Us</Link></li>
+                <li><Link to="/contact" className="hover:text-gray-700">Contact</Link></li>
+                <li><Link to="/terms" className="hover:text-gray-700">Terms of Service</Link></li>
+                <li><Link to="/privacy" className="hover:text-gray-700">Privacy Policy</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3 text-sm">Support</h4>
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li><a href="mailto:support@eventx.studio" className="hover:text-gray-700">support@eventx.studio</a></li>
+                <li><a href="tel:+15551234567" className="hover:text-gray-700">+1 (555) 123-4567</a></li>
+                <li><Link to="/faq" className="hover:text-gray-700">FAQ</Link></li>
+                <li><Link to="/contact" className="hover:text-gray-700">Contact Us</Link></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400">
+            <div>© {new Date().getFullYear()} EventX Studio. All rights reserved.</div>
+            <div className="flex items-center gap-4">
+              <a href="#" className="hover:text-gray-600">Twitter</a>
+              <a href="#" className="hover:text-gray-600">LinkedIn</a>
+              <a href="#" className="hover:text-gray-600">Instagram</a>
+            </div>
           </div>
         </div>
       </footer>

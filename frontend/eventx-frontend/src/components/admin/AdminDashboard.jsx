@@ -151,20 +151,22 @@ const AdminDashboard = ({ onTabChange }) => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Welcome Section (Figma style) */}
-      <div className="bg-black text-white p-5 rounded-xl shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-white" />
+      {/* Welcome Section (Premium aesthetic) */}
+      <div className="bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 text-white p-8 rounded-2xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-purple-500 rounded-full blur-3xl opacity-20"></div>
+        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-blue-500 rounded-full blur-3xl opacity-20"></div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-5">
+            <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 shadow-inner">
+              <TrendingUp className="w-7 h-7 text-indigo-100" />
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-semibold text-white">Welcome {user?.name || 'Admin'}</h1>
-              <p className="text-xs md:text-sm text-gray-300">{user?.role ? String(user.role).replace(/\b\w/g, c => c.toUpperCase()) : 'System Administrator'}</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Welcome, {user?.name?.split(' ')[0] || 'Admin'}</h1>
+              <p className="text-sm md:text-base text-indigo-200 mt-1 font-medium">{user?.role ? String(user.role).replace(/\b\w/g, c => c.toUpperCase()) : 'System Administrator'}</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <Button variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => onTabChange && onTabChange('notifications')}>
+            <Button variant="outline" size="sm" className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20 hover:text-white transition-all shadow-sm" onClick={() => onTabChange && onTabChange('notifications')}>
               <Bell className="w-4 h-4 mr-2" />
               Notifications
             </Button>
@@ -177,16 +179,17 @@ const AdminDashboard = ({ onTabChange }) => {
         {stats.map((stat, index) => {
           const IconComponent = stat.icon;
           return (
-            <Card key={index} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+            <Card key={index} className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 shadow-md bg-white overflow-hidden group">
+              <CardContent className="p-6 relative">
+                <div className={`absolute top-0 right-0 w-32 h-32 ${stat.bgColor} rounded-bl-full -mr-16 -mt-16 opacity-50 group-hover:scale-110 transition-transform duration-500`}></div>
+                <div className="flex items-center justify-between relative z-10">
                   <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{stat.title}</p>
-                    <p className={`text-2xl md:text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-                    <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
+                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">{stat.title}</p>
+                    <p className={`text-3xl md:text-4xl font-extrabold tracking-tight ${stat.color}`}>{stat.value}</p>
+                    <p className="text-sm font-medium text-gray-500 mt-2">{stat.description}</p>
                   </div>
-                  <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                    <IconComponent className={`w-6 h-6 ${stat.color}`} />
+                  <div className={`w-14 h-14 ${stat.bgColor} rounded-2xl flex items-center justify-center shadow-inner group-hover:rotate-12 transition-transform duration-300`}>
+                    <IconComponent className={`w-7 h-7 ${stat.color}`} />
                   </div>
                 </div>
               </CardContent>
@@ -198,33 +201,33 @@ const AdminDashboard = ({ onTabChange }) => {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* NET SALES (line chart) */}
-        <Card>
-          <CardHeader>
+        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow duration-300">
+          <CardHeader className="bg-gray-50/80 border-b border-gray-100 pb-6 rounded-t-xl">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2">
-                <span className="font-bold">NET SALES</span>
+              <CardTitle className="flex items-center space-x-2 text-gray-800">
+                <span className="font-extrabold tracking-tight">NET SALES</span>
               </CardTitle>
               <div className="space-x-2">
-                <Button variant="outline" size="sm">Filter</Button>
-                <Button variant="outline" size="sm">Weekly</Button>
+                <Button variant="outline" size="sm" className="bg-white">Filter</Button>
+                <Button variant="outline" size="sm" className="bg-white">Weekly</Button>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4 mt-4">
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <p className="text-sm text-gray-600">Total Revenue</p>
-                <p className="text-lg font-bold text-green-600">{`$${(overview?.totalRevenue || 0).toLocaleString()}`}</p>
+            <div className="grid grid-cols-3 gap-4 mt-6">
+              <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-green-100">
+                <p className="text-sm font-medium text-gray-500 mb-1">Total Revenue</p>
+                <p className="text-2xl font-bold text-green-600">{`$${(overview?.totalRevenue || 0).toLocaleString()}`}</p>
               </div>
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-gray-600">Total Tickets</p>
-                <p className="text-lg font-bold text-blue-600">{overview?.totalTicketsSold || 0}</p>
+              <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-blue-100">
+                <p className="text-sm font-medium text-gray-500 mb-1">Total Tickets</p>
+                <p className="text-2xl font-bold text-blue-600">{overview?.totalTicketsSold || 0}</p>
               </div>
-              <div className="text-center p-3 bg-purple-50 rounded-lg">
-                <p className="text-sm text-gray-600">Avg. Price</p>
-                <p className="text-lg font-bold text-purple-600">{(overview?.averageTicketPrice || 0) > 0 ? `$${(overview?.averageTicketPrice || 0).toFixed(0)}` : 'Free'}</p>
+              <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-purple-100">
+                <p className="text-sm font-medium text-gray-500 mb-1">Avg. Price</p>
+                <p className="text-2xl font-bold text-purple-600">{(overview?.averageTicketPrice || 0) > 0 ? `$${(overview?.averageTicketPrice || 0).toFixed(0)}` : 'Free'}</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             {revenueData ? (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={revenueData}>
@@ -259,12 +262,12 @@ const AdminDashboard = ({ onTabChange }) => {
         </Card>
 
         {/* Customer Engagement (donut) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center">Customer Engagement</CardTitle>
+        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow duration-300">
+          <CardHeader className="bg-gray-50/80 border-b border-gray-100 pb-6 rounded-t-xl">
+            <CardTitle className="text-center font-bold text-gray-800 tracking-tight">Customer Engagement</CardTitle>
             <CardDescription className="text-center">Engagement distribution</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             {eventCategories ? (
               <>
                 <ResponsiveContainer width="100%" height={280}>
@@ -308,12 +311,14 @@ const AdminDashboard = ({ onTabChange }) => {
       {/* Latest Event, Upcoming Events & Notifications */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[750px]">
         {/* Latest Event - Enhanced */}
-        <Card className="flex flex-col">
-          <CardHeader className="flex-shrink-0">
+        <Card className="flex flex-col border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden">
+          <CardHeader className="flex-shrink-0 bg-gradient-to-br from-indigo-50 to-white border-b border-indigo-100 pb-5">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2">
-                <Calendar className="w-5 h-5 text-blue-600" />
-                <span>Event Details</span>
+              <CardTitle className="flex items-center space-x-3">
+                <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <span className="font-bold text-gray-800">Event Details</span>
               </CardTitle>
               {latestEvent && (
                 <div className="flex items-center space-x-2">
@@ -327,9 +332,9 @@ const AdminDashboard = ({ onTabChange }) => {
               )}
             </div>
             {allEvents.length > 1 && (
-              <div className="mt-3">
+              <div className="mt-5">
                 <Select value={selectedEventId || ''} onValueChange={setSelectedEventId}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full bg-white h-11 border-indigo-200">
                     <SelectValue placeholder="Select an event to view details" />
                   </SelectTrigger>
                   <SelectContent>
@@ -351,14 +356,13 @@ const AdminDashboard = ({ onTabChange }) => {
           <CardContent className="p-0 flex-1 flex flex-col">
             {latestEvent ? (
               <div className="p-6 space-y-6 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
-                {/* Event Header */}
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">{latestEvent.title}</h3>
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="w-4 h-4" />
+                      <h3 className="text-xl font-bold text-gray-900 mb-2 truncate">{latestEvent.title}</h3>
+                      <div className="flex items-center space-x-4 text-sm font-medium text-gray-500">
+                        <div className="flex items-center space-x-1.5 bg-gray-100 px-3 py-1 rounded-full">
+                          <Calendar className="w-4 h-4 text-indigo-500" />
                           <span>{latestEvent.date ? new Date(latestEvent.date).toLocaleDateString('en-US', {
                             weekday: 'short',
                             year: 'numeric',
@@ -367,9 +371,9 @@ const AdminDashboard = ({ onTabChange }) => {
                           }) : '—'}</span>
                         </div>
                         {latestEvent.venue?.name && (
-                          <div className="flex items-center space-x-1">
-                            <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                            <span>{latestEvent.venue.name}</span>
+                          <div className="flex items-center space-x-1.5 bg-gray-100 px-3 py-1 rounded-full">
+                            <MapPin className="w-4 h-4 text-indigo-500" />
+                            <span className="truncate max-w-[150px]">{latestEvent.venue.name}</span>
                           </div>
                         )}
                       </div>
@@ -378,7 +382,7 @@ const AdminDashboard = ({ onTabChange }) => {
                       variant="outline"
                       size="sm"
                       onClick={() => onTabChange && onTabChange('events')}
-                      className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                      className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 shadow-sm transition-all"
                     >
                       View Details
                     </Button>
@@ -541,16 +545,18 @@ const AdminDashboard = ({ onTabChange }) => {
         </Card>
 
         {/* Right Column: Upcoming Events and Notifications */}
-        <div className="flex flex-col gap-4 h-[750px]">
-          <Card className="flex flex-col overflow-hidden pb-4">
-            <CardHeader className="flex-shrink-0 pb-4">
+        <div className="flex flex-col gap-6 h-[750px]">
+          <Card className="flex flex-col border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden pb-4">
+            <CardHeader className="flex-shrink-0 bg-gradient-to-br from-indigo-50 to-white border-b border-indigo-100 pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center space-x-2">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                  <span>Upcoming Events</span>
+                <CardTitle className="flex items-center space-x-3">
+                  <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <span className="font-bold text-gray-800">Upcoming Events</span>
                 </CardTitle>
-                <Button variant="ghost" size="sm">
-                  <ArrowRight className="w-4 h-4" />
+                <Button variant="ghost" size="sm" className="hover:bg-indigo-100">
+                  <ArrowRight className="w-4 h-4 text-indigo-600" />
                 </Button>
               </div>
             </CardHeader>
@@ -589,18 +595,20 @@ const AdminDashboard = ({ onTabChange }) => {
             </CardContent>
           </Card>
 
-          <Card className="flex flex-col overflow-hidden  max-h-[400px] pb-4">
-            <CardHeader className="flex-shrink-0">
+          <Card className="flex flex-col border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden max-h-[400px] pb-4">
+            <CardHeader className="flex-shrink-0 bg-gradient-to-br from-indigo-50 to-white border-b border-indigo-100 pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center space-x-2 text-black">
-                  <Bell className="w-5 h-5 text-blue-600" />
-                  <span>Recent Activity</span>
+                <CardTitle className="flex items-center space-x-3 text-gray-800">
+                  <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                    <Bell className="w-5 h-5" />
+                  </div>
+                  <span className="font-bold text-gray-800">Recent Activity</span>
                 </CardTitle>
                 <div className="flex items-center space-x-2">
-                  <div className="px-2 py-1 bg-green-800 bg-opacity-20 rounded-full text-xs font-medium text-white">
+                  <div className="px-3 py-1 bg-green-100 text-green-700 border border-green-200 rounded-full text-xs font-bold">
                     {filteredNotifications.length} items
                   </div>
-                  <Button variant="ghost" size="sm" className="text-green-800 hover:bg-green-800/20">
+                  <Button variant="ghost" size="sm" className="text-indigo-600 hover:bg-indigo-100">
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>

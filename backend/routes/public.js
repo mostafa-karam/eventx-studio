@@ -4,6 +4,9 @@ const Hall = require('../models/Hall');
 
 const router = express.Router();
 
+// Escape special regex characters to prevent ReDoS
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // GET /api/public/events — no auth required, published events with filters
 router.get('/events', async (req, res) => {
     try {
@@ -14,13 +17,14 @@ router.get('/events', async (req, res) => {
         const filter = { status: 'published', date: { $gte: new Date() } };
 
         if (req.query.category) filter.category = req.query.category;
-        if (req.query.city) filter['venue.city'] = { $regex: req.query.city, $options: 'i' };
+        if (req.query.city) filter['venue.city'] = { $regex: escapeRegex(req.query.city), $options: 'i' };
         if (req.query.pricing) filter['pricing.type'] = req.query.pricing; // 'free' | 'paid'
         if (req.query.search) {
+            const safeSearch = escapeRegex(req.query.search);
             filter.$or = [
-                { title: { $regex: req.query.search, $options: 'i' } },
-                { description: { $regex: req.query.search, $options: 'i' } },
-                { tags: { $in: [new RegExp(req.query.search, 'i')] } },
+                { title: { $regex: safeSearch, $options: 'i' } },
+                { description: { $regex: safeSearch, $options: 'i' } },
+                { tags: { $in: [new RegExp(safeSearch, 'i')] } },
             ];
         }
         if (req.query.dateFrom) filter.date.$gte = new Date(req.query.dateFrom);
@@ -74,7 +78,7 @@ router.get('/halls', async (req, res) => {
         if (req.query.minCapacity) filter.capacity = { $gte: parseInt(req.query.minCapacity) };
         if (req.query.maxCapacity) filter.capacity = { ...filter.capacity, $lte: parseInt(req.query.maxCapacity) };
         if (req.query.equipment) filter.equipment = { $in: [req.query.equipment] };
-        if (req.query.search) filter.name = { $regex: req.query.search, $options: 'i' };
+        if (req.query.search) filter.name = { $regex: escapeRegex(req.query.search), $options: 'i' };
 
         const [halls, total] = await Promise.all([
             Hall.find(filter)

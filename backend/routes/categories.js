@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const router = express.Router();
 const EventCategory = require('../models/EventCategory');
 const { authenticate } = require('../middleware/auth');
@@ -25,7 +26,7 @@ router.get('/', authenticate, async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    logger.error('Error fetching categories:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch categories'
@@ -69,7 +70,7 @@ router.post('/', authenticate, async (req, res) => {
         message: 'Category name already exists'
       });
     }
-    console.error('Error creating category:', error);
+    logger.error('Error creating category:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create category'
@@ -106,7 +107,7 @@ router.get('/:id', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching category:', error);
+    logger.error('Error fetching category:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch category'
@@ -158,7 +159,7 @@ router.put('/:id', authenticate, async (req, res) => {
         message: 'Category name already exists'
       });
     }
-    console.error('Error updating category:', error);
+    logger.error('Error updating category:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update category'
@@ -187,7 +188,7 @@ router.delete('/:id', authenticate, async (req, res) => {
       message: 'Category deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting category:', error);
+    logger.error('Error deleting category:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete category'
@@ -223,7 +224,7 @@ router.get('/stats/overview', authenticate, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching category stats:', error);
+    logger.error('Error fetching category stats:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch category statistics'

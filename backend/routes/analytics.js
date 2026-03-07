@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const mongoose = require('mongoose');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
@@ -73,7 +74,7 @@ const getAttendeesDemographics = async () => {
       ]
     };
   } catch (error) {
-    console.error('Error getting demographics:', error);
+    logger.error('Error getting demographics:', error);
     return {
       ageGroups: [{ age: '25-34', count: 0 }],
       locations: [{ city: 'No data', count: 0 }]
@@ -126,7 +127,7 @@ const getTopPerformingEvents = async () => {
       { name: 'No events with sales', tickets: 0, revenue: 0, attendees: 0 }
     ];
   } catch (error) {
-    console.error('Error getting top events:', error);
+    logger.error('Error getting top events:', error);
     return [{ name: 'Error loading events', tickets: 0, revenue: 0, attendees: 0 }];
   }
 };
@@ -398,7 +399,7 @@ router.get('/dashboard', authenticate, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Dashboard analytics error:', error);
+    logger.error('Dashboard analytics error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching dashboard analytics'
@@ -556,7 +557,7 @@ router.get('/attendees', authenticate, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Attendee analytics error:', error);
+    logger.error('Attendee analytics error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching attendee analytics'
@@ -672,7 +673,7 @@ router.get('/events/:eventId', authenticate, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Event analytics error:', error);
+    logger.error('Event analytics error:', error);
 
     if (error.name === 'CastError') {
       return res.status(404).json({
@@ -732,7 +733,7 @@ router.get('/export', authenticate, requireAdmin, async (req, res) => {
       count: data.length
     });
   } catch (error) {
-    console.error('Export analytics error:', error);
+    logger.error('Export analytics error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while exporting analytics'
@@ -947,7 +948,7 @@ router.get('/attendee-insights', authenticate, requireAdmin, async (req, res) =>
       }
     });
   } catch (error) {
-    console.error('Attendee insights error:', error);
+    logger.error('Attendee insights error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching attendee insights'
@@ -1196,7 +1197,7 @@ router.get('/all-attendee-insights', authenticate, requireAdmin, async (req, res
       }
     });
   } catch (error) {
-    console.error('All attendee insights error:', error);
+    logger.error('All attendee insights error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching all attendee insights'
@@ -1402,7 +1403,7 @@ router.get('/attendee-insights', authenticate, requireAdmin, async (req, res) =>
       }
     });
   } catch (error) {
-    console.error('Attendee insights error:', error);
+    logger.error('Attendee insights error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching attendee insights'
@@ -1532,7 +1533,7 @@ router.get('/all-attendee-insights', authenticate, requireAdmin, async (req, res
       }
     });
   } catch (error) {
-    console.error('All attendee insights error:', error);
+    logger.error('All attendee insights error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching all attendee insights'
@@ -1554,7 +1555,7 @@ router.get('/reports', authenticate, requireAdmin, async (req, res) => {
       data: { reports: reportsStore },
     });
   } catch (error) {
-    console.error('Reports list error:', error);
+    logger.error('Reports list error:', error);
     res.status(500).json({ success: false, message: 'Server error while fetching reports' });
   }
 });
@@ -1600,7 +1601,7 @@ router.post('/reports/generate', authenticate, requireAdmin, async (req, res) =>
 
     return res.status(201).json({ success: true, data: { report: newReport } });
   } catch (error) {
-    console.error('Report generation error:', error);
+    logger.error('Report generation error:', error);
     res.status(500).json({ success: false, message: 'Server error while generating report' });
   }
 });
@@ -1625,7 +1626,7 @@ router.get('/reports/:id/download', authenticate, requireAdmin, async (req, res)
     res.setHeader('Content-Disposition', `attachment; filename="report-${id}.csv"`);
     return res.send(csv);
   } catch (error) {
-    console.error('Report download error:', error);
+    logger.error('Report download error:', error);
     res.status(500).json({ success: false, message: 'Server error while downloading report' });
   }
 });

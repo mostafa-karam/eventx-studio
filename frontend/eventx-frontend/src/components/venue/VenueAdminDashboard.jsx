@@ -18,7 +18,8 @@ import { DashboardStatsSkeleton } from '../shared/LoadingSkeletons';
 import EmptyState from '../shared/EmptyState';
 
 const VenueAdminDashboard = ({ onTabChange }) => {
-    const { token } = useAuth();
+    const { user } = useAuth();
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     const [stats, setStats] = useState({
         totalHalls: 0,
         activeBookings: 0,
@@ -40,7 +41,6 @@ const VenueAdminDashboard = ({ onTabChange }) => {
     const [maintenanceMsg, setMaintenanceMsg] = useState({ type: '', text: '' });
     const [submittingMaintenance, setSubmittingMaintenance] = useState(false);
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
     useEffect(() => {
         fetchDashboardData();
@@ -50,19 +50,19 @@ const VenueAdminDashboard = ({ onTabChange }) => {
         try {
             // Fetch halls
             const hallsRes = await fetch(`${API_BASE_URL}/halls`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                credentials: 'include',
             });
             const hallsData = await hallsRes.json();
 
             // Fetch bookings
             const bookingsRes = await fetch(`${API_BASE_URL}/hall-bookings?status=pending`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                credentials: 'include',
             });
             const bookingsData = await bookingsRes.json();
 
             // Fetch all bookings for stats
             const allBookingsRes = await fetch(`${API_BASE_URL}/hall-bookings`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                credentials: 'include',
             });
             const allBookingsData = await allBookingsRes.json();
 
@@ -115,8 +115,8 @@ const VenueAdminDashboard = ({ onTabChange }) => {
         try {
             const res = await fetch(`${API_BASE_URL}/hall-bookings/maintenance`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(maintenanceForm)

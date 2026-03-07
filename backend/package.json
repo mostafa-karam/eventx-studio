@@ -18,14 +18,18 @@
   "description": "Backend API for EventX Studio - Event Management System",
   "dependencies": {
     "bcryptjs": "^3.0.2",
-    "cookie-parser": "^1.4.6",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "csurf": "^1.2.2",
+    "dompurify": "^3.3.2",
     "dotenv": "^17.2.1",
     "express": "^4.21.2",
     "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^8.2.1",
     "express-validator": "^7.0.1",
     "helmet": "^8.1.0",
+    "jsdom": "^28.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.18.0",
     "mongoose": "^8.17.1",
@@ -36,7 +40,8 @@
     "qrcode": "^1.5.4",
     "ua-parser-js": "^2.0.4",
     "uuid": "^11.1.0",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "xss-clean": "^0.1.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

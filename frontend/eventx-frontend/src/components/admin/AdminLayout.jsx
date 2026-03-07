@@ -20,7 +20,9 @@ import {
   Moon,
   Sun,
   Menu,
-  X
+  X,
+  Shield,
+  Building2
 } from 'lucide-react';
 import { Toaster } from '../ui/sonner';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -126,6 +128,16 @@ const AdminLayout = () => {
               className={({ isActive }) => navCls(isActive)}>
               <Users className="w-4 h-4" />
               <span>Manage Users</span>
+            </NavLink>
+            <NavLink to="/admin/halls" onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => navCls(isActive)}>
+              <Building2 className="w-4 h-4" />
+              <span>Halls</span>
+            </NavLink>
+            <NavLink to="/admin/audit-log" onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => navCls(isActive)}>
+              <Shield className="w-4 h-4" />
+              <span>Audit Log</span>
             </NavLink>
           </nav>
         </div>

@@ -18,7 +18,10 @@ import {
   Info,
   Star,
   CheckCircle,
-  ChevronDown
+  ChevronDown,
+  ImageIcon,
+  ChevronLeft,
+  ChevronRight as ChevronRightIcon
 } from 'lucide-react';
 
 const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { } }) => {
@@ -46,7 +49,10 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
 
   // payment removed per request
 
-  const { user, token } = useAuth();
+  const { user } = useAuth();
+
+  // Image gallery state
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
     setSelectedSeats((prev) => (Array.isArray(prev) ? prev.slice(0, Math.max(1, bookingQuantity)) : []));
@@ -135,12 +141,12 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
     const run = async () => {
       setHasTicketForEvent(false);
       setMyTicketsError('');
-      if (!user || !token || !event?._id) return;
+      if (!user || !event?._id) return;
       setMyTicketsLoading(true);
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
         const res = await fetch(`${API_BASE_URL}/tickets/my-tickets?limit=100`, {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Failed to check tickets');
@@ -159,17 +165,17 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
     };
     run();
     return () => { aborted = true; };
-  }, [event?._id, user, token, myTicketsReloadKey]);
+  }, [event?._id, user, myTicketsReloadKey]);
 
   // Pre-check: is the user on the waitlist?
   useEffect(() => {
     let aborted = false;
     const checkWaitlist = async () => {
-      if (!user || !token || !event?._id) return;
+      if (!user || !event?._id) return;
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
         const res = await fetch(`${API_BASE_URL}/events/${event._id}/waitlist`, {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         });
         if (res.ok) {
           const data = await res.json();
@@ -186,7 +192,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
       checkWaitlist();
     }
     return () => { aborted = true; };
-  }, [event?._id, user, token, eventStatus.status]);
+  }, [event?._id, user, eventStatus.status]);
 
   const formatDate = (dateString) => {
     try {
@@ -275,12 +281,13 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
           eventId: event._id,
           quantity: bookingQuantity,
           seatNumbers: selectedSeats && selectedSeats.length ? selectedSeats : [],
-          paymentMethod: 'free'
+          paymentMethod: event.pricing?.type === 'free' ? 'free' : 'card'
         };
 
         const res = await fetch(`${API_BASE_URL}/tickets/book-multi`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(body)
         });
 
@@ -296,12 +303,13 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
         const body = {
           eventId: event._id,
           seatNumber: selectedSeats && selectedSeats.length ? selectedSeats[0] : undefined,
-          paymentMethod: 'free'
+          paymentMethod: event.pricing?.type === 'free' ? 'free' : 'card'
         };
 
         const res = await fetch(`${API_BASE_URL}/tickets/book`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(body)
         });
 
@@ -332,7 +340,8 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
       const res = await fetch(`${API_BASE_URL}/events/${event._id}/waitlist`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to join waitlist');
@@ -372,295 +381,414 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Flat Header Card */}
-      <Card>
-        <CardHeader className="py-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2 min-w-0">
-              <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={onBack} className="h-8 px-3">
-                  <ArrowLeft className="h-4 w-4 mr-2" /> Back
-                </Button>
-                <Badge className={eventStatus.color}>{eventStatus.label}</Badge>
+    <div className="space-y-8 pb-12">
+      {/* Immersive Hero Header */}
+      <div className="relative w-full h-[60vh] min-h-[400px] max-h-[600px] rounded-3xl overflow-hidden shadow-2xl group mt-4">
+        {/* Background Image */}
+        {event.images && event.images.length > 0 ? (
+          <img
+            src={event.images[activeImageIndex]?.url}
+            alt={event.images[activeImageIndex]?.alt || event.title}
+            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-indigo-900 to-slate-900 flex items-center justify-center">
+            <ImageIcon className="h-20 w-20 text-indigo-500/30" />
+          </div>
+        )}
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10"></div>
+
+        {/* Top Controls */}
+        <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-20">
+          <Button variant="outline" onClick={onBack} className="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 hover:text-white h-10 px-4 rounded-full">
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+          </Button>
+
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleShare} className="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 hover:text-white h-10 w-10 p-0 rounded-full">
+              <Share2 className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" className="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/50 h-10 w-10 p-0 rounded-full transition-colors">
+              <Heart className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Hero Content */}
+        <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 z-20">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-4 max-w-3xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge className={`${eventStatus.status === 'past' ? 'bg-gray-500/80' : eventStatus.status === 'sold-out' ? 'bg-rose-500/80' : 'bg-emerald-500/80'} text-white border-0 backdrop-blur-md px-3 py-1 font-semibold tracking-wide shadow-lg`}>
+                  {eventStatus.label}
+                </Badge>
+                {event.category && (
+                  <Badge variant="outline" className="text-white border-white/30 backdrop-blur-md bg-white/10 px-3 py-1 font-medium">
+                    {event.category}
+                  </Badge>
+                )}
               </div>
-              <CardTitle className="text-2xl md:text-3xl truncate">{event.title}</CardTitle>
+
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-tight shadow-sm drop-shadow-md">
+                {event.title}
+              </h1>
+
               {event?.subtitle && (
-                <CardDescription className="truncate">{event.subtitle}</CardDescription>
+                <p className="text-lg md:text-xl text-gray-300 font-medium max-w-2xl drop-shadow">
+                  {event.subtitle}
+                </p>
               )}
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                <span className="flex items-center"><Calendar className="h-4 w-4 mr-2" /> {formatDate(event.date)}</span>
-                <span className="flex items-center"><MapPin className="h-4 w-4 mr-2" /> {event?.venue?.name || 'TBA'}</span>
-                <span className="flex items-center"><Users className="h-4 w-4 mr-2" /> {availableSeatsEffective} left</span>
-                <span className="hidden md:flex items-center text-gray-500"><Star className="h-4 w-4 mr-2 text-yellow-500" /> {event?.analytics?.views || 0} views</span>
-              </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="px-3 py-1 rounded-md bg-blue-50 text-blue-700 text-sm font-semibold">
-                {formatPrice(event)}
-              </span>
-              <Button variant="outline" size="sm" onClick={handleShare}>
-                <Share2 className="h-4 w-4 mr-2" /> Share
-              </Button>
-              <Button variant="ghost" size="sm">
-                <Heart className="h-4 w-4 mr-2" /> Save
-              </Button>
+
+            <div className="flex-shrink-0 bg-white/10 backdrop-blur-lg border border-white/20 p-5 rounded-2xl shadow-xl flex flex-col items-center justify-center min-w-[140px]">
+              <span className="text-indigo-200 text-sm font-semibold uppercase tracking-wider mb-1">Tickets from</span>
+              <span className="text-3xl font-extrabold text-white">{formatPrice(event)}</span>
             </div>
           </div>
-        </CardHeader>
-      </Card>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl md:text-3xl">About this event</CardTitle>
-                  <CardDescription className="text-sm text-muted-foreground">{event.description}</CardDescription>
-                </div>
-                <div className="text-sm text-muted-foreground flex flex-col items-end">
-                  <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> {formatDate(event.date)}</div>
-                  <div className="flex items-center gap-2 mt-2"><MapPin className="h-4 w-4" /> {event?.venue?.name || 'TBA'}</div>
-                </div>
+        {/* Image Gallery Controls */}
+        {event.images && event.images.length > 1 && (
+          <div className="absolute bottom-8 right-8 z-30 flex gap-2 hidden md:flex">
+            <button
+              onClick={() => setActiveImageIndex((prev) => (prev - 1 + event.images.length) % event.images.length)}
+              className="p-3 bg-black/40 backdrop-blur-md text-white border border-white/10 rounded-full hover:bg-black/60 hover:border-white/30 transition-all shadow-lg"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setActiveImageIndex((prev) => (prev + 1) % event.images.length)}
+              className="p-3 bg-black/40 backdrop-blur-md text-white border border-white/10 rounded-full hover:bg-black/60 hover:border-white/30 transition-all shadow-lg"
+            >
+              <ChevronRightIcon className="h-5 w-5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {event.images && event.images.length > 1 && (
+        <div className="flex gap-3 overflow-x-auto pb-4 md:hidden px-2">
+          {event.images.map((img, idx) => (
+            <button
+              key={idx}
+              onClick={() => setActiveImageIndex(idx)}
+              className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-[3px] transition-all shadow-sm ${idx === activeImageIndex ? 'border-indigo-500 scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`}
+            >
+              <img src={img.url} alt={img.alt || `Image ${idx + 1}`} className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start relative">
+        <div className="lg:col-span-2 space-y-8">
+
+          {/* Quick Info Bar */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 flex flex-wrap gap-2 md:gap-0 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+            <div className="flex-1 min-w-[200px] p-4 flex items-start gap-4 hover:bg-gray-50/50 rounded-xl transition-colors">
+              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl shadow-inner">
+                <Calendar className="h-6 w-6" />
               </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-0.5">Date & Time</p>
+                <p className="text-sm text-gray-600 leading-tight">{formatDate(event.date)}</p>
+              </div>
+            </div>
+            <div className="flex-1 min-w-[200px] p-4 flex items-start gap-4 hover:bg-gray-50/50 rounded-xl transition-colors">
+              <div className="p-3 bg-rose-50 text-rose-600 rounded-xl shadow-inner">
+                <MapPin className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-0.5">Location</p>
+                <p className="text-sm text-gray-600 leading-tight line-clamp-2">{event?.venue?.name || 'TBA'} {event?.venue?.city ? `- ${event.venue.city}` : ''}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* About Section */}
+          <Card className="border-0 shadow-md hover:shadow-lg transition-shadow duration-300 rounded-2xl overflow-hidden">
+            <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-5">
+              <CardTitle className="text-2xl font-bold text-gray-900">About this event</CardTitle>
             </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Info className="h-5 w-5 mr-2" /> Event Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center">
-                  <Calendar className="h-5 w-5 mr-3 text-blue-600" />
-                  <div>
-                    <p className="font-medium">Date & Time</p>
-                    <p className="text-sm text-gray-600">{formatDate(event.date)}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <MapPin className="h-5 w-5 mr-3 text-red-600" />
-                  <div>
-                    <p className="font-medium">Venue</p>
-                    <p className="text-sm text-gray-600">{event?.venue?.name || 'Unknown venue'}</p>
-                    <p className="text-sm text-gray-500">{event?.venue?.address || ''} {event?.venue?.city || ''}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <Users className="h-5 w-5 mr-3 text-green-600" />
-                  <div>
-                    <p className="font-medium">Capacity</p>
-                    <p className="text-sm text-gray-600">{availableSeatsEffective} of {totalSeats} seats available</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <DollarSign className="h-5 w-5 mr-3 text-purple-600" />
-                  <div>
-                    <p className="font-medium">Price</p>
-                    <p className="text-sm text-gray-600">{formatPrice(event)}</p>
-                  </div>
-                </div>
+            <CardContent className="pt-6">
+              <div className="prose prose-indigo max-w-none text-gray-600 leading-relaxed">
+                <p className="whitespace-pre-wrap">{event.description}</p>
               </div>
 
-              {event.category && (
-                <div className="pt-4">
-                  <p className="font-medium mb-2">Category</p>
-                  <Badge variant="secondary">{event.category}</Badge>
+              {event.tags && event.tags.length > 0 && (
+                <div className="pt-8 mt-8 border-t border-gray-100">
+                  <p className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wider">Tags</p>
+                  <div className="flex flex-wrap gap-2">
+                    {event.tags.map((tag, i) => (
+                      <Badge key={i} variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 px-3 py-1 rounded-lg transition-colors">{tag}</Badge>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
+          {/* Seat Map Section */}
+          <Card className="border-0 shadow-md hover:shadow-lg transition-shadow duration-300 rounded-2xl overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-indigo-50 border-b border-indigo-100/50 pb-5">
               <div className="flex items-center justify-between gap-3">
-                <CardTitle className="flex items-center">
-                  <Ticket className="h-5 w-5 mr-2" /> Seat Selection
+                <CardTitle className="flex items-center text-xl font-bold text-gray-900">
+                  <div className="p-2 bg-white rounded-lg shadow-sm mr-3">
+                    <Ticket className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  Seat Selection
                 </CardTitle>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={() => setShowSeatSelection(v => !v)}
                   aria-expanded={showSeatSelection}
-                  className="flex items-center gap-1"
+                  className="flex items-center gap-1 bg-white border-indigo-100 hover:bg-indigo-50 text-indigo-700 shadow-sm rounded-xl px-4"
                 >
-                  <ChevronDown className={`h-4 w-4 transition-transform ${showSeatSelection ? '' : '-rotate-90'}`} />
-                  {showSeatSelection ? 'Hide' : 'Show'}
+                  {showSeatSelection ? 'Collapse' : 'Expand'}
+                  <ChevronDown className={`h-4 w-4 ml-1 transition-transform duration-300 ${showSeatSelection ? 'rotate-180' : ''}`} />
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Select up to {bookingQuantity} seat{bookingQuantity > 1 ? 's' : ''}.</p>
-                {seatMapLoading && <div className="text-xs text-muted-foreground">Loading seats...</div>}
-                {seatMapError && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{seatMapError}</AlertDescription>
-                  </Alert>
-                )}
-                {hasTicketForEvent && (
-                  <Alert>
-                    <AlertDescription>You already have a ticket for this event. Seat selection is disabled.</AlertDescription>
-                  </Alert>
-                )}
-
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 bg-green-200 border border-green-500 rounded-sm" /> Available</div>
-                  <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 bg-gray-300 border border-gray-400 rounded-sm" /> Booked</div>
-                  <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 bg-blue-200 border border-blue-500 rounded-sm" /> Selected</div>
+            <CardContent className="pt-6">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <p className="text-sm text-gray-600 font-medium">Select up to <strong className="text-indigo-600 text-base">{bookingQuantity}</strong> seat{bookingQuantity > 1 ? 's' : ''}.</p>
+                  <div className="flex items-center gap-5 text-xs font-semibold text-gray-500 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
+                    <div className="flex items-center gap-2"><span className="inline-block w-4 h-4 bg-white border-2 border-emerald-400 rounded-md shadow-sm" /> Available</div>
+                    <div className="flex items-center gap-2"><span className="inline-block w-4 h-4 bg-gray-200 border-2 border-gray-300 rounded-md shadow-sm" /> Booked</div>
+                    <div className="flex items-center gap-2"><span className="inline-block w-4 h-4 bg-indigo-500 border-2 border-indigo-600 rounded-md shadow-sm" /> Selected</div>
+                  </div>
                 </div>
 
+                {seatMapLoading && (
+                  <div className="w-full py-12 flex flex-col items-center justify-center space-y-3">
+                    <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                    <div className="text-sm font-medium text-gray-500">Loading seating chart...</div>
+                  </div>
+                )}
+
+                {seatMapError && (
+                  <Alert variant="destructive" className="rounded-xl border-red-200 bg-red-50">
+                    <AlertDescription className="text-red-800 font-medium">{seatMapError}</AlertDescription>
+                  </Alert>
+                )}
+
+                {hasTicketForEvent && (
+                  <Alert className="rounded-xl border-indigo-200 bg-indigo-50">
+                    <AlertDescription className="text-indigo-800 font-medium flex items-center">
+                      <CheckCircle className="w-5 h-5 mr-3 text-indigo-500" />
+                      You already have a valid ticket for this event. Seat selection is disabled.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <div
-                  className={`overflow-hidden transition-all duration-300 ease-in-out ${showSeatSelection ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}
+                  className={`overflow-hidden transition-all duration-500 ease-in-out ${showSeatSelection ? 'max-h-[1200px] opacity-100 transform translate-y-0' : 'max-h-0 opacity-0 transform -translate-y-4'}`}
                 >
-                  <div className="max-h-80 md:max-h-96 overflow-y-auto pr-1">
-                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                      {displaySeatMap.map((s) => {
-                        const seatId = s.seatNumber || s.seat || s.id;
-                        const isBooked = isSeatBooked(s);
-                        const isSelected = seatId ? selectedSeats.includes(seatId) : false;
-                        const atMax = selectedSeats.length >= bookingQuantity;
-                        const disabled = loading || isBooked || !seatId || hasTicketForEvent;
-                        const baseClasses = 'text-xs px-2 py-1 rounded border w-full text-center';
-                        const stateClasses = isBooked
-                          ? 'bg-gray-300 border-gray-400 text-gray-600 cursor-not-allowed'
-                          : isSelected
-                            ? 'bg-blue-200 border-blue-500 text-blue-900'
-                            : (atMax ? 'bg-green-100 border-green-400 text-green-900 hover:bg-green-200' : 'bg-green-200 border-green-500 text-green-900 hover:bg-green-300');
-                        return (
-                          <button
-                            key={seatId}
-                            type="button"
-                            disabled={disabled}
-                            className={`${baseClasses} ${stateClasses}`}
-                            onClick={() => {
-                              if (!seatId) return;
-                              setSelectedSeats((prev) => {
-                                if (prev.includes(seatId)) return prev.filter((x) => x !== seatId);
-                                if (prev.length >= bookingQuantity) {
-                                  const [, ...rest] = prev;
-                                  return [...rest, seatId];
-                                }
-                                return [...prev, seatId];
-                              });
-                            }}
-                            title={isBooked ? 'Booked' : 'Available'}
-                          >
-                            {seatId || '—'}
-                          </button>
-                        );
-                      })}
+                  <div className="bg-gray-50/50 rounded-2xl p-4 border border-gray-100">
+                    {/* Stage visualizer */}
+                    <div className="w-full max-w-md mx-auto h-12 bg-gradient-to-t from-gray-200 to-gray-100 rounded-t-[100px] border-b-4 border-indigo-400 mb-8 flex items-end justify-center pb-2 shadow-inner">
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Stage</span>
+                    </div>
+
+                    <div className="max-h-80 md:max-h-96 overflow-y-auto px-2 pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+                        {displaySeatMap.map((s) => {
+                          const seatId = s.seatNumber || s.seat || s.id;
+                          const isBooked = isSeatBooked(s);
+                          const isSelected = seatId ? selectedSeats.includes(seatId) : false;
+                          const atMax = selectedSeats.length >= bookingQuantity;
+                          const disabled = loading || isBooked || !seatId || hasTicketForEvent;
+
+                          const baseClasses = 'relative h-12 w-full text-xs font-bold rounded-xl transition-all duration-200 flex flex-col items-center justify-center transform hover:scale-105 active:scale-95 shadow-sm';
+                          const stateClasses = isBooked
+                            ? 'bg-gray-100 border border-gray-300 text-gray-400 cursor-not-allowed opacity-70 shadow-none'
+                            : isSelected
+                              ? 'bg-indigo-600 border border-indigo-700 text-white shadow-md ring-2 ring-indigo-300 ring-offset-1'
+                              : (atMax ? 'bg-white border-2 border-emerald-200 text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 cursor-pointer' : 'bg-white border-2 border-emerald-400 text-gray-700 hover:bg-emerald-50 hover:border-emerald-500 shadow-sm cursor-pointer');
+
+                          return (
+                            <button
+                              key={seatId}
+                              type="button"
+                              disabled={disabled}
+                              className={`${baseClasses} ${stateClasses}`}
+                              onClick={() => {
+                                if (!seatId) return;
+                                setSelectedSeats((prev) => {
+                                  if (prev.includes(seatId)) return prev.filter((x) => x !== seatId);
+                                  if (prev.length >= bookingQuantity) {
+                                    const [, ...rest] = prev;
+                                    return [...rest, seatId];
+                                  }
+                                  return [...prev, seatId];
+                                });
+                              }}
+                              title={isBooked ? 'Booked' : 'Available'}
+                            >
+                              <span className="z-10">{seatId || '—'}</span>
+                              {!isBooked && !isSelected && <div className="absolute inset-0 bg-emerald-400/10 rounded-xl opacity-0 hover:opacity-100 transition-opacity"></div>}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="flex justify-between"><span className="text-gray-600">Availability:</span><span className="font-medium">{totalSeats ? Math.round(((availableSeatsEffective ?? 0) / totalSeats) * 100) : 0}%</span></div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
+        {/* Right Sidebar */}
+        <div className="space-y-6 lg:ml-4">
           <div ref={bookStickyRef}>
-            <Card className="sticky top-6">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Ticket className="h-5 w-5 mr-2" /> Book Tickets
+            {/* Main Booking Widget */}
+            <Card className="sticky top-6 border-0 shadow-xl shadow-indigo-100/50 rounded-2xl overflow-hidden ring-1 ring-gray-100 relative">
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+              <CardHeader className="pb-4 pt-6 bg-gray-50/50">
+                <CardTitle className="flex items-center text-xl font-bold">
+                  <Ticket className="h-5 w-5 mr-3 text-indigo-600" /> Book Tickets
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6 pt-2">
                 {!user && (
-                  <Alert>
-                    <AlertDescription>Please log in to book tickets for this event.</AlertDescription>
-                  </Alert>
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                    <AlertDescription className="text-amber-800 font-medium font-sm mb-3">Please log in to book tickets for this event.</AlertDescription>
+                    <Button variant="default" className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-lg">Log In / Sign Up</Button>
+                  </div>
                 )}
+
                 {user && myTicketsError && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{myTicketsError}</AlertDescription>
+                  <Alert variant="destructive" className="rounded-xl border-red-200 bg-red-50">
+                    <AlertDescription className="font-medium text-red-800">{myTicketsError}</AlertDescription>
                   </Alert>
                 )}
 
                 {user && hasTicketForEvent && (
-                  <Alert>
-                    <AlertDescription>You already have a ticket for this event. Additional bookings are disabled.</AlertDescription>
-                  </Alert>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center">
+                    <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <CheckCircle className="w-6 h-6" />
+                    </div>
+                    <p className="font-bold text-emerald-800 mb-1">You're Going!</p>
+                    <p className="text-sm text-emerald-600 mb-4">You already have a ticket for this event.</p>
+                    <Button variant="outline" className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-100 rounded-xl" onClick={() => window.location.href = '/user/tickets'}>
+                      View My Tickets
+                    </Button>
+                  </div>
                 )}
 
                 {canBook && user && !hasTicketForEvent && (
-                  <>
+                  <div className="space-y-5">
                     {bookingError && (
-                      <Alert variant="destructive">
-                        <AlertDescription>{bookingError}</AlertDescription>
+                      <Alert variant="destructive" className="rounded-xl">
+                        <AlertDescription className="font-medium">{bookingError}</AlertDescription>
                       </Alert>
                     )}
 
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Number of Tickets</label>
-                      <select value={bookingQuantity} onChange={(e) => setBookingQuantity(parseInt(e.target.value))} className="w-full p-2 border rounded-md" disabled={loading || hasTicketForEvent}>
-                        {[...Array(Math.min(10, availableSeatsEffective ?? 0))].map((_, i) => (
-                          <option key={i + 1} value={i + 1}>{i + 1} {i === 0 ? 'ticket' : 'tickets'}</option>
-                        ))}
-                      </select>
+                    <div className="space-y-3">
+                      <label className="block text-sm font-semibold text-gray-700">Select Quantity</label>
+                      <div className="relative">
+                        <select
+                          value={bookingQuantity}
+                          onChange={(e) => setBookingQuantity(parseInt(e.target.value))}
+                          className="w-full p-3.5 pl-4 pr-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none bg-white font-medium text-gray-900 shadow-sm transition-shadow hover:shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={loading || hasTicketForEvent}
+                        >
+                          {[...Array(Math.min(10, availableSeatsEffective ?? 0))].map((_, i) => (
+                            <option key={i + 1} value={i + 1}>{i + 1} {i === 0 ? 'Ticket' : 'Tickets'}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                      </div>
                     </div>
 
-                    <Separator />
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between"><span>Ticket Price:</span><span>{formatPrice(event)}</span></div>
-                      <div className="flex justify-between"><span>Quantity:</span><span>{bookingQuantity}</span></div>
-                      <Separator />
-                      <div className="flex justify-between font-bold text-lg"><span>Total:</span><span>{event.pricing?.type === 'free' ? 'Free' : `$${getTotalPrice()}`}</span></div>
+                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600 font-medium">Ticket Price</span>
+                        <span className="font-bold text-gray-900">{formatPrice(event)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600 font-medium">Quantity</span>
+                        <span className="font-bold text-gray-900">x {bookingQuantity}</span>
+                      </div>
+                      <Separator className="bg-gray-200" />
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-gray-900">Total</span>
+                        <span className="font-extrabold text-2xl text-indigo-600">{event.pricing?.type === 'free' ? 'Free' : `$${getTotalPrice()}`}</span>
+                      </div>
                     </div>
 
-                    <Button onClick={handleBooking} disabled={loading || hasTicketForEvent} className="w-full" size="lg">{loading ? 'Processing...' : 'Book Now'}</Button>
+                    <Button
+                      onClick={handleBooking}
+                      disabled={loading || hasTicketForEvent || (showSeatSelection && selectedSeats.length < bookingQuantity)}
+                      className="w-full h-14 text-base font-bold rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 hover:-translate-y-0.5 transition-all duration-200 bg-indigo-600 hover:bg-indigo-700"
+                    >
+                      {loading ? (
+                        <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div> Processing Payment...</>
+                      ) : (
+                        `Checkout Now`
+                      )}
+                    </Button>
 
-                    <div className="text-xs text-gray-500 text-center"><CheckCircle className="h-4 w-4 inline mr-1" /> Instant confirmation</div>
-                  </>
+                    <div className="text-xs text-center text-gray-500 font-medium flex items-center justify-center gap-1.5">
+                      <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <CheckCircle className="h-3 w-3 text-emerald-600" />
+                      </div>
+                      Instant confirmation & secure booking
+                    </div>
+                  </div>
                 )}
 
                 {!canBook && (
-                  <div className="text-center py-4">
+                  <div className="text-center py-2 space-y-4">
                     {eventStatus.status === 'past' ? (
-                      <>
-                        <p className="text-gray-600 mb-2">This event has already passed</p>
-                        <Button disabled className="w-full">Event Ended</Button>
-                      </>
+                      <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+                        <div className="w-12 h-12 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <Calendar className="w-5 h-5" />
+                        </div>
+                        <p className="font-bold text-gray-700 mb-1">Event Concluded</p>
+                        <p className="text-sm text-gray-500">This event has already passed.</p>
+                      </div>
                     ) : (
-                      <>
+                      <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-5">
+                        <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+                          <Users className="w-5 h-5" />
+                        </div>
                         {isWaitlisted || waitlistSuccess ? (
                           <>
-                            <Alert className="mb-4 bg-blue-50 border-blue-200">
-                              <AlertDescription className="text-blue-800 flex items-center justify-center">
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                {waitlistSuccess || 'You are on the waitlist'}
-                              </AlertDescription>
-                            </Alert>
-                            <Button disabled className="w-full" variant="outline">Waitlisted</Button>
+                            <p className="font-bold text-emerald-700 mb-2 flex items-center justify-center gap-2">
+                              <CheckCircle className="h-4 w-4" /> You're on the list!
+                            </p>
+                            <p className="text-sm text-gray-600">We'll notify you if a spot opens up.</p>
                           </>
                         ) : (
                           <>
-                            <p className="text-gray-600 mb-4">This event is sold out, but you can join the waitlist.</p>
+                            <p className="font-bold text-orange-800 mb-1">Tickets Sold Out</p>
+                            <p className="text-sm text-gray-600 mb-4">You can still join the waitlist for potential openings.</p>
                             {bookingError && (
-                              <Alert variant="destructive" className="mb-4">
+                              <Alert variant="destructive" className="mb-4 text-left">
                                 <AlertDescription>{bookingError}</AlertDescription>
                               </Alert>
                             )}
                             <Button
                               onClick={handleJoinWaitlist}
                               disabled={waitlistLoading || !user}
-                              className="w-full"
-                              variant="outline"
+                              className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-md h-12 font-bold transition-transform hover:-translate-y-0.5"
                             >
-                              {waitlistLoading ? 'Joining...' : 'Join Waitlist'}
+                              {waitlistLoading ? (
+                                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div> Joining...</>
+                              ) : (
+                                'Join Waitlist'
+                              )}
                             </Button>
                           </>
                         )}
-                      </>
+                      </div>
                     )}
                   </div>
                 )}
@@ -668,14 +796,41 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
             </Card>
           </div>
 
-          <Card className="sticky" style={{ top: statsTop }}>
-            <CardHeader>
-              <CardTitle>Event Stats</CardTitle>
+          <Card className="sticky border-0 shadow-md rounded-2xl bg-gradient-to-br from-indigo-900 to-slate-900 text-white overflow-hidden ring-1 ring-white/10" style={{ top: statsTop }}>
+            {/* Decorative BG element */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+
+            <CardHeader className="pb-2">
+              <CardTitle className="text-white text-lg font-bold flex items-center">
+                <Star className="h-5 w-5 mr-2 text-yellow-400" /> Event Analytics
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between"><span className="text-gray-600">Total Views:</span><span className="font-medium">{event?.analytics?.views || 0}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">Tickets Sold:</span><span className="font-medium">{Math.max(0, (totalSeats || 0) - (availableSeatsEffective || 0))}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">Availability:</span><span className="font-medium">{totalSeats ? Math.round(((availableSeatsEffective ?? 0) / totalSeats) * 100) : 0}%</span></div>
+            <CardContent className="space-y-4 pt-4">
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10 flex items-center gap-3">
+                <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-300">
+                  <Star className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs text-indigo-200 uppercase font-semibold tracking-wider">Total Views</div>
+                  <div className="font-bold text-xl">{event?.analytics?.views || 0}</div>
+                </div>
+              </div>
+
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10 flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-300">
+                  <Ticket className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-end mb-1">
+                    <div className="text-xs text-indigo-200 uppercase font-semibold tracking-wider">Tickets Sold</div>
+                    <div className="text-xs font-bold text-emerald-400">{totalSeats ? Math.round((Math.max(0, (totalSeats || 0) - (availableSeatsEffective || 0)) / totalSeats) * 100) : 0}%</div>
+                  </div>
+                  <div className="w-full bg-slate-800 rounded-full h-1.5 mb-1 overflow-hidden">
+                    <div className="bg-emerald-400 h-1.5 rounded-full" style={{ width: `${totalSeats ? Math.round((Math.max(0, (totalSeats || 0) - (availableSeatsEffective || 0)) / totalSeats) * 100) : 0}%` }}></div>
+                  </div>
+                  <div className="text-xs text-slate-400 text-right">{Math.max(0, (totalSeats || 0) - (availableSeatsEffective || 0))} / {totalSeats || 0}</div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

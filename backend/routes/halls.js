@@ -1,25 +1,33 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const Hall = require('../models/Hall');
-const { authenticate, requireVenueAdmin, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireVenueAdmin, requireAdmin, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Escape special regex characters to prevent ReDoS
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // @route   GET /api/halls
 // @desc    Get all halls with optional filters
-// @access  Private (all authenticated users)
-router.get('/', authenticate, async (req, res) => {
+// @access  Public (guests see active halls only; venue_admin/admin see all)
+router.get('/', optionalAuth, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 12;
+        const limit = Math.min(parseInt(req.query.limit) || 12, 100);
         const skip = (page - 1) * limit;
 
         // Build query
         let query = {};
 
-        // Filter by status (default: only active halls for non-admin users)
+        // Filter by status (default: only active halls for non-admin/venue_admin users)
         if (req.query.status) {
-            query.status = req.query.status;
-        } else if (req.user.role !== 'admin' && req.user.role !== 'venue_admin') {
+            if (req.user && (req.user.role === 'admin' || req.user.role === 'venue_admin')) {
+                query.status = req.query.status;
+            } else {
+                query.status = 'active'; // force active for non-privileged users
+            }
+        } else if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'venue_admin')) {
             query.status = 'active';
         }
 
@@ -38,7 +46,7 @@ router.get('/', authenticate, async (req, res) => {
 
         // Search by name
         if (req.query.search) {
-            query.name = { $regex: req.query.search, $options: 'i' };
+            query.name = { $regex: escapeRegex(req.query.search), $options: 'i' };
         }
 
         // Sort options
@@ -69,7 +77,7 @@ router.get('/', authenticate, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Get halls error:', error);
+        logger.error('Get halls error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error while fetching halls'
@@ -97,7 +105,7 @@ router.get('/:id', authenticate, async (req, res) => {
             data: { hall }
         });
     } catch (error) {
-        console.error('Get hall error:', error);
+        logger.error('Get hall error:', error);
 
         if (error.name === 'CastError') {
             return res.status(404).json({
@@ -159,7 +167,7 @@ router.get('/:id/availability', authenticate, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Get availability error:', error);
+        logger.error('Get availability error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error while fetching availability'
@@ -189,7 +197,7 @@ router.post('/', authenticate, requireVenueAdmin, async (req, res) => {
             data: { hall: populatedHall }
         });
     } catch (error) {
-        console.error('Create hall error:', error);
+        logger.error('Create hall error:', error);
 
         if (error.name === 'ValidationError') {
             const errors = Object.values(error.errors).map(err => err.message);
@@ -251,7 +259,7 @@ router.put('/:id', authenticate, requireVenueAdmin, async (req, res) => {
             data: { hall: populatedHall }
         });
     } catch (error) {
-        console.error('Update hall error:', error);
+        logger.error('Update hall error:', error);
 
         if (error.name === 'CastError') {
             return res.status(404).json({ success: false, message: 'Hall not found' });
@@ -305,7 +313,7 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
             message: 'Hall deleted successfully'
         });
     } catch (error) {
-        console.error('Delete hall error:', error);
+        logger.error('Delete hall error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error while deleting hall'

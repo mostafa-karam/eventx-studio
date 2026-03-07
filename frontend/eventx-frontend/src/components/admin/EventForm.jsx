@@ -62,9 +62,40 @@ const EventForm = ({ event, onSave, onCancel }) => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const { token } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+  const handleImageUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const formDataObj = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      formDataObj.append('images', files[i]);
+    }
+
+    try {
+      setUploadingImage(true);
+      const res = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formDataObj
+      });
+      const data = await res.json();
+      if (data.success) {
+        const newImages = data.urls.map(url => ({ url }));
+        setFormData(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
+      } else {
+        setError('Upload failed: ' + data.message);
+      }
+    } catch (err) {
+      setError('Network error during upload');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -525,11 +556,30 @@ const EventForm = ({ event, onSave, onCancel }) => {
             <div className="pt-6 border-t mt-6 border-gray-100">
               <Label className="text-sm font-medium text-gray-700 mb-2 block">Event Images</Label>
               <div className="space-y-4">
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="file"
+                      id="imageUpload"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                      className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {uploadingImage && <span className="text-sm text-blue-600 animate-pulse font-medium">Uploading...</span>}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex-grow h-px bg-gray-200"></div>
+                    <span className="text-xs text-gray-500 uppercase font-medium">OR add URL manually</span>
+                    <div className="flex-grow h-px bg-gray-200"></div>
+                  </div>
+
                   <Input
                     id="imageUrl" name="imageUrl"
                     placeholder="https://example.com/image.jpg"
-                    className="h-11 flex-1"
+                    className="h-11 w-full"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && e.target.value) {
                         e.preventDefault();
@@ -538,8 +588,8 @@ const EventForm = ({ event, onSave, onCancel }) => {
                       }
                     }}
                   />
+                  <p className="text-xs text-gray-500">Press Enter in the field above to add image URLs.</p>
                 </div>
-                <p className="text-xs text-gray-500">Press Enter in the field above to add image URLs.</p>
 
                 {formData.images.length > 0 && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
