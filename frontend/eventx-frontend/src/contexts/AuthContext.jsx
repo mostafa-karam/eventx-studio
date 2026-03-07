@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { setGlobalCsrfToken } from '../utils/csrf';
 
 const AuthContext = createContext();
 
@@ -13,8 +14,26 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [csrfToken, setCsrfToken] = useState(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/csrf-token`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCsrfToken(data.csrfToken);
+        setGlobalCsrfToken(data.csrfToken);
+        return data.csrfToken;
+      }
+    } catch (error) {
+      console.error('Failed to fetch CSRF token:', error);
+    }
+    return null;
+  };
 
   // Check if user is authenticated on app load
   useEffect(() => {
@@ -39,6 +58,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkAuth();
+    fetchCsrfToken();
   }, []);
 
   const login = async (email, password, twoFactorCode) => {
@@ -47,6 +67,7 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || (await fetchCsrfToken()),
         },
         credentials: 'include',
         body: JSON.stringify({ email, password, twoFactorCode }),
@@ -89,6 +110,7 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || (await fetchCsrfToken()),
         },
         credentials: 'include',
         body: JSON.stringify(userData),
@@ -124,6 +146,7 @@ export const AuthProvider = ({ children }) => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || (await fetchCsrfToken()),
         },
         credentials: 'include',
         body: JSON.stringify(profileData),
@@ -150,6 +173,7 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || (await fetchCsrfToken()),
         },
         credentials: 'include',
         body: JSON.stringify({ email }),
@@ -169,6 +193,7 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || (await fetchCsrfToken()),
         },
         credentials: 'include',
         body: JSON.stringify({ token, password }),
@@ -188,6 +213,7 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || (await fetchCsrfToken()),
         },
         credentials: 'include',
         body: JSON.stringify({ token }),
@@ -210,6 +236,7 @@ export const AuthProvider = ({ children }) => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || (await fetchCsrfToken()),
         },
         credentials: 'include',
         body: JSON.stringify({ currentPassword, newPassword }),
@@ -246,6 +273,7 @@ export const AuthProvider = ({ children }) => {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || (await fetchCsrfToken()),
         },
         credentials: 'include',
       });
@@ -264,6 +292,7 @@ export const AuthProvider = ({ children }) => {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || (await fetchCsrfToken()),
         },
         credentials: 'include',
       });
@@ -279,6 +308,8 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
+    csrfToken,
+    fetchCsrfToken,
     login,
     register,
     logout,

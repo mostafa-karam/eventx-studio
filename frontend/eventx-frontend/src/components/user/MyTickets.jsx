@@ -71,7 +71,7 @@ const MyTickets = () => {
   const [ticketsPerPage] = useState(6);
   const [totalTickets, setTotalTickets] = useState(0);
 
-  const { user } = useAuth();
+  const { user, csrfToken, fetchCsrfToken } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
@@ -369,7 +369,7 @@ const MyTickets = () => {
 
     try {
       setError('');
-      const cancelPromises = selectedTickets.map(ticketId =>
+      const cancelPromises = selectedTickets.map(async (ticketId) =>
         fetch(`${API_BASE_URL}/tickets/${ticketId}/cancel`, {
           method: 'PUT',
           credentials: 'include',

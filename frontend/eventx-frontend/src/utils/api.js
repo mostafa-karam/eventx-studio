@@ -30,7 +30,7 @@ api.interceptors.request.use(async (config) => {
             await fetchCsrfToken();
         }
         if (csrfToken) {
-            config.headers['CSRF-Token'] = csrfToken;
+            config.headers['X-CSRF-Token'] = csrfToken;
         }
     }
     return config;
