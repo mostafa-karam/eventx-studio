@@ -16,6 +16,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust reverse proxies (needed for rate limiters behind Nginx/Docker)
+app.set('trust proxy', 1);
+
 // ─── Security Middleware ────────────────────────────────────────────
 // Basic security headers via Helmet
 app.use(helmet());

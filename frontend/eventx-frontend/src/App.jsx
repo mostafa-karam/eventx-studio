@@ -42,6 +42,7 @@ const Marketing = lazy(() => import('./components/admin/Marketing'));
 const EventCategories = lazy(() => import('./components/admin/EventCategories'));
 const ContactSupport = lazy(() => import('./components/admin/ContactSupport'));
 const AuditLogViewer = lazy(() => import('./components/admin/AuditLogViewer'));
+const HallsManagement = lazy(() => import('./components/admin/HallsManagement'));
 
 // Organizer
 const OrganizerLayout = lazy(() => import('./components/organizer/OrganizerLayout'));
@@ -50,6 +51,7 @@ const OrganizerAnalytics = lazy(() => import('./components/organizer/OrganizerAn
 const OrganizerTickets = lazy(() => import('./components/organizer/OrganizerTickets'));
 const OrganizerBookings = lazy(() => import('./components/organizer/OrganizerBookings'));
 const HallBookingForm = lazy(() => import('./components/organizer/HallBookingForm'));
+const HallRentalPage = lazy(() => import('./pages/HallRentalPage'));
 
 // Venue Admin
 const VenueAdminLayout = lazy(() => import('./components/venue/VenueAdminLayout'));
@@ -148,8 +150,7 @@ const AppContent = () => {
             <Route path="marketing" element={<Marketing />} />
             <Route path="categories" element={<EventCategories />} />
             <Route path="support" element={<ContactSupport />} />
-            <Route path="halls" element={<HallBrowser />} />
-            <Route path="halls/:hallId" element={<HallDetail />} />
+            <Route path="halls" element={<HallsManagement />} />
             <Route path="audit-log" element={<AuditLogViewer />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
@@ -178,7 +179,7 @@ const AppContent = () => {
             <Route path="events/edit/:eventId" element={<EventForm />} />
             <Route path="halls" element={<HallBrowser />} />
             <Route path="halls/:hallId" element={<HallDetail />} />
-            <Route path="halls/:hallId/book" element={<HallBookingForm />} />
+            <Route path="halls/:hallId/book" element={<HallRentalPage />} />
             <Route path="analytics" element={<OrganizerAnalytics />} />
             <Route path="tickets" element={<OrganizerTickets />} />
             <Route path="bookings" element={<OrganizerBookings />} />

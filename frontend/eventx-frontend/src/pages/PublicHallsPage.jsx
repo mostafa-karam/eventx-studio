@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Building2, Users, MapPin, Zap, Wifi, Monitor, Music, Filter, ArrowRight, X } from 'lucide-react';
+import { HallCardSkeleton } from '../components/ui/Skeletons';
 
 const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
@@ -55,7 +56,7 @@ const HallCard = ({ hall }) => (
                     <p className="text-teal-600 font-semibold">${hall.hourlyRate}<span className="text-gray-400 font-normal text-xs">/hr</span></p>
                     {hall.dailyRate && <p className="text-gray-400 text-xs">${hall.dailyRate}/day</p>}
                 </div>
-                <Link to="/auth"
+                <Link to={`/organizer/halls/${hall._id}/book`}
                     className="flex items-center gap-1.5 px-4 py-2 bg-teal-50 text-teal-700 hover:bg-teal-600 hover:text-white rounded-xl text-sm font-medium transition-colors group-hover:bg-teal-600 group-hover:text-white">
                     Book Hall <ArrowRight className="w-4 h-4" />
                 </Link>
@@ -149,10 +150,7 @@ const PublicHallsPage = () => {
                 {loading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                         {[...Array(8)].map((_, i) => (
-                            <div key={i} className="bg-white rounded-2xl border animate-pulse">
-                                <div className="h-44 bg-gray-200 rounded-t-2xl" />
-                                <div className="p-4 space-y-3"><div className="h-4 bg-gray-200 rounded w-3/4" /><div className="h-3 bg-gray-200 rounded w-full" /></div>
-                            </div>
+                            <HallCardSkeleton key={i} />
                         ))}
                     </div>
                 ) : halls.length === 0 ? (

@@ -3,8 +3,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const logger = require('../utils/logger');
 const { authenticate } = require('../middleware/auth');
+const { uploadFiles } = require('../controllers/uploadController');
 
 const router = express.Router();
 
@@ -39,27 +39,7 @@ const upload = multer({
 
 // POST /api/upload  — upload one or more images
 // FormData field name: 'images' (up to 10)
-router.post('/', authenticate, upload.array('images', 10), (req, res) => {
-    try {
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ success: false, message: 'No files uploaded' });
-        }
-
-        const baseUrl = process.env.BACKEND_URL ||
-            `${req.protocol}://${req.get('host')}`;
-
-        const urls = req.files.map(file => ({
-            url: `${baseUrl}/uploads/${file.filename}`,
-            alt: file.originalname.replace(/\.[^.]+$/, ''),
-            filename: file.filename,
-        }));
-
-        res.json({ success: true, message: 'File(s) uploaded successfully', data: { images: urls } });
-    } catch (error) {
-        logger.error('Upload error: ' + error.message);
-        res.status(500).json({ success: false, message: 'Upload failed' });
-    }
-});
+router.post('/', authenticate, upload.array('images', 10), uploadFiles);
 
 // Handle multer errors (e.g. file too large, wrong type)
 router.use((err, _req, res, _next) => {

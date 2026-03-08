@@ -17,6 +17,8 @@ import {
   Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import apiFetch from '../utils/apiUtils';
+import { BookingPageSkeleton } from '../components/ui/Skeletons';
 
 const BookingPage = () => {
   const { eventId } = useParams();
@@ -40,10 +42,9 @@ const BookingPage = () => {
       try {
         setLoading(true);
 
-        const eventResponse = await fetch(
+        const eventResponse = await apiFetch(
           `${import.meta.env.VITE_API_BASE_URL}/events/${eventId}`,
           {
-            credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
             },
@@ -56,14 +57,13 @@ const BookingPage = () => {
         }
         setEvent(eventData.data.event);
 
-        const bookingResponse = await fetch(
+        const bookingResponse = await apiFetch(
           `${import.meta.env.VITE_API_BASE_URL}/booking/initiate`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            credentials: 'include',
             body: JSON.stringify({ eventId }),
           }
         );
@@ -101,14 +101,13 @@ const BookingPage = () => {
     try {
       setProcessing(true);
 
-      const paymentResponse = await fetch(
+      const paymentResponse = await apiFetch(
         `${import.meta.env.VITE_API_BASE_URL}/payments/process`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include',
           body: JSON.stringify({
             amount: event.pricing.amount,
             currency: event.pricing.currency || 'USD',
@@ -129,14 +128,13 @@ const BookingPage = () => {
         throw new Error(paymentData.message || 'Payment processing failed');
       }
 
-      const bookingResponse = await fetch(
+      const bookingResponse = await apiFetch(
         `${import.meta.env.VITE_API_BASE_URL}/booking/confirm`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include',
           body: JSON.stringify({
             eventId,
             paymentId: paymentData.data.paymentId,
@@ -159,14 +157,13 @@ const BookingPage = () => {
       toast.success('Booking confirmed! You will receive a confirmation email shortly.');
 
       try {
-        await fetch(
+        await apiFetch(
           `${import.meta.env.VITE_API_BASE_URL}/notifications/send-booking-confirmation`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            credentials: 'include',
             body: JSON.stringify({
               bookingId: bookingData.data.booking._id,
               eventId: event._id,
@@ -193,15 +190,7 @@ const BookingPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-lg font-medium">Preparing your booking...</p>
-          <p className="text-sm text-gray-500 mt-2">This may take a moment</p>
-        </div>
-      </div>
-    );
+    return <BookingPageSkeleton />;
   }
 
   if (!event || !booking) {

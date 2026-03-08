@@ -51,8 +51,11 @@ const authenticate = async (req, res, next) => {
       const now = Date.now();
       const DEBOUNCE_MS = 60 * 1000;
       if (!session || !session.lastActivity || (now - new Date(session.lastActivity).getTime()) > DEBOUNCE_MS) {
-        user.updateSessionActivity(decoded.sessionId);
-        await user.save();
+        // Run updateOne asynchronously to avoid blocking the API request and bypassing heavy pre-save hooks
+        User.updateOne(
+          { _id: user._id, 'activeSessions.sessionId': decoded.sessionId },
+          { $set: { 'activeSessions.$.lastActivity': new Date() } }
+        ).catch(err => logger.error('Session update error:', err));
       }
     }
 
