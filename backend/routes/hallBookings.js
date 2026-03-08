@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate, requireOrganizer, requireVenueAdmin } = require('../middleware/auth');
+const { createBookingValidator } = require('../middleware/validators');
 const {
     getPlatformBookings,
     getMyBookings,
@@ -19,7 +20,7 @@ router.get('/', authenticate, requireVenueAdmin, getPlatformBookings);
 router.get('/my', authenticate, requireOrganizer, getMyBookings);
 
 // POST /api/hall-bookings
-router.post('/', authenticate, requireOrganizer, createBooking);
+router.post('/', authenticate, requireOrganizer, createBookingValidator, createBooking);
 
 // POST /api/hall-bookings/maintenance
 router.post('/maintenance', authenticate, requireVenueAdmin, scheduleMaintenance);

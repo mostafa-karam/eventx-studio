@@ -17,16 +17,10 @@ router.get('/events/:eventId', authenticate, requireAdmin, analyticsController.g
 router.get('/export', authenticate, requireAdmin, analyticsController.exportAnalytics);
 
 // Route: /attendee-insights
-router.get('/attendee-insights', authenticate, requireAdmin, analyticsController.getAttendeeInsights_6);
+router.get('/attendee-insights', authenticate, requireAdmin, analyticsController.getAttendeeInsights);
 
 // Route: /all-attendee-insights
-router.get('/all-attendee-insights', authenticate, requireAdmin, analyticsController.getAllAttendeeInsights_7);
-
-// Route: /attendee-insights
-router.get('/attendee-insights', authenticate, requireAdmin, analyticsController.getAttendeeInsights_8);
-
-// Route: /all-attendee-insights
-router.get('/all-attendee-insights', authenticate, requireAdmin, analyticsController.getAllAttendeeInsights_9);
+router.get('/all-attendee-insights', authenticate, requireAdmin, analyticsController.getAllAttendeeInsights);
 
 // Route: /reports
 router.get('/reports', authenticate, requireAdmin, analyticsController.getReports);

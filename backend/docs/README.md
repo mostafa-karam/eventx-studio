@@ -1,4 +1,9 @@
-# EventX Studio Backend documentation
+# EventX Studio Backend Documentation
+
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)
+![Express](https://img.shields.io/badge/express-4.19.2-lightgrey.svg)
+![MongoDB](https://img.shields.io/badge/mongodb-7.0-brightgreen.svg)
 
 Welcome to the official, in-depth backend documentation for **EventX Studio**. This documentation is designed to serve as a comprehensive guide for developers, system administrators, and security auditors.
 
@@ -47,7 +52,8 @@ backend/
 ## 📚 Detailed Documentation Index
 
 1. [**Architecture Deep Dive**](architecture.md) - Understanding the technical patterns and middleware pipelines.
-2. [**API Reference (Full Specs)**](api-reference.md) - Request bodies, response schemas, and error codes.
-3. [**Database & Schemas**](models.md) - Detailed field-level definitions and indexing strategy.
-4. [**Security Implementation**](security.md) - How we protect tokens, mitigate XSS/CSRF, and handle sessions.
-5. [**Setup, Dev & Deployment**](setup.md) - Step-by-step configuration for local and production environments.
+2. [**Complete Codebase Map**](codebase-map.md) - **<NEW>** comprehensive file-by-file professional guide to all directories.
+3. [**API Reference (Full Specs)**](api-reference.md) - Request bodies, response schemas, and error codes.
+4. [**Database & Schemas**](models.md) - Detailed field-level definitions and indexing strategy.
+5. [**Security Implementation**](security.md) - How we protect tokens, mitigate XSS/CSRF, and handle sessions.
+6. [**Setup, Dev & Deployment**](setup.md) - Step-by-step configuration for local and production environments.

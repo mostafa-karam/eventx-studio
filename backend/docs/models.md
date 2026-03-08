@@ -2,6 +2,21 @@
 
 The EventX Studio backend uses MongoDB with Mongoose to enforce strict data structures. This document defines the primary schemas and their internal logic.
 
+## 🗺️ Entity Relationship Map
+
+```mermaid
+erDiagram
+    USER ||--o{ TICKET : purchases
+    USER ||--o{ EVENT : organizes
+    EVENT ||--o{ TICKET : contains
+    EVENT }|--|| HALL : hosted_in
+    USER ||--o{ HALL_BOOKING : requests
+    HALL ||--o{ HALL_BOOKING : booked_for
+    USER ||--o{ REVIEW : writes
+    EVENT ||--o{ REVIEW : receives
+    USER ||--o{ AUDIT_LOG : triggers
+```
+
 ## 👤 User Model (`models/User.js`)
 
 | Field            | Type    | Description            | Defaults / Rules                            |

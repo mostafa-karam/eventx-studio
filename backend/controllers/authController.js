@@ -98,73 +98,23 @@ const isDisposableEmail = (email) => DISPOSABLE_DOMAINS.includes(email.split('@'
 // POST /api/auth/register
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role, phone, age, gender, interests, location } = req.body;
+    const authService = require('../services/authService');
+    const result = await authService.registerUser(req.body, getDeviceInfo(req));
+    
+    audit(req, result.user, 'user.create', 'User', result.user._id, { role: result.role });
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
-    }
-
-    if (isDisposableEmail(email)) {
-      return res.status(400).json({ success: false, message: 'Disposable email addresses are not allowed' });
-    }
-
-    // Password strength
-    const pwErrors = validatePasswordStrength(password);
-    if (pwErrors.length > 0) {
-      return res.status(400).json({ success: false, message: 'Password is too weak', errors: pwErrors });
-    }
-
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: 'User with this email already exists' });
-    }
-
-    const allowedRoles = ['user', 'organizer'];
-    const safeRole = allowedRoles.includes(role) ? role : 'user';
-
-    const user = new User({
-      name,
-      email: email.toLowerCase(),
-      password,
-      role: safeRole,
-      phone,
-      age,
-      gender,
-      interests: interests || [],
-      location: { ...location, timezone: location?.timezone || 'UTC' },
-    });
-
-    const verificationToken = user.generateEmailVerificationToken();
-    await user.save();
-
-    // Send verification email (non-blocking)
-    sendVerificationEmail(user.email, verificationToken);
-
-    const sessionId = crypto.randomUUID();
-    const accessToken = generateAccessToken(user._id, sessionId);
-    const refreshToken = generateRefreshToken(user._id);
-
-    user.addSession(sessionId, getDeviceInfo(req));
-    user.refreshToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    user.refreshTokenExpires = new Date(Date.now() + refreshTokenMaxAge);
-    await user.save();
-
-    audit(req, user, 'user.create', 'User', user._id, { role: safeRole });
-
-    // Set httpOnly cookies for tokens
-    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
-    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+    res.cookie('accessToken', result.accessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
+    res.cookie('refreshToken', result.refreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
 
     res.status(201).json({
       success: true,
-      message: 'Registered successfully. Please verify your email (check your inbox or the dev email log).',
-      data: { user: user.toJSON(), emailVerificationRequired: true },
+      message: 'Registered successfully. Please verify your email.',
+      data: { user: result.user.toJSON(), emailVerificationRequired: true },
     });
   } catch (error) {
     logger.error('Registration error: ' + error.message);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ success: false, message: 'Validation error', errors: Object.values(error.errors).map(e => e.message) });
-    }
+    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+    if (error.name === 'ValidationError') return res.status(400).json({ success: false, message: 'Validation error', errors: Object.values(error.errors).map(e => e.message) });
     res.status(500).json({ success: false, message: 'Server error during registration' });
   }
 };
@@ -173,88 +123,32 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password, twoFactorCode } = req.body;
+    if (!email || !password) return res.status(400).json({ success: false, message: 'Please provide email and password' });
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide email and password' });
+    const authService = require('../services/authService');
+    const result = await authService.loginUser(email, password, twoFactorCode, getDeviceInfo(req));
+
+    if (result.twoFactorRequired) {
+      return res.status(200).json({ success: true, twoFactorRequired: true, message: result.message });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password +twoFactorSecret');
+    audit(req, result.user, 'auth.login', 'Auth', result.user._id, { device: getDeviceInfo(req).device });
 
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    if (user.isLocked) {
-      const lockTimeRemaining = Math.ceil((user.lockUntil - Date.now()) / (1000 * 60));
-      return res.status(423).json({ success: false, message: `Account locked. Try again in ${lockTimeRemaining} minutes.`, lockTimeRemaining });
-    }
-
-    if (!user.isActive) {
-      return res.status(401).json({ success: false, message: 'Account is deactivated. Please contact support.' });
-    }
-
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      await user.incLoginAttempts();
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials',
-        attemptsRemaining: Math.max(0, 5 - (user.loginAttempts + 1)),
-      });
-    }
-
-    // Email verification — required for all roles
-    if (!user.emailVerified) {
-      return res.status(403).json({
-        success: false,
-        message: 'Please verify your email before logging in. Check your inbox (or the dev email log).',
-        emailVerificationRequired: true,
-        email: user.email,
-      });
-    }
-
-    // 2FA check
-    if (user.twoFactorEnabled) {
-      if (!twoFactorCode) {
-        return res.status(200).json({ success: true, twoFactorRequired: true, message: 'Please provide your 2FA code.' });
-      }
-      const { authenticator } = require('otplib');
-      const isValid = authenticator.check(twoFactorCode, user.twoFactorSecret);
-      if (!isValid) {
-        return res.status(401).json({ success: false, message: 'Invalid 2FA code.' });
-      }
-    }
-
-    if (user.loginAttempts > 0) await user.resetLoginAttempts();
-
-    user.lastLogin = new Date();
-    const sessionId = crypto.randomUUID();
-    const accessToken = generateAccessToken(user._id, sessionId);
-    const refreshToken = generateRefreshToken(user._id);
-    const deviceInfo = getDeviceInfo(req);
-
-    user.addSession(sessionId, deviceInfo);
-    user.refreshToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    user.refreshTokenExpires = new Date(Date.now() + refreshTokenMaxAge);
-    await user.save();
-
-    audit(req, user, 'auth.login', 'Auth', user._id, { device: deviceInfo.device });
-
-    // Set httpOnly cookies
-    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
-    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+    res.cookie('accessToken', result.accessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
+    res.cookie('refreshToken', result.refreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
 
     res.json({
       success: true,
       message: 'Login successful',
       data: {
-        user: user.toJSON(),
-        lastLogin: user.lastLogin,
-        sessionInfo: { device: deviceInfo.device, browser: deviceInfo.browser, os: deviceInfo.os },
+        user: result.user.toJSON(),
+        lastLogin: result.user.lastLogin,
+        sessionInfo: getDeviceInfo(req),
       },
     });
   } catch (error) {
     logger.error('Login error: ' + error.message);
+    if (error.status) return res.status(error.status).json({ success: false, message: error.message, lockTimeRemaining: error.lockTimeRemaining, attemptsRemaining: error.attemptsRemaining, emailVerificationRequired: error.emailVerificationRequired, email: error.email });
     res.status(500).json({ success: false, message: 'Server error during login' });
   }
 };
@@ -262,49 +156,20 @@ exports.login = async (req, res) => {
 // POST /api/auth/refresh — get new access token using refresh token
 exports.refreshToken = async (req, res) => {
   try {
-    // Support reading refresh token from httpOnly cookie
     const incomingRefresh = req.body.refreshToken || req.cookies?.refreshToken;
     if (!incomingRefresh) return res.status(400).json({ success: false, message: 'Refresh token required' });
 
-    let decoded;
-    try {
-      decoded = jwt.verify(incomingRefresh, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + '_refresh');
-    } catch {
-      return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
-    }
+    const authService = require('../services/authService');
+    const result = await authService.processRefreshToken(incomingRefresh, getDeviceInfo(req));
 
-    if (decoded.type !== 'refresh') {
-      return res.status(401).json({ success: false, message: 'Invalid token type' });
-    }
-
-    const hashedToken = crypto.createHash('sha256').update(incomingRefresh).digest('hex');
-    const user = await User.findOne({
-      _id: decoded.id,
-      refreshToken: hashedToken,
-      refreshTokenExpires: { $gt: Date.now() },
-    });
-
-    if (!user || !user.isActive) {
-      return res.status(401).json({ success: false, message: 'Refresh token is no longer valid' });
-    }
-
-    const sessionId = crypto.randomUUID();
-    const newAccessToken = generateAccessToken(user._id, sessionId);
-    const newRefreshToken = generateRefreshToken(user._id);
-
-    user.addSession(sessionId, getDeviceInfo(req));
-    user.refreshToken = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
-    user.refreshTokenExpires = new Date(Date.now() + refreshTokenMaxAge);
-    await user.save();
-
-    // Set cookies
-    res.cookie('accessToken', newAccessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
-    res.cookie('refreshToken', newRefreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+    res.cookie('accessToken', result.newAccessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
+    res.cookie('refreshToken', result.newRefreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
 
     res.json({ success: true, data: { message: 'Token refreshed' } });
   } catch (error) {
     logger.error('Refresh token error: ' + error.message);
-    res.status(500).json({ success: false, message: 'Server error' });
+    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error check log' });
   }
 };
 

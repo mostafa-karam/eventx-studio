@@ -103,6 +103,10 @@ app.use((req, _res, next) => {
   next();
 });
 
+// ─── Swagger API Documentation ───────────────────────────────────────
+const setupSwagger = require('./swagger');
+setupSwagger(app);
+
 // ─── DB ──────────────────────────────────────────────────────────────
 const connectDB = async () => {
   try {
@@ -209,4 +213,8 @@ const startServer = async () => {
   process.on('SIGINT', () => shutdown('SIGINT'));
 };
 
-startServer();
+module.exports = app;
+
+if (require.main === module) {
+  startServer();
+}

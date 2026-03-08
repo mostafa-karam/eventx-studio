@@ -1,16 +1,75 @@
 const express = require('express');
 const { authenticate, requireAdmin } = require('../middleware/auth');
+const { registerValidator, loginValidator, updateProfileValidator, changePasswordValidator } = require('../middleware/validators');
 const authController = require('../controllers/authController');
 
 const router = express.Router();
 
-router.post('/register', authController.register);
-router.post('/login', authController.login);
+/**
+ * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Authentication and user management
+ */
+
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Successfully registered
+ *       400:
+ *         description: Validation error
+ */
+router.post('/register', registerValidator, authController.register);
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Login a user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               twoFactorCode:
+ *                 type: string
+ *                 description: Required if 2FA is enabled
+ *     responses:
+ *       200:
+ *         description: Successfully logged in
+ *       401:
+ *         description: Invalid credentials
+ */
+router.post('/login', loginValidator, authController.login);
 router.post('/refresh', authController.refreshToken);
 router.get('/me', authenticate, authController.getCurrentUser);
 router.post('/logout', authenticate, authController.logout);
-router.put('/profile', authenticate, authController.updateProfile);
-router.put('/change-password', authenticate, authController.changePassword);
+router.put('/profile', authenticate, updateProfileValidator, authController.updateProfile);
+router.put('/change-password', authenticate, changePasswordValidator, authController.changePassword);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/resend-verification', authController.resendVerification);
 router.post('/forgot-password', authController.forgotPassword);

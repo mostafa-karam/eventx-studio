@@ -9,71 +9,9 @@ const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // @access  Public
 exports.getEvents = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = Math.min(parseInt(req.query.limit) || 12, 100);
-        const skip = (page - 1) * limit;
-
-        let query = { status: 'published' };
-
-        if (req.query.category) query.category = req.query.category;
-
-        if (req.query.search) {
-            const safeSearch = escapeRegex(req.query.search);
-            query.$or = [
-                { title: { $regex: safeSearch, $options: 'i' } },
-                { description: { $regex: safeSearch, $options: 'i' } },
-                { 'venue.name': { $regex: safeSearch, $options: 'i' } },
-                { 'venue.city': { $regex: safeSearch, $options: 'i' } }
-            ];
-        }
-
-        if (req.query.city) {
-            query['venue.city'] = { $regex: escapeRegex(req.query.city), $options: 'i' };
-        }
-
-        if (req.query.dateFrom || req.query.dateTo) {
-            query.date = {};
-            if (req.query.dateFrom) query.date.$gte = new Date(req.query.dateFrom);
-            if (req.query.dateTo) query.date.$lte = new Date(req.query.dateTo);
-        }
-
-        if (req.query.priceMin || req.query.priceMax) {
-            query['pricing.amount'] = {};
-            if (req.query.priceMin) query['pricing.amount'].$gte = parseFloat(req.query.priceMin);
-            if (req.query.priceMax) query['pricing.amount'].$lte = parseFloat(req.query.priceMax);
-        }
-
-        let sort = { date: 1 };
-        if (req.query.sort === 'popular') {
-            sort = { 'analytics.views': -1, 'analytics.bookings': -1 };
-        } else if (req.query.sort === 'newest') {
-            sort = { createdAt: -1 };
-        } else if (req.query.sort === 'price-low') {
-            sort = { 'pricing.amount': 1 };
-        } else if (req.query.sort === 'price-high') {
-            sort = { 'pricing.amount': -1 };
-        }
-
-        const events = await Event.find(query)
-            .populate('organizer', 'name email')
-            .sort(sort)
-            .skip(skip)
-            .limit(limit)
-            .select('-seating.seatMap');
-
-        const total = await Event.countDocuments(query);
-
-        res.json({
-            success: true,
-            data: {
-                events,
-                pagination: { current: page, pages: Math.ceil(total / limit), total },
-                filters: {
-                    categories: await Event.distinct('category', { status: 'published' }),
-                    cities: await Event.distinct('venue.city', { status: 'published' })
-                }
-            }
-        });
+        const eventsService = require('../services/eventsService');
+        const result = await eventsService.getEvents(req.query, req.query.page, req.query.limit);
+        res.json({ success: true, data: result });
     } catch (error) {
         logger.error('Get events error:', error);
         res.status(500).json({ success: false, message: 'Server error while fetching events' });
@@ -84,40 +22,9 @@ exports.getEvents = async (req, res) => {
 // @access  Private/Organizer
 exports.getMyEvents = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = Math.min(parseInt(req.query.limit) || 10, 100);
-        const skip = (page - 1) * limit;
-
-        const query = { organizer: req.user._id };
-
-        if (req.query.search) {
-            const safeSearch = escapeRegex(req.query.search);
-            query.$or = [
-                { title: { $regex: safeSearch, $options: 'i' } },
-                { description: { $regex: safeSearch, $options: 'i' } },
-                { 'venue.name': { $regex: safeSearch, $options: 'i' } },
-                { 'venue.city': { $regex: safeSearch, $options: 'i' } }
-            ];
-        }
-        if (req.query.category) query.category = req.query.category;
-        if (req.query.dateFrom || req.query.dateTo) {
-            query.date = {};
-            if (req.query.dateFrom) query.date.$gte = new Date(req.query.dateFrom);
-            if (req.query.dateTo) query.date.$lte = new Date(req.query.dateTo);
-        }
-
-        const events = await Event.find(query)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .select('-seating.seatMap');
-
-        const total = await Event.countDocuments(query);
-
-        res.json({
-            success: true,
-            data: { events, pagination: { current: page, pages: Math.ceil(total / limit), total } }
-        });
+        const eventsService = require('../services/eventsService');
+        const result = await eventsService.getMyEvents(req.user._id, req.query, req.query.page, req.query.limit);
+        res.json({ success: true, data: result });
     } catch (error) {
         logger.error('Get my events error:', error);
         res.status(500).json({ success: false, message: 'Server error while fetching events' });
@@ -128,24 +35,12 @@ exports.getMyEvents = async (req, res) => {
 // @access  Public
 exports.getEventById = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.id)
-            .populate('organizer', 'name email phone');
-
-        if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-
-        if (event.status !== 'published') {
-            const isOwner = req.user && event.organizer.toString() === req.user._id.toString();
-            const isAdmin = req.user && req.user.role === 'admin';
-            if (!isOwner && !isAdmin) {
-                return res.status(404).json({ success: false, message: 'Event not found' });
-            }
-        }
-
-        await Event.findByIdAndUpdate(req.params.id, { $inc: { 'analytics.views': 1 } });
-
+        const eventsService = require('../services/eventsService');
+        const event = await eventsService.getEventById(req.params.id, req.user);
         res.json({ success: true, data: { event } });
     } catch (error) {
         logger.error('Get event error:', error);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         if (error.name === 'CastError') return res.status(404).json({ success: false, message: 'Event not found' });
         res.status(500).json({ success: false, message: 'Server error while fetching event' });
     }
@@ -155,14 +50,9 @@ exports.getEventById = async (req, res) => {
 // @access  Private/Organizer
 exports.createEvent = async (req, res) => {
     try {
-        const eventData = { ...req.body, organizer: req.user._id };
-        const event = new Event(eventData);
-        await event.save();
-
-        const populatedEvent = await Event.findById(event._id)
-            .populate('organizer', 'name email');
-
-        res.status(201).json({ success: true, message: 'Event created successfully', data: { event: populatedEvent } });
+        const eventsService = require('../services/eventsService');
+        const event = await eventsService.createEvent(req.body, req.user._id);
+        res.status(201).json({ success: true, message: 'Event created successfully', data: { event } });
     } catch (error) {
         logger.error('Create event error:', error);
         if (error.name === 'ValidationError') {
@@ -177,36 +67,12 @@ exports.createEvent = async (req, res) => {
 // @access  Private/Organizer
 exports.cloneEvent = async (req, res) => {
     try {
-        const originalEvent = await Event.findById(req.params.id);
-        if (!originalEvent) return res.status(404).json({ success: false, message: 'Event not found' });
-
-        if (originalEvent.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Not authorized to clone this event' });
-        }
-
-        const eventData = originalEvent.toObject();
-        delete eventData._id;
-        delete eventData.createdAt;
-        delete eventData.updatedAt;
-        delete eventData.__v;
-
-        eventData.title = `${originalEvent.title} (Copy)`;
-        eventData.status = 'draft';
-        eventData.analytics = { views: 0, bookings: 0 };
-        if (eventData.seating) {
-            eventData.seating.availableSeats = eventData.seating.totalSeats;
-            eventData.seating.seatMap = [];
-        }
-
-        const newEvent = new Event(eventData);
-        await newEvent.save();
-
-        const populatedEvent = await Event.findById(newEvent._id)
-            .populate('organizer', 'name email');
-
-        res.status(201).json({ success: true, message: 'Event cloned successfully', data: { event: populatedEvent } });
+        const eventsService = require('../services/eventsService');
+        const event = await eventsService.cloneEvent(req.params.id, req.user);
+        res.status(201).json({ success: true, message: 'Event cloned successfully', data: { event } });
     } catch (error) {
         logger.error('Clone event error:', error);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         res.status(500).json({ success: false, message: 'Server error while cloning event' });
     }
 };
@@ -215,31 +81,12 @@ exports.cloneEvent = async (req, res) => {
 // @access  Private/Organizer
 exports.updateEvent = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.id);
-        if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-
-        if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Not authorized to update this event' });
-        }
-
-        const ALLOWED_UPDATE_FIELDS = [
-            'title', 'description', 'category', 'date', 'endDate', 'venue',
-            'pricing', 'seating', 'images', 'status', 'tags', 'requirements',
-            'socialMedia', 'hall'
-        ];
-
-        ALLOWED_UPDATE_FIELDS.forEach(key => {
-            if (req.body[key] !== undefined && key !== 'organizer') {
-                event[key] = req.body[key];
-            }
-        });
-
-        await event.save();
-        const populatedEvent = await Event.findById(event._id).populate('organizer', 'name email');
-
-        res.json({ success: true, message: 'Event updated successfully', data: { event: populatedEvent } });
+        const eventsService = require('../services/eventsService');
+        const event = await eventsService.updateEvent(req.params.id, req.body, req.user);
+        res.json({ success: true, message: 'Event updated successfully', data: { event } });
     } catch (error) {
         logger.error('Update event error:', error);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         if (error.name === 'CastError') return res.status(404).json({ success: false, message: 'Event not found' });
         if (error.name === 'ValidationError') {
             const errors = Object.values(error.errors).map(err => err.message);
@@ -253,17 +100,12 @@ exports.updateEvent = async (req, res) => {
 // @access  Private/Organizer
 exports.deleteEvent = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.id);
-        if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-
-        if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Not authorized to delete this event' });
-        }
-
-        await Event.findByIdAndDelete(req.params.id);
+        const eventsService = require('../services/eventsService');
+        await eventsService.deleteEvent(req.params.id, req.user);
         res.json({ success: true, message: 'Event deleted successfully' });
     } catch (error) {
         logger.error('Delete event error:', error);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         if (error.name === 'CastError') return res.status(404).json({ success: false, message: 'Event not found' });
         res.status(500).json({ success: false, message: 'Server error while deleting event' });
     }

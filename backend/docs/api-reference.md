@@ -4,6 +4,9 @@ All EventX Studio backend APIs follow RESTful principles and return JSON respons
 
 **Base URL**: `/api`
 
+> [!TIP]
+> **Interactive Documentation**: A dynamic Swagger UI is available at `/api-docs` when running the server locally. It contains complete request/response schemas for core endpoints and allows for interactive API testing.
+
 ## 🌍 Public Endpoints
 
 ### Get All Events
@@ -62,6 +65,27 @@ All EventX Studio backend APIs follow RESTful principles and return JSON respons
 ---
 
 ## 🎫 Ticket Management (`/api/tickets`)
+
+### ⚡ Atomic Booking Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant TicketAPI
+    participant DB
+
+    User->>TicketAPI: POST /api/tickets/book (eventId, seatNumber)
+    TicketAPI->>DB: findOneAndUpdate({ id: eventId, 'seatMap.number': seatNumber, 'seatMap.isBooked': false })
+    Note over DB: Atomic check-and-set
+    alt Seat Available
+        DB-->>TicketAPI: Success (Seat updated to isBooked: true)
+        TicketAPI->>DB: Create Ticket Record
+        TicketAPI-->>User: 201 Created (Ticket Info + QR)
+    else Seat Already Taken
+        DB-->>TicketAPI: null (No match found)
+        TicketAPI-->>User: 409 Conflict (Seat already booked)
+    end
+```
 
 ### Book a Ticket (Atomic)
 

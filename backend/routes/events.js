@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate, requireOrganizer, optionalAuth } = require('../middleware/auth');
+const { createEventValidator, updateEventValidator } = require('../middleware/validators');
 const {
   getEvents,
   getMyEvents,
@@ -18,6 +19,34 @@ const {
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Events
+ *   description: Event management APIs
+ */
+
+/**
+ * @swagger
+ * /api/events:
+ *   get:
+ *     summary: Retrieve a list of events
+ *     tags: [Events]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: A list of events
+ */
 // GET /api/events
 router.get('/', optionalAuth, getEvents);
 
@@ -28,13 +57,13 @@ router.get('/admin/my-events', authenticate, requireOrganizer, getMyEvents);
 router.get('/:id', optionalAuth, getEventById);
 
 // POST /api/events
-router.post('/', authenticate, requireOrganizer, createEvent);
+router.post('/', authenticate, requireOrganizer, createEventValidator, createEvent);
 
 // POST /api/events/:id/clone
 router.post('/:id/clone', authenticate, requireOrganizer, cloneEvent);
 
 // PUT /api/events/:id
-router.put('/:id', authenticate, requireOrganizer, updateEvent);
+router.put('/:id', authenticate, requireOrganizer, updateEventValidator, updateEvent);
 
 // DELETE /api/events/:id
 router.delete('/:id', authenticate, requireOrganizer, deleteEvent);

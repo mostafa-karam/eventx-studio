@@ -2,33 +2,66 @@
 
 The EventX Studio backend is built for reliability and security. This document details the technical patterns and data flow of the system.
 
+## 🗺️ System Flowchart
+
+```mermaid
+graph TD
+    Client([Client Request]) --> Proxy[Nginx / Reverse Proxy]
+    Proxy --> Server[Express Server]
+
+    subgraph Middleware Pipeline
+        Server --> Sec[Security Headers & Limits]
+        Sec --> CSRF[CSRF Validation]
+        CSRF --> Auth[Auth & Role Checks]
+        Auth --> Valid[express-validator]
+    end
+
+    subgraph Core Logic
+        Valid --> Route[Routes]
+        Route --> Controller[Controllers]
+        Controller --> Service[Services Layer]
+        Service --> Model[Mongoose Models]
+    end
+
+    Model --> DB[(MongoDB Atlas)]
+    Service -.-> Email[Email/SMTP Service]
+```
+
 ## 🧱 The Core Pattern: Decoupled MVC
 
 The system separates concerns into four distinct layers:
 
 ### 1. The Route Layer (`routes/`)
 
-Routes are the entry points. They defined URLs (| `/api/events`, `/api/auth/login`, etc.) and apply the necessary **Middleware Guards**.
+Routes are the entry points. They bind URLs (`/api/events`, `/api/auth/login`, etc.) and apply necessary **Middleware Guards**.
 
-- **Role**: Definition and Delegation.
-- **Rule**: NO business logic is allowed in any route file.
+- **Validation**: Routes now use centralized `express-validator` middleware schemas (e.g., `createEventValidator`) found in `middleware/validators.js`.
+- **Delegation**: They pass the validated request/response objects to the Controller.
+- **Rule**: NO business logic or complex validation is allowed in route files.
 
 ### 2. The Controller Layer (`controllers/`)
 
-Controllers bridge the gap between HTTP requests and the database.
+Controllers bridge the gap between HTTP requests and the Services.
 
-- **Validation**: They interpret `req.body` and validate it using `express-validator` or Mongoose schema hooks.
-- **Orchestration**: They call Mongoose models and handle the results.
-- **Consistency**: All controllers use a standard `{ success: true, message: '...', data: { ... } }` JSON response format.
+- **Request Handling**: They extract data from `req.body`, `req.query`, and `req.user`.
+- **Response Formatting**: All controllers use a standard `{ success: true, message: '...', data: { ... } }` JSON format.
+- **Delegation**: They invoke the corresponding Service class to perform database operations.
 
-### 3. The Model Layer (`models/`)
+### 3. The Service Layer (`services/`)
+
+The core business logic and database interactions reside here.
+
+- **Encapsulation**: Classes like `authService.js` and `eventsService.js` handle complex tasks (e.g., user registration, event duplication) completely independent of the Express HTTP objects.
+- **Reusability**: Functions in the service layer can be reused by different controllers or background jobs.
+
+### 4. The Model Layer (`models/`)
 
 Models encapsulate all persistent state and data-level logic.
 
 - **Schema Enforcement**: Strict types, required fields, and enum validation.
 - **Methods & Virtuals**: Complex calculations like `isLocked`, `bookSeat()`, and `cancelSeat()` are defined directly on the schema to ensure consistent behavior across all controllers.
 
-### 4. The Middleware Layer (`middleware/`)
+### 5. The Middleware Layer (`middleware/`)
 
 The security and processing pipeline.
 

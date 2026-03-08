@@ -21,6 +21,10 @@ This document provides a comprehensive guide to setting up and running the Event
    - Development (with hot reload): `npm run dev`
    - Standard: `npm start`
 
+5. **Testing**:
+   - Run the integration test suite (via Jest & Supertest): `npm test`
+   - _Note: Tests run against an isolated `mongodb-memory-server` and won't affect your local database._
+
 ---
 
 ## ⚙️ Environment Variables Reference
@@ -80,6 +84,19 @@ The server is configured with a 10kb body limit for JSON payloads to prevent "La
 ---
 
 ## 🔍 Troubleshooting Guide
+
+```mermaid
+graph TD
+    Start[Issue Encountered?] --> T1{Is it a server error?}
+    T1 -- Yes --> T2{Error Code?}
+    T2 -- EADDRINUSE --> S1[Port 5000 busy. Run 'Stop-Process' or kill node.]
+    T2 -- EBADCSRFTOKEN --> S2[Missing x-csrf-token header. Call /csrf-token first.]
+    T2 -- Database Failed --> S3[Check MONGODB_URI & Atlas Whitelist.]
+
+    T1 -- No --> T3{Email not sending?}
+    T3 -- Yes --> S4[Check /tmp/eventx-emails.log for simulated logs.]
+    T3 -- No --> S5[Check Browser Console for JS errors.]
+```
 
 ### 1. "EBADCSRFTOKEN" error
 

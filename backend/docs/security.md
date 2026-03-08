@@ -14,8 +14,33 @@ We use a "Double Token" system stored exclusively in `httpOnly` cookies:
 2. **Refresh Token (`refreshToken`)**:
    - **Expiration**: 30 days.
    - **Payload**: `id` (User ID), `type: 'refresh'`.
-   - **Storage**: A SHA-256 hash is stored in the `User` model to allow for server-side invalidation.
-   - **Use**: To obtain a new access token without re-authenticating.
+   - **Storage**: A SHA-256 hash is stored securely in the `User` model.
+   - **Rotation & Reuse Detection**: Every time a refresh token is used, a _new_ refresh token is issued (Token Rotation). If an old, already-used refresh token is presented, the system detects a potential replay attack and instantly revokes _all_ active sessions for that user.
+
+### 🔄 Double Token Rotation Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant DB
+
+    Client->>API: POST /api/auth/login
+    API->>DB: Verify Credentials
+    API->>API: Generate Access & Refresh Tokens
+    API->>DB: Hash & Store Initial Refresh Token
+    API-->>Client: Set secure httpOnly Cookies
+
+    Note over Client,API: Access Token Expires (7 Days)
+
+    Client->>API: API Request (Expired Access Token)
+    API-->>Client: 401 Unauthorized
+    Client->>API: POST /api/auth/refresh (Sends Refresh Cookie)
+    API->>DB: Validate Refresh Token Hash
+    API->>API: Generate NEW Access & NEW Refresh Tokens
+    API->>DB: Store NEW Refresh Token Hash (Rotation)
+    API-->>Client: Set New secure httpOnly Cookies
+```
 
 ### 🛡️ Cookie Protection:
 

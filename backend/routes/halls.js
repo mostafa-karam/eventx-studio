@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate, requireVenueAdmin, requireAdmin, optionalAuth } = require('../middleware/auth');
+const { createHallValidator, updateHallValidator } = require('../middleware/validators');
 const {
     getHalls,
     getHallById,
@@ -21,10 +22,10 @@ router.get('/:id', authenticate, getHallById);
 router.get('/:id/availability', authenticate, getHallAvailability);
 
 // POST /api/halls
-router.post('/', authenticate, requireVenueAdmin, createHall);
+router.post('/', authenticate, requireVenueAdmin, createHallValidator, createHall);
 
 // PUT /api/halls/:id
-router.put('/:id', authenticate, requireVenueAdmin, updateHall);
+router.put('/:id', authenticate, requireVenueAdmin, updateHallValidator, updateHall);
 
 // DELETE /api/halls/:id
 router.delete('/:id', authenticate, requireAdmin, deleteHall);
