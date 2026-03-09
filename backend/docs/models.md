@@ -1,82 +1,67 @@
-# Database Models & Schemas
+# Database Models
 
-The EventX Studio backend uses MongoDB with Mongoose to enforce strict data structures. This document defines the primary schemas and their internal logic.
+EventX Studio uses Mongoose for document modeling in MongoDB.
 
-## 🗺️ Entity Relationship Map
+## User
 
-```mermaid
-erDiagram
-    USER ||--o{ TICKET : purchases
-    USER ||--o{ EVENT : organizes
-    EVENT ||--o{ TICKET : contains
-    EVENT }|--|| HALL : hosted_in
-    USER ||--o{ HALL_BOOKING : requests
-    HALL ||--o{ HALL_BOOKING : booked_for
-    USER ||--o{ REVIEW : writes
-    EVENT ||--o{ REVIEW : receives
-    USER ||--o{ AUDIT_LOG : triggers
-```
+Stores all application users (Administrators, Venue Admins, Organizers, and Attendees).
 
-## 👤 User Model (`models/User.js`)
+- **Core Fields**: `name`, `email`, `password` (hashed), `role`.
+- **RBAC Roles**: `user`, `organizer`, `venue_admin`, `admin`.
+- **Methods**: `matchPassword` for login verification.
 
-| Field            | Type    | Description            | Defaults / Rules                            |
-| :--------------- | :------ | :--------------------- | :------------------------------------------ |
-| `name`           | String  | User's full name       | Required, Max 50 chars                      |
-| `email`          | String  | Unique email address   | Lowercase, unique index                     |
-| `password`       | String  | Bcrypt hashed password | `select: false` by default                  |
-| `role`           | String  | User permissions level | `user`, `organizer`, `admin`, `venue_admin` |
-| `isActive`       | Boolean | Account status         | `true`                                      |
-| `loginAttempts`  | Number  | Tracks failed logins   | Increments on failure                       |
-| `lockUntil`      | Date    | Lockout expiration     | Set after 5 failures                        |
-| `activeSessions` | Array   | Device & Session info  | Stores IP, OS, Browser                      |
+## Event
 
-### 🔒 Security Hooks:
+Represents a scheduled gathering or show.
 
-- **`pre('save')`**: Automatically hashes the password using 12 salt rounds. It also maintains a `passwordHistory` (last 5 passwords) to prevent immediate reuse.
-- **`comparePassword()`**: A convenience method to verify login attempts.
+- **Key Fields**: `title`, `description`, `date`, `time`, `category`, `venue` (Hall ID).
+- **Relationships**: Linked to `User` (as organizer) and `Hall`.
+- **Virtuals**: `eventStatus`, `availableSeats` (calculated from capacity vs. ticket count).
 
----
+## Ticket
 
-## 📅 Event Model (`models/Event.js`)
+Proof of purchase/entry for an event.
 
-| Field      | Type   | Description            | Defaults / Rules                               |
-| :--------- | :----- | :--------------------- | :--------------------------------------------- |
-| `title`    | String | Event name             | Required, Max 100 chars                        |
-| `category` | String | Event type             | Enum: `conference`, `workshop`, `sports`, etc. |
-| `date`     | Date   | Start date/time        | Must be in the future                          |
-| `status`   | String | Lifecycle state        | `draft`, `published`, `cancelled`              |
-| `seating`  | Object | Seat management        | Includes `totalSeats` and `availableSeats`     |
-| `seatMap`  | Array  | Recursive seat objects | Tracks `id`, `isBooked`, `bookedBy`            |
-| `pricing`  | Object | Cost config            | `type`: `free\|paid`, `amount`: Number         |
+- **Fields**: `user`, `event`, `qrCode`, `seatNumber`, `status` (`booked`, `cancelled`, `used`).
+- **Logic**: QR code is regenerated only if authenticated.
 
-### ⚡ Atomic Methods:
+## Hall
 
-- **`bookSeat(seatNumber, userId)`**: Atomically marks a seat as booked and decrements availability.
-- **`cancelSeat(seatNumber)`**: Frees a seat and increments availability.
+Structural venue components available for booking.
 
----
+- **Fields**: `name`, `capacity`, `hourlyRate`, `equipment` (array), `setupOptions` (array).
+- **Comparison**: Supports comma-separated ID filtering for side-by-side matrices.
 
-## 🎫 Ticket Model (`models/Ticket.js`)
+## HallBooking
 
-| Field      | Type   | Description          | Defaults / Rules                             |
-| :--------- | :----- | :------------------- | :------------------------------------------- |
-| `ticketId` | String | Unique friendly ID   | Prefixed `TKT-XXXXXXXX`                      |
-| `status`   | String | Booking status       | `booked`, `used`, `cancelled`, `expired`     |
-| `qrCode`   | String | Verification payload | JSON stringified ticket data                 |
-| `payment`  | Object | Transaction records  | Includes `transactionId`, `amount`, `status` |
-| `checkIn`  | Object | Check-in logs        | Tracks `isCheckedIn`, `time`, `actor`        |
+The reservation contract between an Organizer and a Venue.
 
----
+- **Fields**: `hall`, `organizer`, `date`, `startTime`, `endTime`, `status` (`pending`, `approved`, `rejected`).
+- **Constraint**: Events can only be created once the status is `approved`.
 
-## 📊 Database Indexing Strategy
+## Coupon [NEW]
 
-To ensure high performance under load, the following compound and single indexes are implemented:
+Proprietary discount code system.
 
-- **Users**: Unique index on `email`.
-- **Events**:
-  - `{ date: 1, status: 1 }`: For fast filtering on the public homepage.
-  - `{ organizer: 1 }`: For the "My Events" dashboard.
-- **Tickets**:
-  - `{ event: 1, user: 1 }`: To prevent duplicate ticket purchases for the same event per user.
-  - `{ status: 1, bookingDate: -1 }`: For administrative reporting.
-- **AuditLogs**: `{ actor: 1, createdAt: -1 }`: To audit user activity efficiently.
+- **Fields**: `code` (unique, indexed), `discountType` (`percentage`|`fixed`), `discountValue`, `maxUses`, `usedCount`, `expiresAt`, `isActive`.
+- **Virtual**: `isValid` (checks expiry and usage limits).
+
+## Review
+
+Attendee feedback for events.
+
+- **Fields**: `user`, `event`, `rating` (1-5), `comment`.
+- **Reply**: Organizers can patch a `reply` to any review.
+
+## AuditLog
+
+Immutable record of critical oversight actions.
+
+- **Fields**: `action`, `performedBy` (Admin), `targetId`, `changes` (before/after snapshot), `timestamp`.
+
+## Waitlist [NEW]
+
+Queue management for sold-out events.
+
+- **Fields**: `user`, `event`, `joinedAt`.
+- **Status**: Users receive a badge and "My Waitlist" tracking in their portal.
