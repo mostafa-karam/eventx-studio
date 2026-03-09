@@ -15,9 +15,10 @@ import {
   ShieldCheck,
   HelpCircle,
   Lock,
+  Tag,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
-import apiFetch from '../utils/apiUtils';
 import { BookingPageSkeleton } from '../components/ui/Skeletons';
 
 const BookingPage = () => {
@@ -37,14 +38,26 @@ const BookingPage = () => {
   });
   const [processing, setProcessing] = useState(false);
 
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+
+  // Derived financial values
+  const basePrice = event?.pricing?.amount || 0;
+  const discountAmount = appliedCoupon?.discountAmount || 0;
+  const finalPrice = appliedCoupon ? appliedCoupon.finalAmount : basePrice;
+  const computedFees = Math.round(finalPrice * 0.05); // 5% fee
+  const grandTotal = finalPrice + computedFees;
+
   useEffect(() => {
     const fetchEvent = async () => {
       try {
         setLoading(true);
 
-        const eventResponse = await apiFetch(
+        const eventResponse = await fetch(
           `${import.meta.env.VITE_API_BASE_URL}/events/${eventId}`,
           {
+            credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
             },
@@ -57,10 +70,11 @@ const BookingPage = () => {
         }
         setEvent(eventData.data.event);
 
-        const bookingResponse = await apiFetch(
+        const bookingResponse = await fetch(
           `${import.meta.env.VITE_API_BASE_URL}/booking/initiate`,
           {
             method: 'POST',
+            credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
             },
@@ -85,6 +99,44 @@ const BookingPage = () => {
     }
   }, [eventId, navigate]);
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+
+    setValidatingCoupon(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/coupons/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          code: couponCode,
+          eventId: event._id,
+          amount: event.pricing.amount
+        })
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Invalid coupon');
+      }
+
+      setAppliedCoupon(data.data);
+      toast.success('Coupon applied successfully!');
+    } catch (error) {
+      toast.error(error.message);
+      setAppliedCoupon(null);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+  };
+
   const handlePaymentChange = (e) => {
     const { name, value } = e.target;
     setPaymentDetails((prev) => ({ ...prev, [name]: value }));
@@ -101,7 +153,7 @@ const BookingPage = () => {
     try {
       setProcessing(true);
 
-      const paymentResponse = await apiFetch(
+      const paymentResponse = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/payments/process`,
         {
           method: 'POST',
@@ -109,7 +161,7 @@ const BookingPage = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            amount: event.pricing.amount,
+            amount: finalPrice,
             currency: event.pricing.currency || 'USD',
             paymentMethod: 'credit_card',
             paymentDetails: {
@@ -128,7 +180,7 @@ const BookingPage = () => {
         throw new Error(paymentData.message || 'Payment processing failed');
       }
 
-      const bookingResponse = await apiFetch(
+      const bookingResponse = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/booking/confirm`,
         {
           method: 'POST',
@@ -140,6 +192,7 @@ const BookingPage = () => {
             paymentId: paymentData.data.paymentId,
             bookingId: booking?._id,
             paymentMethod: 'credit_card',
+            couponCode: appliedCoupon?.code
           }),
         }
       );
@@ -155,25 +208,6 @@ const BookingPage = () => {
         payment: paymentData.data.payment,
       }));
       toast.success('Booking confirmed! You will receive a confirmation email shortly.');
-
-      try {
-        await apiFetch(
-          `${import.meta.env.VITE_API_BASE_URL}/notifications/send-booking-confirmation`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              bookingId: bookingData.data.booking._id,
-              eventId: event._id,
-              userId: user?._id,
-            }),
-          }
-        );
-      } catch (emailError) {
-        console.error('Failed to send confirmation email:', emailError);
-      }
     } catch (error) {
       console.error('Payment/booking error:', error);
       toast.error(error.message || 'An error occurred during the booking process');
@@ -254,15 +288,21 @@ const BookingPage = () => {
             <div className="mt-4 pt-4 border-t border-gray-100">
               <div className="flex justify-between py-1">
                 <span className="text-sm text-gray-600">Subtotal</span>
-                <span className="text-sm font-medium">{formatCurrency(booking?.totalAmount || 0)}</span>
+                <span className="text-sm font-medium">{formatCurrency(basePrice, event?.pricing?.currency)}</span>
               </div>
+              {appliedCoupon && (
+                <div className="flex justify-between py-1 text-green-600">
+                  <span className="text-sm">Discount ({appliedCoupon.code})</span>
+                  <span className="text-sm font-medium">-{formatCurrency(discountAmount, event?.pricing?.currency)}</span>
+                </div>
+              )}
               <div className="flex justify-between py-1">
                 <span className="text-sm text-gray-600">Fees</span>
-                <span className="text-sm font-medium">{formatCurrency(booking?.fees || 0)}</span>
+                <span className="text-sm font-medium">{formatCurrency(computedFees, event?.pricing?.currency)}</span>
               </div>
               <div className="flex justify-between py-1 font-medium text-gray-900 mt-2 pt-3 border-t border-gray-100">
                 <span>Total</span>
-                <span>{formatCurrency((booking?.totalAmount || 0) + (booking?.fees || 0))}</span>
+                <span>{formatCurrency(grandTotal, event?.pricing?.currency)}</span>
               </div>
             </div>
           </div>
@@ -348,7 +388,7 @@ const BookingPage = () => {
                       Processing...
                     </>
                   ) : (
-                    `Pay ${formatCurrency((booking?.totalAmount || 0) + (booking?.fees || 0))}`
+                    `Pay ${formatCurrency(grandTotal, event?.pricing?.currency)}`
                   )}
                 </Button>
                 <div className="mt-4 flex items-center justify-center space-x-2">
@@ -496,12 +536,51 @@ const BookingPage = () => {
             <CardContent className="space-y-4">
               <div className="flex justify-between">
                 <span>Tickets</span>
-                <span>{formatCurrency(event.pricing.amount, event.pricing.currency)}</span>
+                <span>{formatCurrency(basePrice, event.pricing.currency)}</span>
               </div>
+
+              {!appliedCoupon ? (
+                <div className="pt-2">
+                  <div className="flex space-x-2">
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Tag className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <Input
+                        placeholder="Promo code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        className="pl-9 text-sm"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={handleApplyCoupon}
+                      disabled={!couponCode.trim() || validatingCoupon}
+                    >
+                      {validatingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between bg-green-50 text-green-700 p-2 rounded-md border border-green-200 text-sm">
+                  <div className="flex items-center">
+                    <Tag className="h-4 w-4 mr-2" />
+                    <span className="font-medium">{appliedCoupon.code}</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span>-{formatCurrency(discountAmount, event.pricing.currency)}</span>
+                    <button onClick={removeCoupon} className="hover:text-green-900 focus:outline-none">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="border-t pt-2">
                 <div className="flex justify-between font-medium">
                   <span>Total</span>
-                  <span>{formatCurrency(event.pricing.amount, event.pricing.currency)}</span>
+                  <span>{formatCurrency(finalPrice, event.pricing.currency)}</span>
                 </div>
               </div>
             </CardContent>

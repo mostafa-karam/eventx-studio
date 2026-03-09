@@ -41,11 +41,13 @@ import {
   X,
   SlidersHorizontal,
   Bookmark,
-  Heart
+  Heart,
+  UserPlus
 } from 'lucide-react';
 
 const MyTickets = () => {
   const [tickets, setTickets] = useState([]);
+  const [waitlists, setWaitlists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -76,7 +78,22 @@ const MyTickets = () => {
 
   useEffect(() => {
     fetchMyTickets();
+    fetchMyWaitlists();
   }, []);
+
+  const fetchMyWaitlists = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/events/waitlists/my`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setWaitlists(data.data?.waitlists || []);
+      }
+    } catch (error) {
+      console.error('Waitlists fetch error:', error);
+    }
+  };
 
   const fetchMyTickets = async (page = 1, status = 'all') => {
     try {
@@ -598,7 +615,11 @@ const MyTickets = () => {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleCancelTicket(ticket._id)}
+                      onClick={() => {
+                        if (window.confirm("Are you sure you want to cancel this ticket? This action cannot be undone.")) {
+                          handleCancelTicket(ticket._id);
+                        }
+                      }}
                       disabled={cancelLoadingId === ticket._id}
                       className="shadow-sm font-semibold"
                     >
@@ -726,7 +747,11 @@ const MyTickets = () => {
                 <Button
                   variant="destructive"
                   size="icon"
-                  onClick={() => handleCancelTicket(ticket._id)}
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to cancel this ticket? This action cannot be undone.")) {
+                      handleCancelTicket(ticket._id);
+                    }
+                  }}
                   disabled={cancelLoadingId === ticket._id}
                   className="h-8 w-8 shadow-sm rounded-lg relative group/btn"
                   title="Cancel Ticket"
@@ -1282,7 +1307,7 @@ const MyTickets = () => {
 
       {/* Tickets Tabs */}
       <Tabs defaultValue="upcoming" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="upcoming">
             Upcoming ({categorizedTickets.upcoming.length})
           </TabsTrigger>
@@ -1291,6 +1316,9 @@ const MyTickets = () => {
           </TabsTrigger>
           <TabsTrigger value="cancelled">
             Cancelled ({categorizedTickets.cancelled.length})
+          </TabsTrigger>
+          <TabsTrigger value="waitlists">
+            Waitlists ({waitlists.length})
           </TabsTrigger>
         </TabsList>
 
@@ -1355,6 +1383,50 @@ const MyTickets = () => {
             }>
               {categorizedTickets.cancelled.map((ticket) => (
                 <TicketCard key={ticket._id} ticket={ticket} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="waitlists" className="space-y-6">
+          {waitlists.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <UserPlus className="h-10 w-10 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Not on any waitlists</h3>
+              <p className="text-gray-500 mb-6">Join waitlists for sold-out events to get notified.</p>
+            </div>
+          ) : (
+            <div className={viewMode === 'grid'
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              : "space-y-4"
+            }>
+              {waitlists.map((wl) => (
+                <Card key={wl._id} className="overflow-hidden hover:shadow-xl transition-all duration-300 border-gray-100 shadow-md group bg-white flex flex-col h-full rounded-2xl relative">
+                  {wl.event?.images?.[0] && (
+                    <div className="h-48 relative overflow-hidden bg-gray-100">
+                      <img src={wl.event.images[0].url} alt={wl.event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                    </div>
+                  )}
+                  <div className="flex-1 p-6 flex flex-col justify-between">
+                    <div>
+                      <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 mb-3 border-0">On Waitlist</Badge>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2 truncate">
+                        {wl.event?.title || 'Unknown Event'}
+                      </h3>
+                      <p className="text-gray-500 text-sm mb-4">
+                        Status: <span className="font-semibold capitalize text-gray-900">{wl.status}</span>
+                      </p>
+                      {wl.status === 'notified' && (
+                        <Alert className="mb-4 bg-green-50 border-green-200 text-green-800 py-2">
+                          <AlertDescription>Your spot has been secured! Check your email or events page to book.</AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  </div>
+                </Card>
               ))}
             </div>
           )}

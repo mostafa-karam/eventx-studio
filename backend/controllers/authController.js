@@ -100,11 +100,15 @@ exports.register = async (req, res) => {
   try {
     const authService = require('../services/authService');
     const result = await authService.registerUser(req.body, getDeviceInfo(req));
-    
+
     audit(req, result.user, 'user.create', 'User', result.user._id, { role: result.role });
 
-    res.cookie('accessToken', result.accessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
-    res.cookie('refreshToken', result.refreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+    if (result.accessToken) {
+      res.cookie('accessToken', result.accessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
+    }
+    if (result.refreshToken) {
+      res.cookie('refreshToken', result.refreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+    }
 
     res.status(201).json({
       success: true,
@@ -134,8 +138,12 @@ exports.login = async (req, res) => {
 
     audit(req, result.user, 'auth.login', 'Auth', result.user._id, { device: getDeviceInfo(req).device });
 
-    res.cookie('accessToken', result.accessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
-    res.cookie('refreshToken', result.refreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+    if (result.accessToken) {
+      res.cookie('accessToken', result.accessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
+    }
+    if (result.refreshToken) {
+      res.cookie('refreshToken', result.refreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+    }
 
     res.json({
       success: true,
@@ -162,8 +170,12 @@ exports.refreshToken = async (req, res) => {
     const authService = require('../services/authService');
     const result = await authService.processRefreshToken(incomingRefresh, getDeviceInfo(req));
 
-    res.cookie('accessToken', result.newAccessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
-    res.cookie('refreshToken', result.newRefreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+    if (result.newAccessToken) {
+      res.cookie('accessToken', result.newAccessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
+    }
+    if (result.newRefreshToken) {
+      res.cookie('refreshToken', result.newRefreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+    }
 
     res.json({ success: true, data: { message: 'Token refreshed' } });
   } catch (error) {
@@ -512,6 +524,56 @@ exports.updateRoleUpgradeRequest = async (req, res) => {
     await user.save();
     res.json({ success: true, message: `Request ${action}d successfully` });
   } catch {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ─── Account Deletion (GDPR) ─────────────────────────────────────────
+exports.deleteAccount = async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ success: false, message: 'Password confirmation is required to delete your account' });
+    }
+
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Incorrect password' });
+    }
+
+    // Anonymize instead of hard-delete to preserve audit trails and referential integrity
+    const anonymisedName = `Deleted User ${Date.now()}`;
+    user.name = anonymisedName;
+    user.email = `deleted_${Date.now()}@removed.invalid`;
+    user.phone = '';
+    user.avatar = '';
+    user.isActive = false;
+    user.refreshToken = undefined;
+    user.sessions = [];
+    user.twoFactorSecret = undefined;
+    user.twoFactorEnabled = false;
+    user.deletedAt = new Date();
+    await user.save();
+
+    // Log the deletion
+    await AuditLog.create({
+      actor: req.user._id,
+      action: 'auth.account_deleted',
+      resource: 'User',
+      resourceId: req.user._id,
+      details: { anonymisedAs: anonymisedName },
+    });
+
+    // Clear cookies
+    res.clearCookie('accessToken', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+    res.clearCookie('refreshToken', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+
+    res.json({ success: true, message: 'Your account has been deleted. We\'re sorry to see you go.' });
+  } catch (error) {
+    logger.error('Delete account error: ' + error.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
 const User = require('../models/User');
+const AuditLog = require('../models/AuditLog');
 
 // @desc    Get all users (Admin only)
 // @access  Private/Admin
@@ -118,15 +119,30 @@ exports.updateUser = async (req, res) => {
             });
         }
 
-        // Don't allow updating password through this route
-        const { password, ...updateData } = req.body;
-
-        // Update user
-        Object.keys(updateData).forEach(key => {
-            user[key] = updateData[key];
+        // Strict allowlist — prevent admin mass-assignment of sensitive fields
+        const ADMIN_ALLOWED_FIELDS = [
+            'name', 'email', 'phone', 'age', 'gender', 'interests',
+            'location', 'role', 'isActive', 'avatar'
+        ];
+        ADMIN_ALLOWED_FIELDS.forEach(field => {
+            if (req.body[field] !== undefined) {
+                user[field] = req.body[field];
+            }
         });
 
         await user.save();
+
+        // Audit role/status changes
+        const sensitiveChanged = ['role', 'isActive'].some(f => req.body[f] !== undefined);
+        if (sensitiveChanged) {
+            await AuditLog.create({
+                actor: req.user._id,
+                action: 'admin.update_user',
+                resource: 'User',
+                resourceId: user._id,
+                details: { changedFields: Object.keys(req.body).filter(f => ['role', 'isActive', 'email', 'name'].includes(f)) },
+            }).catch(e => logger.warn('AuditLog write failed: ' + e.message));
+        }
 
         const updatedUser = await User.findById(user._id).select('-password');
 
@@ -327,6 +343,40 @@ exports.updateProfile = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Server error while updating profile'
+        });
+    }
+};
+// @desc    Get public organizer profile by ID
+// @access  Public
+exports.getOrganizerProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id)
+            .select('name role createdAt') // Only safe fields
+            .lean();
+
+        if (!user || user.role !== 'organizer') {
+            return res.status(404).json({
+                success: false,
+                message: 'Organizer not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: { user }
+        });
+    } catch (error) {
+        logger.error('Get organizer profile error:', error);
+
+        if (error.name === 'CastError') {
+            return res.status(404).json({
+                success: false,
+                message: 'Organizer not found'
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: 'Server error while fetching organizer profile'
         });
     }
 };

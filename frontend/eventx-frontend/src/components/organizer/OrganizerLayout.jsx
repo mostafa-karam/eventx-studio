@@ -3,10 +3,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
-    Calendar, Home, Plus, Search, Bell, User as UserIcon,
-    BarChart3, Building2, Moon, Sun, LogOut, Menu, Ticket, ClipboardList
+    Calendar, Home, Plus, Bell, User as UserIcon,
+    BarChart3, Building2, Moon, Sun, LogOut, Menu, Ticket, ClipboardList, FileText
 } from 'lucide-react';
-import { Toaster } from '../ui/sonner';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const OrganizerLayout = () => {
@@ -26,6 +25,7 @@ const OrganizerLayout = () => {
         { to: '/organizer/analytics', icon: BarChart3, label: 'Analytics' },
         { to: '/organizer/tickets', icon: Ticket, label: 'Ticket Management' },
         { to: '/organizer/bookings', icon: ClipboardList, label: 'My Bookings' },
+        { to: '/organizer/invoices', icon: FileText, label: 'Invoice History' },
         { to: '/organizer/profile', icon: UserIcon, label: 'Profile' },
     ];
 
@@ -123,7 +123,7 @@ const OrganizerLayout = () => {
                 <main className="flex-1 overflow-y-auto">
                     <Outlet />
                 </main>
-                <Toaster />
+
             </div>
         </div>
     );

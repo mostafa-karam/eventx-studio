@@ -140,6 +140,9 @@ class AuthService {
     }
 
     async processRefreshToken(incomingRefresh, deviceInfo) {
+        if (incomingRefresh === 'undefined' || incomingRefresh === 'null' || !incomingRefresh) {
+            throw Object.assign(new Error('Refresh token is required'), { status: 401 });
+        }
         let decoded;
         try {
             decoded = jwt.verify(incomingRefresh, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + '_refresh');

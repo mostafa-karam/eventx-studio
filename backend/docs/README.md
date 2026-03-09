@@ -1,59 +1,30 @@
-# EventX Studio Backend Documentation
+# EventX Studio - Backend Documentation
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)
-![Express](https://img.shields.io/badge/express-4.19.2-lightgrey.svg)
-![MongoDB](https://img.shields.io/badge/mongodb-7.0-brightgreen.svg)
+Welcome to the backend documentation for EventX Studio. This application serves as the core API, managing events, users, tickets, halls, coupons, and secure authentication for the platform.
 
-Welcome to the official, in-depth backend documentation for **EventX Studio**. This documentation is designed to serve as a comprehensive guide for developers, system administrators, and security auditors.
+## Table of Contents
 
-## 🏗️ Project Overview
+1. [Setup and Configuration](setup.md) - How to get the backend running locally and in production.
+2. [Security & Authentication](security.md) - Details on our CSRF protection, secure HTTP-only cookies, JWT implementations, MIME type validation, and rate limiting.
+3. [Architecture Overview](architecture.md) - Insight into our routing, controllers, logging (Winston), and middleware pipeline.
+4. [API Reference](api-reference.md) - Comprehensive guide to all available endpoints, including Events, Waitlists, Coupons, Halls, and Users.
+5. [Database Models](models.md) - Deep dive into Mongoose schemas (Users, Events, Bookings, Tickets, Halls, Coupons, Reviews, Audit Logs).
 
-**EventX Studio** is a professional venue management system designed for high-concurrency event hosting. The core value proposition is the seamless management of a large physical venue containing multiple halls (varying in capacity and equipment).
+## Core Tech Stack
 
-### 🔑 Core Features
+- **Node.js** & **Express.js**: Fast, scalable web framework.
+- **MongoDB** & **Mongoose**: NoSQL database for flexible and rapid schema iteration.
+- **JWT & csurf**: Secure, state-of-the-art authentication utilizing HTTP-only cookies and double-submit cookie patterns.
+- **Winston**: Advanced, leveled logging for production environments.
+- **Multer**: Secure multipart/form-data handler for image uploading with strict MIME type validation.
 
-- **Hall Management**: Complete CRUD for venue halls, including capacity tracking and feature lists (AV equipment, accessibility, etc.).
-- **Organization Support**: Allows companies and event organizers to rent specific halls for conferences, workshops, or private events.
-- **Dynamic Event Lifecycle**: Support for draft events, scheduling, and live publishing.
-- **Atomic Booking Engine**: A high-performance seat-booking system that prevents double-bookings through database-level locks.
-- **Advanced Analytics**: Real-time tracking of revenue, attendance, and hall occupancy rates.
-- **Security-First Auth**: JWT-based session management with Refresh Token rotation and 2FA support.
-- **Communication Layer**: Automated email notifications for registrations, bookings, and waitlist availability.
+## Key Built-in Features
 
-## 📁 Detailed Project Structure
+- **Role-Based Access Control (RBAC)**: Distinct permissions for `user`, `organizer`, `venue_admin`, and `admin`.
+- **Advanced Event & Hall Management**: Conflict-free hall reservation schedules linked directly to public events.
+- **Waitlist & Capacity Systems**: Automated sold-out handling with waitlist queues for eager attendees.
+- **Coupon & Discount Engine**: Percentage and fixed-rate promo codes securely validated at checkout.
+- **Comprehensive Audit Trails**: Immutable logs for critical admin actions (e.g., role changes, user deletions).
+- **GDPR Compliant**: Dedicated account deletion endpoints masking/deleting personal data.
 
-```text
-backend/
-├── controllers/          # Business Logic
-│   ├── authController.js     # User registration, login, 2FA, session tracking
-│   ├── eventsController.js   # Event CRUD, lifecycle, and waitlists
-│   ├── ticketsController.js  # Atomic booking, check-ins, and user tickets
-│   ├── analyticsController.js# Complex MongoDB aggregations for reports
-│   └── ... (see docs/api-reference.md)
-├── docs/                 # Documentation (Line-by-line detailed guides)
-├── middleware/           # Pipeline Processing
-│   ├── auth.js               # Multi-layer role-based authorization (RBAC)
-│   ├── errorMiddleware.js     # Centralized error mapping and sanitization
-│   └── ... (CORS, Rate Limiting, CSRF are in server.js)
-├── models/               # Data Layer & Schemas
-│   ├── User.js               # Profiles, security state, and sessions
-│   ├── Event.js              # Event details and atomic seat map logic
-│   ├── Ticket.js             # Booking records and QR code generation
-│   └── ... (Halls, Audits, Notifications)
-├── routes/               # lean entry points (mapping URLs to Controllers)
-├── utils/                # Utility Services
-│   ├── logger.js             # Winston-based Winston logger
-│   └── emailService.js       # Nodemailer wrapper with template support
-├── uploads/              # Storage for event images and user avatars
-└── server.js             # Entry Point & Global Security configuration
-```
-
-## 📚 Detailed Documentation Index
-
-1. [**Architecture Deep Dive**](architecture.md) - Understanding the technical patterns and middleware pipelines.
-2. [**Complete Codebase Map**](codebase-map.md) - **<NEW>** comprehensive file-by-file professional guide to all directories.
-3. [**API Reference (Full Specs)**](api-reference.md) - Request bodies, response schemas, and error codes.
-4. [**Database & Schemas**](models.md) - Detailed field-level definitions and indexing strategy.
-5. [**Security Implementation**](security.md) - How we protect tokens, mitigate XSS/CSRF, and handle sessions.
-6. [**Setup, Dev & Deployment**](setup.md) - Step-by-step configuration for local and production environments.
+Navigate through the links above to explore the specifics.

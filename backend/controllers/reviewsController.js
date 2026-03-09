@@ -145,7 +145,7 @@ exports.updateReview = async (req, res) => {
     }
 };
 
-// @desc    Delete a review
+// @desc    Delete a review (soft delete with 24h cooldown)
 // @access  Private
 exports.deleteReview = async (req, res) => {
     try {
@@ -157,10 +157,44 @@ exports.deleteReview = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized to delete this review' });
         }
 
-        await review.deleteOne();
+        // Soft-delete: stamp deletedAt so user must wait 24h before re-reviewing
+        review.deletedAt = new Date();
+        await review.save();
         res.json({ success: true, message: 'Review deleted successfully' });
     } catch (error) {
         logger.error('Delete review error: ' + error.message);
         res.status(500).json({ success: false, message: 'Server error while deleting review' });
+    }
+};
+
+// @desc    Organizer reply to a review
+// @access  Private (organizer or admin)
+exports.replyToReview = async (req, res) => {
+    try {
+        const { eventId, reviewId } = req.params;
+        const { body } = req.body;
+
+        if (!body || !body.trim()) {
+            return res.status(400).json({ success: false, message: 'Reply body is required' });
+        }
+
+        const review = await Review.findOne({ _id: reviewId, event: eventId })
+            .populate('event', 'organizer');
+        if (!review) return res.status(404).json({ success: false, message: 'Review not found' });
+
+        // Only the event organizer or admin can reply
+        const isOrganizer = review.event?.organizer?.toString() === req.user._id.toString();
+        const isAdmin = req.user.role === 'admin';
+        if (!isOrganizer && !isAdmin) {
+            return res.status(403).json({ success: false, message: 'Only the event organizer can reply to this review' });
+        }
+
+        review.reply = { body: body.trim(), repliedAt: new Date() };
+        await review.save();
+
+        res.json({ success: true, message: 'Reply posted', data: { review } });
+    } catch (error) {
+        logger.error('Reply to review error: ' + error.message);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };

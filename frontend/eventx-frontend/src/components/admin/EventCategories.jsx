@@ -26,10 +26,7 @@ const EventCategories = () => {
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
       const response = await fetch(`${API_BASE_URL}/categories`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       });
 
       if (response.ok) {
@@ -48,24 +45,21 @@ const EventCategories = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-      
+
       if (editingCategory) {
         // Update existing category
         const response = await fetch(`${API_BASE_URL}/categories/${editingCategory.id}`, {
           method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
         });
 
         if (response.ok) {
           const data = await response.json();
-          setCategories(categories.map(cat => 
+          setCategories(categories.map(cat =>
             cat.id === editingCategory.id ? data.category : cat
           ));
         }
@@ -73,10 +67,7 @@ const EventCategories = () => {
         // Create new category
         const response = await fetch(`${API_BASE_URL}/categories`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
         });
 
@@ -122,10 +113,7 @@ const EventCategories = () => {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
         const response = await fetch(`${API_BASE_URL}/categories/${categoryId}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
+          headers: { 'Content-Type': 'application/json' }
         });
 
         if (response.ok) {
@@ -174,8 +162,8 @@ const EventCategories = () => {
             <p className="text-gray-600">Manage event categories and classifications</p>
           </div>
         </div>
-        
-        <Button 
+
+        <Button
           onClick={() => setShowCreateForm(true)}
           className="bg-blue-600 hover:bg-blue-700"
         >
@@ -347,7 +335,7 @@ const EventCategories = () => {
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <div 
+                  <div
                     className="w-12 h-12 rounded-lg flex items-center justify-center text-white text-xl"
                     style={{ backgroundColor: category.color }}
                   >
@@ -360,7 +348,7 @@ const EventCategories = () => {
                     </Badge>
                   </div>
                 </div>
-                
+
                 <div className="relative">
                   <Button variant="ghost" size="sm">
                     <MoreVertical className="w-4 h-4" />

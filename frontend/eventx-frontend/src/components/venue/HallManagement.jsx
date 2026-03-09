@@ -16,7 +16,7 @@ import EmptyState from '../shared/EmptyState';
 import Breadcrumbs from '../shared/Breadcrumbs';
 
 const HallManagement = ({ onSelectHall }) => {
-    const { token, user } = useAuth();
+    const { user } = useAuth();
     const [halls, setHalls] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,7 +40,7 @@ const HallManagement = ({ onSelectHall }) => {
         try {
             setLoading(true);
             const res = await fetch(`${API_BASE_URL}/halls?limit=100`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {}
             });
             const data = await res.json();
             if (data.success) {
@@ -88,10 +88,7 @@ const HallManagement = ({ onSelectHall }) => {
 
             const res = await fetch(url, {
                 method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
 
@@ -116,7 +113,7 @@ const HallManagement = ({ onSelectHall }) => {
         try {
             const res = await fetch(`${API_BASE_URL}/halls/${hallId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {}
             });
             const data = await res.json();
 

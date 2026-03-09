@@ -4,7 +4,8 @@ const {
     getReviews,
     createReview,
     updateReview,
-    deleteReview
+    deleteReview,
+    replyToReview,
 } = require('../controllers/reviewsController');
 
 const router = express.Router({ mergeParams: true }); // uses :eventId from parent
@@ -20,5 +21,8 @@ router.put('/:reviewId', authenticate, updateReview);
 
 // DELETE /api/events/:eventId/reviews/:reviewId
 router.delete('/:reviewId', authenticate, deleteReview);
+
+// PATCH /api/events/:eventId/reviews/:reviewId/reply  (organizer/admin only)
+router.patch('/:reviewId/reply', authenticate, replyToReview);
 
 module.exports = router;

@@ -131,12 +131,10 @@ exports.bookTicket = async (req, res) => {
       });
     }
 
-    // Verify transaction token if provided (prevents client spoofing simulated txIds)
-    // Token is sent in request body as 'paymentToken' from the payment simulation flow
-    const paymentToken = req.body.paymentToken;
     if (transactionId) {
-      if (!paymentToken) {
-        return res.status(400).json({ success: false, message: 'Payment token is required to complete a paid booking' });
+      const paymentToken = req.body.paymentToken;
+      if (paymentToken === 'undefined' || paymentToken === 'null' || !paymentToken) {
+        return res.status(400).json({ success: false, message: 'Invalid or missing payment token' });
       }
       try {
         const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
@@ -238,7 +236,7 @@ exports.bookMultiTickets = async (req, res) => {
 
     // Verify payment token upfront for multi-book
     if (transactionId) {
-      if (!paymentToken) {
+      if (paymentToken === 'undefined' || paymentToken === 'null' || !paymentToken) {
         return res.status(400).json({ success: false, message: 'Payment token is required to complete a paid booking' });
       }
       try {
@@ -672,11 +670,11 @@ exports.cancelTicket = async (req, res) => {
       if (waitlistEntry) {
         // Notify the first person on the waitlist
         await Notification.create({
-          user: waitlistEntry.user,
-          type: 'waitlist_spot_available',
+          userId: waitlistEntry.user,
+          type: 'booking',
           title: 'A Spot Opened Up!',
           message: `A ticket is now available for "${event.title}". Book quickly before it's gone!`,
-          data: { eventId: event._id }
+          metadata: { eventId: event._id }
         });
         // Remove them from waitlist since they are notified
         await waitlistEntry.deleteOne();

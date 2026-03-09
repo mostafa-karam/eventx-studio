@@ -1,4 +1,5 @@
 import React, { Suspense, lazy } from 'react';
+import './App.css';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -9,6 +10,7 @@ import useUpcomingNotifications from './hooks/useUpcomingNotifications';
 // ─── Lazy-loaded pages ─────────────────────────────────────────────
 // Public
 const HomePage = lazy(() => import('./pages/HomePage'));
+const VenueLandingPage = lazy(() => import('./pages/VenueLandingPage'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Privacy = lazy(() => import('./pages/Privacy'));
@@ -18,6 +20,8 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const PublicEventsPage = lazy(() => import('./pages/PublicEventsPage'));
 const PublicHallsPage = lazy(() => import('./pages/PublicHallsPage'));
+const HallComparisonPage = lazy(() => import('./pages/HallComparisonPage'));
+const OrganizerProfilePage = lazy(() => import('./pages/OrganizerProfilePage'));
 const BookingPage = lazy(() => import('./pages/BookingPage'));
 const EventCalendarPage = lazy(() => import('./pages/EventCalendarPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
@@ -43,6 +47,8 @@ const EventCategories = lazy(() => import('./components/admin/EventCategories'))
 const ContactSupport = lazy(() => import('./components/admin/ContactSupport'));
 const AuditLogViewer = lazy(() => import('./components/admin/AuditLogViewer'));
 const HallsManagement = lazy(() => import('./components/admin/HallsManagement'));
+const CheckInDashboard = lazy(() => import('./components/admin/CheckInDashboard'));
+const AdminCoupons = lazy(() => import('./components/admin/AdminCoupons'));
 
 // Organizer
 const OrganizerLayout = lazy(() => import('./components/organizer/OrganizerLayout'));
@@ -52,6 +58,7 @@ const OrganizerTickets = lazy(() => import('./components/organizer/OrganizerTick
 const OrganizerBookings = lazy(() => import('./components/organizer/OrganizerBookings'));
 const HallBookingForm = lazy(() => import('./components/organizer/HallBookingForm'));
 const HallRentalPage = lazy(() => import('./pages/HallRentalPage'));
+const OrganizerInvoiceHistory = lazy(() => import('./components/organizer/OrganizerInvoiceHistory'));
 
 // Venue Admin
 const VenueAdminLayout = lazy(() => import('./components/venue/VenueAdminLayout'));
@@ -85,7 +92,7 @@ const PageLoader = () => (
   </div>
 );
 
-import './App.css';
+
 
 
 // ─── Role guards ───────────────────────────────────────────────────
@@ -126,7 +133,10 @@ const AppContent = () => {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/events" element={<PublicEventsPage />} />
         <Route path="/halls" element={<PublicHallsPage />} />
+        <Route path="/halls/compare" element={<HallComparisonPage />} />
+        <Route path="/organizers/:id" element={<OrganizerProfilePage />} />
         <Route path="/calendar" element={<EventCalendarPage />} />
+        <Route path="/venue" element={<VenueLandingPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/faq" element={<FAQPage />} />
@@ -152,6 +162,8 @@ const AppContent = () => {
             <Route path="support" element={<ContactSupport />} />
             <Route path="halls" element={<HallsManagement />} />
             <Route path="audit-log" element={<AuditLogViewer />} />
+            <Route path="checkin" element={<CheckInDashboard />} />
+            <Route path="coupons" element={<AdminCoupons />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
         </Route>
@@ -183,6 +195,7 @@ const AppContent = () => {
             <Route path="analytics" element={<OrganizerAnalytics />} />
             <Route path="tickets" element={<OrganizerTickets />} />
             <Route path="bookings" element={<OrganizerBookings />} />
+            <Route path="invoices" element={<OrganizerInvoiceHistory />} />
             <Route path="profile" element={<UserProfile />} />
           </Route>
         </Route>
@@ -217,7 +230,15 @@ const AppContent = () => {
 
 // Redirect to the correct role-based dashboard after login
 const RoleDashboardRedirect = () => {
-  const { isAdmin, isOrganizer, isVenueAdmin, isAuthenticated } = useAuth();
+  const { isAdmin, isOrganizer, isVenueAdmin, isAuthenticated, loading } = useAuth();
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+        <p className="text-gray-600">Loading EventX Studio…</p>
+      </div>
+    </div>
+  );
   if (!isAuthenticated) return <Navigate to="/auth" replace />;
   if (isAdmin) return <Navigate to="/admin/dashboard" replace />;
   if (isOrganizer) return <Navigate to="/organizer/dashboard" replace />;

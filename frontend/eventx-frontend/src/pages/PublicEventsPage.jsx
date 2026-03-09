@@ -32,13 +32,18 @@ const EventCard = ({ event, onClick }) => {
                         <Calendar className="w-16 h-16 text-white" />
                     </div>
                 )}
-                <div className="absolute top-3 left-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${isFree ? 'bg-green-500 text-white' : 'bg-blue-600 text-white'}`}>
+                <div className="absolute top-3 left-3 flex flex-col items-start gap-1.5 z-10">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold shadow-md ${isFree ? 'bg-green-500 text-white' : 'bg-blue-600 text-white'}`}>
                         {isFree ? 'FREE' : `$${event.pricing?.amount}`}
                     </span>
+                    {(event.seating?.availableSeats === 0) && (
+                        <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-600 text-white shadow-md animate-pulse">
+                            Sold Out
+                        </span>
+                    )}
                 </div>
-                <div className="absolute top-3 right-3">
-                    <span className="px-2 py-1 rounded-full text-xs bg-black/30 text-white backdrop-blur-sm capitalize">
+                <div className="absolute top-3 right-3 z-10">
+                    <span className="px-2 py-1 rounded-full text-xs bg-black/50 text-white backdrop-blur-md uppercase tracking-wider font-medium">
                         {event.category}
                     </span>
                 </div>
@@ -60,8 +65,10 @@ const EventCard = ({ event, onClick }) => {
                         <span className="truncate">{event.venue?.name}, {event.venue?.city}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Ticket className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                        <span>{event.seating?.availableSeats} seats available</span>
+                        <Ticket className={`w-4 h-4 flex-shrink-0 ${event.seating?.availableSeats === 0 ? 'text-red-400' : 'text-purple-400'}`} />
+                        <span className={event.seating?.availableSeats === 0 ? 'text-red-600 font-medium' : ''}>
+                            {event.seating?.availableSeats === 0 ? 'No seats left' : `${event.seating?.availableSeats} seats available`}
+                        </span>
                     </div>
                 </div>
 
@@ -167,8 +174,8 @@ const PublicEventsPage = () => {
                             key={value}
                             onClick={() => { setCategory(value); setPage(1); }}
                             className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${category === value
-                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
-                                    : 'bg-white border text-gray-600 hover:border-blue-300 hover:text-blue-600'
+                                ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                                : 'bg-white border text-gray-600 hover:border-blue-300 hover:text-blue-600'
                                 }`}
                         >
                             <Icon className="w-3.5 h-3.5" />

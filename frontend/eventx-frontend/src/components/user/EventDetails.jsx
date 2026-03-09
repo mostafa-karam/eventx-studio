@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -21,7 +22,8 @@ import {
   ChevronDown,
   ImageIcon,
   ChevronLeft,
-  ChevronRight as ChevronRightIcon
+  ChevronRight as ChevronRightIcon,
+  User
 } from 'lucide-react';
 
 const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { } }) => {
@@ -506,6 +508,19 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
                 <p className="text-sm text-gray-600 leading-tight line-clamp-2">{event?.venue?.name || 'TBA'} {event?.venue?.city ? `- ${event.venue.city}` : ''}</p>
               </div>
             </div>
+            {event?.organizer && (
+              <Link to={`/organizers/${event.organizer._id || event.organizer}`} className="flex-1 min-w-[200px] p-4 flex items-start gap-4 hover:bg-gray-50/50 rounded-xl transition-colors group cursor-pointer">
+                <div className="p-3 bg-teal-50 text-teal-600 rounded-xl shadow-inner group-hover:bg-teal-100 transition-colors">
+                  <User className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 mb-0.5">Organizer</p>
+                  <p className="text-sm text-teal-600 font-medium group-hover:underline leading-tight">
+                    {event.organizer.name || 'View Profile'}
+                  </p>
+                </div>
+              </Link>
+            )}
           </div>
 
           {/* About Section */}

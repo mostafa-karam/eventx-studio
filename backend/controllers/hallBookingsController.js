@@ -289,11 +289,11 @@ exports.approveBooking = async (req, res) => {
 
         // Notify organizer (non-blocking)
         Notification.create({
-            user: booking.organizer,
-            type: 'hall_booking_approved',
+            userId: booking.organizer,
+            type: 'booking',
             title: 'Hall Booking Approved',
             message: `Your booking for hall "${populatedBooking.hall?.name}" has been approved.`,
-            data: { bookingId: booking._id, hallId: booking.hall },
+            metadata: { bookingId: booking._id, hallId: booking.hall },
         }).catch(err => logger.error('Notification error (approve): ' + err.message));
 
         res.json({
@@ -352,11 +352,11 @@ exports.rejectBooking = async (req, res) => {
 
         // Notify organizer (non-blocking)
         Notification.create({
-            user: booking.organizer,
-            type: 'hall_booking_rejected',
+            userId: booking.organizer,
+            type: 'booking',
             title: 'Hall Booking Rejected',
             message: `Your booking for hall "${populatedBooking.hall?.name}" was rejected. Reason: ${booking.rejectionReason}`,
-            data: { bookingId: booking._id, hallId: booking.hall, reason: booking.rejectionReason },
+            metadata: { bookingId: booking._id, hallId: booking.hall, reason: booking.rejectionReason },
         }).catch(err => logger.error('Notification error (reject): ' + err.message));
 
         res.json({

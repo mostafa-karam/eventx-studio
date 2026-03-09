@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   Circle
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const STEPS = [
   { id: 'basic', label: 'Basic Info', icon: Tag },
@@ -57,15 +58,90 @@ const EventForm = ({ event, onSave, onCancel }) => {
       type: event?.pricing?.type || 'paid',
       amount: event?.pricing?.amount || 0
     },
-    images: event?.images || []
+    images: event?.images || [],
+    hall: event?.hall?._id || event?.hall || null
   });
+
+  const [myBookings, setMyBookings] = useState([]);
+  const [selectedBookingId, setSelectedBookingId] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  const { token } = useAuth();
+  const draftKey = event ? `eventx_draft_${event._id}` : 'eventx_new_draft';
+
+  // Restore draft on mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem(draftKey);
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed.formData) setFormData(parsed.formData);
+        if (parsed.currentStep !== undefined) setCurrentStep(parsed.currentStep);
+        toast.info('Draft restored from previous session', { duration: 3000 });
+      } catch (e) {
+        console.error('Failed to parse draft', e);
+      }
+    }
+  }, [draftKey]);
+
+  // Save draft on change
+  useEffect(() => {
+    localStorage.setItem(draftKey, JSON.stringify({ formData, currentStep }));
+  }, [formData, currentStep, draftKey]);
+
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+  // Fetch organizer's approved hall bookings
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/hall-bookings/my`, {
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success && data.data?.bookings) {
+          const approved = data.data.bookings.filter(b => b.status === 'approved');
+          setMyBookings(approved);
+        }
+      } catch (err) {
+        console.error('Failed to fetch hall bookings', err);
+      }
+    };
+    fetchBookings();
+  }, [API_BASE_URL]);
+
+  const handleBookingSelect = (bookingId) => {
+    setSelectedBookingId(bookingId);
+    if (!bookingId || bookingId === 'manual') {
+      setFormData(prev => ({ ...prev, hall: null }));
+      return;
+    }
+
+    const booking = myBookings.find(b => b._id === bookingId);
+    if (booking && booking.hall) {
+      setFormData(prev => ({
+        ...prev,
+        hall: booking.hall._id,
+        venue: {
+          ...prev.venue,
+          name: booking.hall.name,
+          address: 'EventX Studio Complex', // fallback if hall doesn't have address
+          city: 'Dubai', // typical fallback
+          country: 'UAE',
+          capacity: booking.hall.capacity
+        },
+        seating: {
+          ...prev.seating,
+          totalSeats: booking.hall.capacity,
+          availableSeats: booking.hall.capacity
+        },
+        date: new Date(booking.startDate).toISOString().slice(0, 16)
+      }));
+      toast.success(`Venue details auto-filled from ${booking.hall.name}`);
+    }
+  };
 
   const handleImageUpload = async (e) => {
     const files = e.target.files;
@@ -80,7 +156,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
       setUploadingImage(true);
       const res = await fetch(`${API_BASE_URL}/upload`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: {},
         body: formDataObj
       });
       const data = await res.json();
@@ -248,14 +324,12 @@ const EventForm = ({ event, onSave, onCancel }) => {
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(eventData),
       });
 
       if (response.ok) {
+        localStorage.removeItem(draftKey);
         const data = await response.json();
         onSave(data.data.event);
       } else {
@@ -320,10 +394,22 @@ const EventForm = ({ event, onSave, onCancel }) => {
             </p>
           </div>
         </div>
-        <Button variant="outline" onClick={onCancel}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Cancel
-        </Button>
+        <div className="flex items-center gap-2">
+          {localStorage.getItem(draftKey) && (
+            <Button variant="outline" size="sm" onClick={() => {
+              if (window.confirm('Delete this draft and start over?')) {
+                localStorage.removeItem(draftKey);
+                window.location.reload();
+              }
+            }} className="text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200">
+              Discard Draft
+            </Button>
+          )}
+          <Button variant="outline" onClick={onCancel}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Cancel
+          </Button>
+        </div>
       </div>
 
       {renderStepper()}
@@ -407,6 +493,28 @@ const EventForm = ({ event, onSave, onCancel }) => {
         {/* Step 1: Venue Info */}
         {currentStep === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            {myBookings.length > 0 && (
+              <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl mb-6">
+                <Label className="text-sm font-semibold text-indigo-900 mb-2 block flex items-center gap-2">
+                  <Building className="w-4 h-4" /> Link to an Approved Hall Booking
+                </Label>
+                <Select value={selectedBookingId} onValueChange={handleBookingSelect}>
+                  <SelectTrigger className="bg-white border-indigo-200">
+                    <SelectValue placeholder="Select a hall booking to auto-fill details" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">-- Manual Entry (Do not link) --</SelectItem>
+                    {myBookings.map(b => (
+                      <SelectItem key={b._id} value={b._id}>
+                        {b.hall?.name} ({new Date(b.startDate).toLocaleDateString()})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-indigo-700 mt-2">Selecting a booking will automatically set the venue name, capacity, and event date.</p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="venue.name" className="text-sm font-medium text-gray-700">Venue Name *</Label>
               <div className="relative">

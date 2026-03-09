@@ -11,11 +11,12 @@ import { Separator } from '../ui/separator';
 import {
     User, Lock, Phone, Mail, Settings, Camera, Eye, EyeOff,
     Calendar, Ticket, Heart, Shield, Bell, Globe, Palette,
-    TrendingUp, Award, Clock, MapPin, CreditCard, Download
+    TrendingUp, Award, Clock, MapPin, CreditCard, Download, AlertTriangle
 } from 'lucide-react';
-
+import { useNavigate } from 'react-router-dom';
 const UserProfile = () => {
-    const { token, user, setUser } = useAuth();
+    const { user, setUser, logout } = useAuth();
+    const navigate = useNavigate();
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
     // Profile state
@@ -68,6 +69,10 @@ const UserProfile = () => {
     const [sessions, setSessions] = useState([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
 
+    // Delete Account
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
     // Load real activity data
     const loadRecentActivity = async () => {
         const activities = [];
@@ -75,7 +80,8 @@ const UserProfile = () => {
         try {
             // Get real tickets from API
             const ticketsResponse = await fetch(`${API_BASE_URL}/tickets/my-tickets`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
             });
 
             if (ticketsResponse.ok) {
@@ -95,7 +101,7 @@ const UserProfile = () => {
                 });
             }
         } catch (error) {
-            console.log('Could not fetch tickets for activity');
+            // silently ignore — activity list is optional
         }
 
         // Get recent favorites from localStorage with better data
@@ -158,7 +164,7 @@ const UserProfile = () => {
                 let totalTickets = 0;
                 try {
                     const ticketsResponse = await fetch(`${API_BASE_URL}/tickets/my-tickets`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
+                        headers: {}
                     });
 
                     if (ticketsResponse.ok) {
@@ -172,8 +178,7 @@ const UserProfile = () => {
                         }
                     }
                 } catch (apiError) {
-                    console.log('Tickets API not available, using fallback');
-                    // Fallback: try to get from localStorage or use a default
+                    // Fallback: try to get from localStorage
                     const savedTickets = localStorage.getItem('user_tickets');
                     if (savedTickets) {
                         totalTickets = JSON.parse(savedTickets).length;
@@ -203,10 +208,8 @@ const UserProfile = () => {
             }
         };
 
-        if (token) {
-            loadAccountStats();
-        }
-    }, [token, user]);
+        loadAccountStats();
+    }, [user]);
 
     const handleSaveProfile = async (e) => {
         e.preventDefault();
@@ -215,10 +218,7 @@ const UserProfile = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/profile`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, phone })
             });
             const data = await res.json();
@@ -251,7 +251,6 @@ const UserProfile = () => {
             setProfileMsg('');
             const res = await fetch(`${API_BASE_URL}/upload`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
                 body: formDataObj
             });
             const data = await res.json();
@@ -261,10 +260,7 @@ const UserProfile = () => {
                 const avatarUrl = data.urls[0];
                 const profileRes = await fetch(`${API_BASE_URL}/auth/profile`, {
                     method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ avatar: avatarUrl })
                 });
                 const profileData = await profileRes.json();
@@ -306,10 +302,7 @@ const UserProfile = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ currentPassword, newPassword })
             });
             const data = await res.json();
@@ -339,7 +332,7 @@ const UserProfile = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/2fa/setup`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {}
             });
             const data = await res.json();
             if (res.ok && data.success) {
@@ -361,10 +354,7 @@ const UserProfile = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/2fa/enable`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code: twoFactorCode })
             });
             const data = await res.json();
@@ -391,7 +381,7 @@ const UserProfile = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/2fa`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {}
             });
             const data = await res.json();
             if (res.ok && data.success) {
@@ -413,7 +403,7 @@ const UserProfile = () => {
         setLoadingSessions(true);
         try {
             const res = await fetch(`${API_BASE_URL}/auth/sessions`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {}
             });
             const data = await res.json();
             if (data.success) {
@@ -427,16 +417,14 @@ const UserProfile = () => {
     };
 
     useEffect(() => {
-        if (token) {
-            loadSessions();
-        }
-    }, [token]);
+        loadSessions();
+    }, []);
 
     const handleRevokeSession = async (sessionId) => {
         try {
             await fetch(`${API_BASE_URL}/auth/sessions/${sessionId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {}
             });
             setSessions(sessions.filter(s => s.sessionId !== sessionId));
         } catch (err) {
@@ -448,7 +436,7 @@ const UserProfile = () => {
         try {
             await fetch(`${API_BASE_URL}/auth/sessions`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {}
             });
             loadSessions();
         } catch (err) {
@@ -462,6 +450,34 @@ const UserProfile = () => {
             month: 'long',
             day: 'numeric'
         });
+    };
+
+    const handleDeleteAccount = async () => {
+        if (!window.confirm("Are you absolutely sure you want to delete your account? This action cannot be undone and your data will be permanently deleted or anonymized.")) {
+            return;
+        }
+
+        setDeleteLoading(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/auth/account`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                await logout();
+                navigate('/auth');
+            } else {
+                alert(data.message || 'Failed to delete account');
+            }
+        } catch (err) {
+            console.error('Delete account error:', err);
+            alert('An error occurred while deleting your account.');
+        } finally {
+            setDeleteLoading(false);
+            setShowDeleteConfirm(false);
+        }
     };
 
     return (
@@ -1046,6 +1062,57 @@ const UserProfile = () => {
                                                 </div>
                                             ) : (
                                                 <p className="text-sm text-gray-500">No active sessions found.</p>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="border-red-200 shadow-sm mt-6">
+                                    <CardHeader className="pb-4 bg-red-50/50 rounded-t-xl">
+                                        <CardTitle className="text-xl font-semibold flex items-center gap-2 text-red-600">
+                                            <AlertTriangle className="w-5 h-5" />
+                                            Danger Zone
+                                        </CardTitle>
+                                        <CardDescription className="text-red-600/80">
+                                            Permanently delete your account and all associated data
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="pt-6">
+                                        <div className="space-y-4">
+                                            <p className="text-sm text-gray-600">
+                                                Once you delete your account, there is no going back. Please be certain. All your personal data will be wiped in accordance with GDPR requirements.
+                                            </p>
+
+                                            {showDeleteConfirm ? (
+                                                <div className="p-4 border border-red-200 bg-red-50 rounded-lg space-y-4">
+                                                    <p className="text-sm font-semibold text-red-800">
+                                                        Are you absolutely sure? This will immediately log you out and anonymize your data.
+                                                    </p>
+                                                    <div className="flex gap-3">
+                                                        <Button
+                                                            variant="destructive"
+                                                            onClick={handleDeleteAccount}
+                                                            disabled={deleteLoading}
+                                                        >
+                                                            {deleteLoading ? 'Deleting...' : 'Yes, delete my account'}
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => setShowDeleteConfirm(false)}
+                                                            disabled={deleteLoading}
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <Button
+                                                    variant="destructive"
+                                                    onClick={() => setShowDeleteConfirm(true)}
+                                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                                >
+                                                    Delete Account
+                                                </Button>
                                             )}
                                         </div>
                                     </CardContent>

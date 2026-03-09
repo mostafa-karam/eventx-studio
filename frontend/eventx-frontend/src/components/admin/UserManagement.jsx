@@ -11,12 +11,12 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Input } from "../ui/input";
-import { 
-    Users, 
-    Search, 
-    Filter, 
-    UserPlus, 
-    Mail, 
+import {
+    Users,
+    Search,
+    Filter,
+    UserPlus,
+    Mail,
     Calendar,
     Shield,
     Eye,
@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 
 const UserManagement = () => {
-    const { token } = useAuth();
+    const { } = useAuth();
     const API_BASE_URL =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
@@ -45,12 +45,7 @@ const UserManagement = () => {
         try {
             const res = await fetch(
                 `${API_BASE_URL}/auth/users?page=${targetPage}&limit=10`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                }
+                { headers: { "Content-Type": "application/json" } }
             );
             if (!res.ok) {
                 throw new Error("Failed to fetch users");
@@ -88,7 +83,7 @@ const UserManagement = () => {
 
     const filteredUsers = users.filter(user => {
         const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            user.email.toLowerCase().includes(searchTerm.toLowerCase());
+            user.email.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesRole = filterRole === 'all' || user.role === filterRole;
         return matchesSearch && matchesRole;
     });
@@ -129,7 +124,7 @@ const UserManagement = () => {
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card className="hover:shadow-lg transition-shadow">
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
@@ -143,7 +138,7 @@ const UserManagement = () => {
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card className="hover:shadow-lg transition-shadow">
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
@@ -157,7 +152,7 @@ const UserManagement = () => {
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card className="hover:shadow-lg transition-shadow">
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
@@ -199,8 +194,8 @@ const UserManagement = () => {
                                     className="pl-10 w-64"
                                 />
                             </div>
-                            <select 
-                                value={filterRole} 
+                            <select
+                                value={filterRole}
                                 onChange={(e) => setFilterRole(e.target.value)}
                                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             >
@@ -227,8 +222,8 @@ const UserManagement = () => {
                             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                             <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
                             <p className="text-gray-500 mb-4">
-                                {searchTerm || filterRole !== 'all' 
-                                    ? 'Try adjusting your search or filter criteria.' 
+                                {searchTerm || filterRole !== 'all'
+                                    ? 'Try adjusting your search or filter criteria.'
                                     : 'No users have been created yet.'}
                             </p>
                             <Button className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -258,7 +253,7 @@ const UserManagement = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex items-center space-x-4">
                                         <Badge className={`${getRoleBadgeColor(u.role)} border font-medium`}>
                                             {u.role === 'admin' && <Shield className="w-3 h-3 mr-1" />}
@@ -266,7 +261,7 @@ const UserManagement = () => {
                                             {u.role === 'user' && <Users className="w-3 h-3 mr-1" />}
                                             {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
                                         </Badge>
-                                        
+
                                         <div className="flex items-center space-x-2">
                                             <Button variant="outline" size="sm">
                                                 <Eye className="h-4 w-4 mr-1" />

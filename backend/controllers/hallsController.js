@@ -16,6 +16,12 @@ exports.getHalls = async (req, res) => {
         // Build query
         let query = {};
 
+        // Filter by specific IDs
+        if (req.query.ids) {
+            const idsList = req.query.ids.split(',');
+            query._id = { $in: idsList };
+        }
+
         // Filter by status (default: only active halls for non-admin/venue_admin users)
         if (req.query.status) {
             if (req.user && (req.user.role === 'admin' || req.user.role === 'venue_admin')) {

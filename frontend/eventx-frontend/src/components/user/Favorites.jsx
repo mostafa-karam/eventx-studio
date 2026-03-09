@@ -30,16 +30,12 @@ const Favorites = ({ onEventSelect }) => {
 
       if (allFavorites.length > 0) {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-        const token = localStorage.getItem('token');
 
         // Fetch full event details for favorited events
         const eventPromises = allFavorites.map(async (eventId) => {
           try {
             const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
+              headers: { 'Content-Type': 'application/json' }
             });
             if (response.ok) {
               const data = await response.json();

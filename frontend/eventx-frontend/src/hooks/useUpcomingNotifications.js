@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 // Simple hook: polls /events?upcoming=true for user's relevant events and uses Notification API
 export default function useUpcomingNotifications() {
-    const { token, isAuthenticated } = useAuth();
+    const { isAuthenticated } = useAuth();
 
     useEffect(() => {
         if (!isAuthenticated) return;
@@ -14,7 +14,7 @@ export default function useUpcomingNotifications() {
         const checkUpcoming = async () => {
             try {
                 const res = await fetch(`${API_BASE_URL}/events?upcoming=true&withinHours=24`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    credentials: 'include'
                 });
                 if (!res.ok) return;
                 const data = await res.json();
@@ -40,5 +40,5 @@ export default function useUpcomingNotifications() {
         checkUpcoming();
 
         return () => { cancelled = true; clearInterval(interval); };
-    }, [isAuthenticated, token]);
+    }, [isAuthenticated]);
 }

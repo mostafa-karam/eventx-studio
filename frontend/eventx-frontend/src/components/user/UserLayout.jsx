@@ -5,7 +5,6 @@ import {
   Calendar, Ticket, User as UserIcon, LogOut, Search, Heart,
   Bell, Menu, Moon, Sun
 } from 'lucide-react';
-import { Toaster } from '../ui/sonner';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const UserLayout = () => {
@@ -121,7 +120,7 @@ const UserLayout = () => {
             <Outlet />
           </div>
         </main>
-        <Toaster />
+
       </div>
     </div>
   );

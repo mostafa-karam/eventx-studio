@@ -14,7 +14,7 @@ import EmptyState from '../shared/EmptyState';
 import Breadcrumbs from '../shared/Breadcrumbs';
 
 const BookingApproval = () => {
-    const { token } = useAuth();
+    const { } = useAuth();
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('pending');
@@ -33,7 +33,7 @@ const BookingApproval = () => {
                 : `${API_BASE_URL}/hall-bookings?status=${filter}`;
 
             const res = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {}
             });
             const data = await res.json();
             if (data.success) {
@@ -59,10 +59,7 @@ const BookingApproval = () => {
 
             const res = await fetch(`${API_BASE_URL}/hall-bookings/${bookingId}/${action}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 

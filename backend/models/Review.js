@@ -29,8 +29,15 @@ const reviewSchema = new mongoose.Schema({
     },
     attendedVerified: {
         type: Boolean,
-        default: false, // Set to true only when user has a used/booked ticket
+        default: false,
     },
+    // Organizer reply
+    reply: {
+        body: { type: String, trim: true, maxlength: [500, 'Reply cannot exceed 500 characters'] },
+        repliedAt: { type: Date },
+    },
+    // Soft-delete timestamp — used to enforce 24h re-review cooldown
+    deletedAt: { type: Date, default: null },
 }, {
     timestamps: true,
 });

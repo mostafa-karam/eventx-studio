@@ -8,7 +8,7 @@ import { Ticket, Users, Calendar, QrCode, Search, Filter, Download, CheckCircle,
 import QRCode from 'qrcode';
 
 const TicketManagement = () => {
-    const { token } = useAuth();
+    const { } = useAuth();
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
     const [tickets, setTickets] = useState([]);
@@ -35,7 +35,7 @@ const TicketManagement = () => {
         // prefetch a short events list for the assign modal and for filtering
         const loadEvents = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/events?limit=50`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const res = await fetch(`${API_BASE_URL}/events?limit=50`, { headers: {} });
                 if (res.ok) {
                     const data = await res.json();
                     setEvents(data.data?.events || []);
@@ -56,7 +56,7 @@ const TicketManagement = () => {
             if (eventId) params.set('eventId', eventId);
             const url = `${API_BASE_URL}/tickets/admin${params.toString() ? `?${params.toString()}` : ''}`;
             const res = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {}
             });
             if (res.ok) {
                 const data = await res.json();
@@ -95,7 +95,7 @@ const TicketManagement = () => {
 
     const downloadQrCode = () => {
         if (!qrCodeDataUrl || !selectedTicket) return;
-        
+
         const link = document.createElement('a');
         link.download = `ticket-qr-${selectedTicket.ticketId || selectedTicket._id}.png`;
         link.href = qrCodeDataUrl;
@@ -117,7 +117,7 @@ const TicketManagement = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/tickets/admin/orphans/${ticketId}/assign`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ eventId })
             });
             if (res.ok) {
@@ -140,7 +140,7 @@ const TicketManagement = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/tickets/admin/orphans/${ticketId}/cancel`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {}
             });
             if (res.ok) {
                 await fetchTickets(statusView);
@@ -298,9 +298,9 @@ const TicketManagement = () => {
                             className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                     </div>
-                    <select 
-                        value={eventFilter} 
-                        onChange={(e) => setEventFilter(e.target.value)} 
+                    <select
+                        value={eventFilter}
+                        onChange={(e) => setEventFilter(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                         <option value="">All Events</option>
@@ -309,7 +309,7 @@ const TicketManagement = () => {
                         ))}
                     </select>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                     {['all', 'booked', 'used', 'cancelled', 'expired'].map((status) => (
                         <Button
@@ -434,37 +434,37 @@ const TicketManagement = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="flex items-center space-x-2">
-                                                <Button 
-                                                    size="sm" 
+                                                <Button
+                                                    size="sm"
                                                     variant="outline"
-                                                    onClick={() => generateQrForTicket(t)} 
+                                                    onClick={() => generateQrForTicket(t)}
                                                     disabled={generating === t._id}
                                                 >
                                                     <QrCode className="w-4 h-4 mr-1" />
                                                     {generating === t._id ? 'Generating...' : 'QR Code'}
                                                 </Button>
-                                                <Button 
-                                                    variant="outline" 
-                                                    size="sm" 
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
                                                     onClick={() => navigator.clipboard.writeText(t.ticketId || t._id || '')}
                                                 >
                                                     Copy ID
                                                 </Button>
                                                 {(!t.event || statusView === 'orphan' || !t.event?.title) && (
                                                     <>
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm" 
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
                                                             onClick={() => openAssignModal(t)}
                                                             className="text-blue-600 border-blue-600 hover:bg-blue-50"
                                                         >
                                                             Assign Event
                                                         </Button>
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm" 
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
                                                             onClick={() => cancelOrphan(t._id)}
                                                             className="text-red-600 border-red-600 hover:bg-red-50"
                                                         >
@@ -476,25 +476,25 @@ const TicketManagement = () => {
                                         </div>
                                     </div>
                                 ))}
-                            
+
                             {/* Pagination */}
                             <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                                 <div className="text-sm text-gray-600">
                                     Showing page {page} of {pages} ({tickets.length} tickets)
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <Button 
-                                        size="sm" 
+                                    <Button
+                                        size="sm"
                                         variant="outline"
-                                        onClick={() => setPage((p) => Math.max(1, p - 1))} 
+                                        onClick={() => setPage((p) => Math.max(1, p - 1))}
                                         disabled={page <= 1}
                                     >
                                         Previous
                                     </Button>
-                                    <Button 
-                                        size="sm" 
+                                    <Button
+                                        size="sm"
                                         variant="outline"
-                                        onClick={() => setPage((p) => Math.min(pages, p + 1))} 
+                                        onClick={() => setPage((p) => Math.min(pages, p + 1))}
                                         disabled={page >= pages}
                                     >
                                         Next
@@ -520,9 +520,9 @@ const TicketManagement = () => {
                         {/* QR Code */}
                         <div className="bg-white p-6 rounded-lg border-2 border-gray-100">
                             {qrCodeDataUrl && (
-                                <img 
-                                    src={qrCodeDataUrl} 
-                                    alt="Ticket QR Code" 
+                                <img
+                                    src={qrCodeDataUrl}
+                                    alt="Ticket QR Code"
                                     className="w-48 h-48 object-contain"
                                 />
                             )}
@@ -534,10 +534,10 @@ const TicketManagement = () => {
                                 {selectedTicket?.event?.title || 'MAIM'}
                             </h3>
                             <p className="text-gray-600">
-                                {selectedTicket?.event?.date 
+                                {selectedTicket?.event?.date
                                     ? new Date(selectedTicket.event.date).toLocaleDateString('en-US', {
                                         weekday: 'short',
-                                        month: 'short', 
+                                        month: 'short',
                                         day: 'numeric',
                                         year: 'numeric',
                                         hour: '2-digit',
@@ -553,15 +553,15 @@ const TicketManagement = () => {
                     </div>
 
                     <DialogFooter className="flex justify-between sm:justify-between">
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             onClick={downloadQrCode}
                             className="flex items-center space-x-2"
                         >
                             <Download className="w-4 h-4" />
                             <span>Download QR</span>
                         </Button>
-                        <Button 
+                        <Button
                             onClick={() => setShowQrModal(false)}
                             className="bg-gray-900 hover:bg-gray-800 text-white px-8"
                         >

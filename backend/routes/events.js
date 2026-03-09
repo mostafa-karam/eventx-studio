@@ -14,7 +14,8 @@ const {
   getWaitlist,
   approveWaitlist,
   exportAttendees,
-  publishEvent
+  publishEvent,
+  getMyWaitlists
 } = require('../controllers/eventsController');
 
 const router = express.Router();
@@ -70,6 +71,9 @@ router.delete('/:id', authenticate, requireOrganizer, deleteEvent);
 
 // GET /api/events/:id/seats
 router.get('/:id/seats', getSeats);
+
+// GET /api/events/waitlists/my
+router.get('/waitlists/my', authenticate, getMyWaitlists);
 
 // POST /api/events/:id/waitlist
 router.post('/:id/waitlist', authenticate, joinWaitlist);

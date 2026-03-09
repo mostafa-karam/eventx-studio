@@ -11,8 +11,10 @@ import {
     ChevronRight,
     Filter,
     Check,
-    Building2
+    Building2,
+    ArrowRight
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { CardSkeleton } from './LoadingSkeletons';
 import EmptyState from './EmptyState';
 import Breadcrumbs from './Breadcrumbs';
@@ -33,6 +35,20 @@ const HallBrowser = ({ onSelectHall }) => {
         minCapacity: '',
         sort: 'name'
     });
+
+    const [selectedHalls, setSelectedHalls] = useState([]);
+
+    const toggleCompare = (hallId) => {
+        setSelectedHalls(prev => {
+            if (prev.includes(hallId)) {
+                return prev.filter(id => id !== hallId);
+            }
+            if (prev.length >= 4) {
+                return prev;
+            }
+            return [...prev, hallId];
+        });
+    };
 
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
@@ -145,72 +161,120 @@ const HallBrowser = ({ onSelectHall }) => {
                 />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {halls.map((hall) => (
-                        <div
-                            key={hall._id}
-                            className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all group cursor-pointer flex flex-col"
-                            onClick={() => onSelectHall(hall)}
-                        >
-                            {/* Image */}
-                            <div className="h-48 bg-gray-100 relative overflow-hidden">
-                                {hall.images && hall.images.length > 0 ? (
-                                    <img
-                                        src={hall.images[0].url}
-                                        alt={hall.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-200 group-hover:bg-indigo-100 transition-colors">
-                                        <Building2 className="w-16 h-16" />
-                                    </div>
-                                )}
-                                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-sm font-semibold text-gray-900 shadow-sm">
-                                    ${hall.hourlyRate}<span className="text-xs text-gray-500 font-normal">/hr</span>
-                                </div>
-                            </div>
-
-                            {/* Content */}
-                            <div className="p-5 flex-1 flex flex-col">
-                                <div className="mb-2">
-                                    <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{hall.name}</h3>
-                                    <div className="flex items-center text-sm text-gray-500 mt-1">
-                                        <MapPin className="w-3.5 h-3.5 mr-1" />
-                                        {hall.location ? `${hall.location.floor} - ${hall.location.wing}` : 'Location TBD'}
-                                    </div>
+                    {halls.map((hall) => {
+                        const isSelected = selectedHalls.includes(hall._id);
+                        return (
+                            <div
+                                key={hall._id}
+                                className={`bg-white rounded-xl border ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-gray-200'} overflow-hidden hover:shadow-lg transition-all group cursor-pointer flex flex-col relative`}
+                                onClick={() => onSelectHall(hall)}
+                            >
+                                {/* Compare Checkbox */}
+                                <div className="absolute top-3 left-3 z-20">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleCompare(hall._id);
+                                        }}
+                                        className={`w-6 h-6 rounded flex items-center justify-center transition-colors border shadow-sm ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white/80 backdrop-blur-sm border-gray-300 hover:bg-white text-transparent hover:text-gray-300'
+                                            }`}
+                                        title={isSelected ? "Remove from comparison" : "Add to comparison"}
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </button>
                                 </div>
 
-                                <p className="text-sm text-gray-600 line-clamp-2 mb-4 flex-1">
-                                    {hall.description || 'No description available for this hall.'}
-                                </p>
-
-                                {/* Badges/Info */}
-                                <div className="flex flex-wrap items-center gap-2 mb-4">
-                                    <span className="flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium border border-blue-100">
-                                        <Users className="w-3.5 h-3.5 mr-1" />
-                                        Up to {hall.capacity}
-                                    </span>
-                                    {hall.equipment?.slice(0, 3).map((item) => (
-                                        <span
-                                            key={item}
-                                            className="flex items-center px-2 py-1 bg-gray-50 text-gray-600 rounded text-xs font-medium border border-gray-200"
-                                            title={item.replace('_', ' ')}
-                                        >
-                                            {EQUIPMENT_ICONS[item] || <Check className="w-3.5 h-3.5" />}
-                                        </span>
-                                    ))}
-                                    {hall.equipment?.length > 3 && (
-                                        <span className="text-xs text-gray-400 font-medium">+{hall.equipment.length - 3}</span>
+                                {/* Image */}
+                                <div className="h-48 bg-gray-100 relative overflow-hidden">
+                                    {hall.images && hall.images.length > 0 ? (
+                                        <img
+                                            src={hall.images[0].url}
+                                            alt={hall.name}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-200 group-hover:bg-indigo-100 transition-colors">
+                                            <Building2 className="w-16 h-16" />
+                                        </div>
                                     )}
+                                    <div className="absolute top-3 right-3 bg-white shadow-lg px-3 py-1.5 rounded-xl border border-gray-100/50 backdrop-blur-md">
+                                        <p className="text-indigo-600 font-black text-lg leading-none">${hall.hourlyRate}<span className="text-gray-500 font-medium text-xs ml-1">/hr</span></p>
+                                    </div>
                                 </div>
 
-                                {/* Action */}
-                                <div className="pt-4 border-t border-gray-100 mt-auto flex items-center justify-between text-indigo-600 font-medium text-sm group-hover:text-indigo-700">
-                                    <span>View Details</span>
-                                    <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                                {/* Content */}
+                                <div className="p-5 flex-1 flex flex-col">
+                                    <div className="mb-2">
+                                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{hall.name}</h3>
+                                        <div className="flex items-center text-sm text-gray-500 mt-1">
+                                            <MapPin className="w-3.5 h-3.5 mr-1" />
+                                            {hall.location ? `${hall.location.floor} - ${hall.location.wing}` : 'Location TBD'}
+                                        </div>
+                                    </div>
+
+                                    <p className="text-sm text-gray-600 line-clamp-2 mb-4 flex-1">
+                                        {hall.description || 'No description available for this hall.'}
+                                    </p>
+
+                                    {/* Badges/Info */}
+                                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                                        <span className="flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium border border-blue-100">
+                                            <Users className="w-3.5 h-3.5 mr-1" />
+                                            Up to {hall.capacity}
+                                        </span>
+                                        {hall.equipment?.slice(0, 3).map((item) => (
+                                            <span
+                                                key={item}
+                                                className="flex items-center px-2 py-1 bg-gray-50 text-gray-600 rounded text-xs font-medium border border-gray-200"
+                                                title={item.replace('_', ' ')}
+                                            >
+                                                {EQUIPMENT_ICONS[item] || <Check className="w-3.5 h-3.5" />}
+                                            </span>
+                                        ))}
+                                        {hall.equipment?.length > 3 && (
+                                            <span className="text-xs text-gray-400 font-medium">+{hall.equipment.length - 3}</span>
+                                        )}
+                                    </div>
+
+                                    {/* Action */}
+                                    <div className="pt-4 border-t border-gray-100 mt-auto flex items-center justify-between text-indigo-600 font-medium text-sm group-hover:text-indigo-700">
+                                        <span>View Details</span>
+                                        <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
+                </div>
+            )}
+
+            {/* Compare Floating Bar */}
+            {selectedHalls.length > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-2xl border border-gray-100 px-6 py-4 flex items-center gap-6 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
+                    <div>
+                        <p className="text-gray-900 font-semibold">{selectedHalls.length} {selectedHalls.length === 1 ? 'Hall' : 'Halls'} Selected</p>
+                        <p className="text-xs text-gray-500">Select up to 4 halls to compare</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setSelectedHalls([])}
+                            className="text-sm font-medium text-gray-500 hover:text-gray-900 px-3 py-2"
+                        >
+                            Clear
+                        </button>
+                        <Link
+                            to={`/halls/compare?ids=${selectedHalls.join(',')}`}
+                            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 ${selectedHalls.length > 1
+                                ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                }`}
+                            onClick={(e) => selectedHalls.length < 2 && e.preventDefault()}
+                        >
+                            Compare Now <ArrowRight className="w-4 h-4" />
+                        </Link>
+                    </div>
                 </div>
             )}
         </div>

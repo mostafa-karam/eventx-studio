@@ -21,7 +21,16 @@ This document provides a comprehensive guide to setting up and running the Event
    - Development (with hot reload): `npm run dev`
    - Standard: `npm start`
 
-5. **Testing**:
+5. **Database Seeding (Demo Users)**:
+   - In development mode (`NODE_ENV=development`), the server automatically seeds the database with demo users on startup.
+   - To manually run the seeder: `npm run seed`
+   - Default users created:
+     - Admin: `mostafa.karam.work@gmail.com` / `admin123`
+     - Venue Admin: `venueadmin@eventx.com` / `password123`
+     - Organizer: `organizer@eventx.com` / `password123`
+     - User: `user@eventx.com` / `user1234`
+
+6. **Testing**:
    - Run the integration test suite (via Jest & Supertest): `npm test`
    - _Note: Tests run against an isolated `mongodb-memory-server` and won't affect your local database._
 

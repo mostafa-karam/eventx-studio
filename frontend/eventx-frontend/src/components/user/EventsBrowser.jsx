@@ -97,10 +97,7 @@ const EventsBrowser = ({ onEventSelect }) => {
       params.append('limit', 12);
 
       const response = await fetch(`${API_BASE_URL}/events?${params}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {

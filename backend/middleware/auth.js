@@ -8,7 +8,12 @@ const authenticate = async (req, res, next) => {
     // Support Authorization header OR httpOnly cookie named `accessToken`
     const headerToken = req.header('Authorization')?.replace('Bearer ', '');
     const cookieToken = req.cookies?.accessToken || req.cookies?.token;
-    const token = headerToken || cookieToken;
+
+    // Filter out common "bad" strings that cause malformed errors
+    let token = headerToken || cookieToken;
+    if (token === 'undefined' || token === 'null' || !token) {
+      token = null;
+    }
 
     if (!token) {
       return res.status(401).json({
@@ -65,6 +70,13 @@ const authenticate = async (req, res, next) => {
     logger.error('Authentication error:', error);
 
     if (error.name === 'JsonWebTokenError') {
+      // Log part of the malformed token safely to help diagnosis (only first 10 chars)
+      const headerToken = req.header('Authorization')?.replace('Bearer ', '');
+      const cookieToken = req.cookies?.accessToken || req.cookies?.token;
+      const rawToken = headerToken || cookieToken;
+      const snippet = rawToken ? String(rawToken).substring(0, 10) + '...' : 'none';
+      logger.error(`Malformed token detected: ${snippet}`);
+
       return res.status(401).json({
         success: false,
         message: 'Invalid token.'
@@ -191,7 +203,10 @@ const optionalAuth = async (req, res, next) => {
   try {
     const headerToken = req.header('Authorization')?.replace('Bearer ', '');
     const cookieToken = req.cookies?.accessToken || req.cookies?.token;
-    const token = headerToken || cookieToken;
+    let token = headerToken || cookieToken;
+    if (token === 'undefined' || token === 'null' || !token) {
+      token = null;
+    }
 
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);

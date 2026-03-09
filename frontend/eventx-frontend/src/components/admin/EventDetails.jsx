@@ -23,7 +23,6 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const { token } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
@@ -36,10 +35,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
@@ -58,9 +54,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
   const handleExportCSV = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/events/${eventId}/attendees/export`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers: {},
       });
 
       if (response.ok) {

@@ -31,7 +31,7 @@ const VerifyEmailPage = () => {
         };
 
         doVerify();
-    }, []);
+    }, [searchParams, verifyEmail]);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -89,11 +89,12 @@ const VerifyEmailPage = () => {
                     )}
                 </div>
 
-                {/* Dev hint */}
-                <p className="text-center text-xs text-gray-400 mt-4">
-                    No email configured? Check the dev email log at{' '}
-                    <code className="bg-gray-100 px-1 rounded">%TEMP%/eventx-emails.log</code>
-                </p>
+                {import.meta.env.DEV && (
+                    <p className="text-center text-xs text-gray-400 mt-4">
+                        Dev: Check email log at{' '}
+                        <code className="bg-gray-100 px-1 rounded">%TEMP%/eventx-emails.log</code>
+                    </p>
+                )}
             </div>
         </div>
     );

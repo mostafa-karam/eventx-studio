@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -25,10 +26,11 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
 
   const { login, forgotPassword } = useAuth();
+  const navigate = useNavigate();
 
   // Load remembered email
   useEffect(() => {
-    const savedEmail = localStorage.getItem('rememberedEmail');
+    const savedEmail = localStorage.getItem('eventx_remember_email');
     if (savedEmail) {
       setFormData(prev => ({ ...prev, email: savedEmail }));
       setRemember(true);
@@ -48,9 +50,9 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
 
     try {
       if (remember) {
-        localStorage.setItem('rememberedEmail', formData.email);
+        localStorage.setItem('eventx_remember_email', formData.email);
       } else {
-        localStorage.removeItem('rememberedEmail');
+        localStorage.removeItem('eventx_remember_email');
       }
 
       const result = await login(formData.email, formData.password);
@@ -59,6 +61,8 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
         if (result.attemptsRemaining !== undefined) {
           setAttemptsRemaining(result.attemptsRemaining);
         }
+      } else {
+        navigate('/dashboard');
       }
     } catch (error) {
       setError('Network error. Please try again.');
@@ -86,6 +90,8 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
         if (result.attemptsRemaining !== undefined) {
           setAttemptsRemaining(result.attemptsRemaining);
         }
+      } else {
+        navigate('/dashboard');
       }
     } catch (error) {
       setError('Network error during demo login');

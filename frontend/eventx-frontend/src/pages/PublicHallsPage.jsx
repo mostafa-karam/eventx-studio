@@ -10,8 +10,25 @@ const EQUIPMENT_OPTIONS = [
     'stage', 'lighting', 'air_conditioning', 'whiteboard', 'video_conferencing',
 ];
 
-const HallCard = ({ hall }) => (
-    <div className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 overflow-hidden">
+const HallCard = ({ hall, isSelected, onToggle }) => (
+    <div className={`group bg-white rounded-2xl border ${isSelected ? 'border-teal-500 ring-2 ring-teal-500/20' : 'border-gray-100'} shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 overflow-hidden relative`}>
+        {/* Compare Checkbox */}
+        <div className="absolute top-3 left-3 z-20">
+            <button
+                onClick={(e) => {
+                    e.preventDefault();
+                    onToggle(hall._id);
+                }}
+                className={`w-6 h-6 rounded flex items-center justify-center transition-colors border shadow-sm ${isSelected ? 'bg-teal-500 border-teal-500 text-white' : 'bg-white/80 backdrop-blur-sm border-gray-300 hover:bg-white text-transparent hover:text-gray-300'
+                    }`}
+                title={isSelected ? "Remove from comparison" : "Add to comparison"}
+            >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </button>
+        </div>
+
         <div className="h-44 bg-gradient-to-br from-teal-500 to-emerald-600 relative overflow-hidden">
             {hall.images?.[0]?.url ? (
                 <img src={hall.images[0].url} alt={hall.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -20,6 +37,10 @@ const HallCard = ({ hall }) => (
                     <Building2 className="w-16 h-16 text-white" />
                 </div>
             )}
+
+            <div className="absolute top-3 right-3 bg-white shadow-lg px-3 py-1.5 rounded-xl border border-gray-100/50 backdrop-blur-md z-10">
+                <p className="text-teal-600 font-black text-lg leading-none">${hall.hourlyRate}<span className="text-gray-500 font-medium text-xs ml-1">/hr</span></p>
+            </div>
             <div className="absolute bottom-3 left-3 right-3 flex gap-2">
                 {hall.equipment?.slice(0, 3).map((eq) => (
                     <span key={eq} className="px-2 py-0.5 bg-black/30 backdrop-blur-sm text-white text-xs rounded-full capitalize">
@@ -52,10 +73,14 @@ const HallCard = ({ hall }) => (
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                <div>
-                    <p className="text-teal-600 font-semibold">${hall.hourlyRate}<span className="text-gray-400 font-normal text-xs">/hr</span></p>
-                    {hall.dailyRate && <p className="text-gray-400 text-xs">${hall.dailyRate}/day</p>}
-                </div>
+                {hall.dailyRate ? (
+                    <div>
+                        <p className="text-gray-500 text-xs font-medium">Daily Rate</p>
+                        <p className="text-gray-900 font-bold">${hall.dailyRate}/day</p>
+                    </div>
+                ) : (
+                    <div className="text-sm text-gray-500 font-medium">Available Now</div>
+                )}
                 <Link to={`/organizer/halls/${hall._id}/book`}
                     className="flex items-center gap-1.5 px-4 py-2 bg-teal-50 text-teal-700 hover:bg-teal-600 hover:text-white rounded-xl text-sm font-medium transition-colors group-hover:bg-teal-600 group-hover:text-white">
                     Book Hall <ArrowRight className="w-4 h-4" />
@@ -74,6 +99,21 @@ const PublicHallsPage = () => {
     const [minCap, setMinCap] = useState('');
     const [maxCap, setMaxCap] = useState('');
     const [equipment, setEquipment] = useState('');
+
+    const [selectedHalls, setSelectedHalls] = useState([]);
+
+    const toggleCompare = (hallId) => {
+        setSelectedHalls(prev => {
+            if (prev.includes(hallId)) {
+                return prev.filter(id => id !== hallId);
+            }
+            if (prev.length >= 4) {
+                // Max 4 halls can be compared
+                return prev;
+            }
+            return [...prev, hallId];
+        });
+    };
 
     const fetchHalls = useCallback(async () => {
         setLoading(true);
@@ -161,7 +201,14 @@ const PublicHallsPage = () => {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                        {halls.map((hall) => <HallCard key={hall._id} hall={hall} />)}
+                        {halls.map((hall) => (
+                            <HallCard
+                                key={hall._id}
+                                hall={hall}
+                                isSelected={selectedHalls.includes(hall._id)}
+                                onToggle={toggleCompare}
+                            />
+                        ))}
                     </div>
                 )}
 
@@ -184,6 +231,34 @@ const PublicHallsPage = () => {
                     </Link>
                 </div>
             </div>
+
+            {/* Compare Floating Bar */}
+            {selectedHalls.length > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-2xl border border-gray-100 px-6 py-4 flex items-center gap-6 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
+                    <div>
+                        <p className="text-gray-900 font-semibold">{selectedHalls.length} {selectedHalls.length === 1 ? 'Hall' : 'Halls'} Selected</p>
+                        <p className="text-xs text-gray-500">Select up to 4 halls to compare</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setSelectedHalls([])}
+                            className="text-sm font-medium text-gray-500 hover:text-gray-900 px-3 py-2"
+                        >
+                            Clear
+                        </button>
+                        <Link
+                            to={`/halls/compare?ids=${selectedHalls.join(',')}`}
+                            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 ${selectedHalls.length > 1
+                                    ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md shadow-teal-500/20'
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                }`}
+                            onClick={(e) => selectedHalls.length < 2 && e.preventDefault()}
+                        >
+                            Compare Now <ArrowRight className="w-4 h-4" />
+                        </Link>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

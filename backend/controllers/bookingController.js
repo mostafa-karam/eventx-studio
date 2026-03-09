@@ -73,19 +73,47 @@ exports.confirmBooking = async (req, res) => {
 
             await event.save({ session });
 
+            let finalAmount = event.pricing?.amount || 0;
+            let appliedCoupon = null;
+
+            if (req.body.couponCode) {
+                const Coupon = require('../models/Coupon');
+                appliedCoupon = await Coupon.findOne({ code: req.body.couponCode.toUpperCase().trim() }).session(session);
+
+                if (appliedCoupon && appliedCoupon.isValid) {
+                    let isApplicable = true;
+                    if (appliedCoupon.applicableEvents && appliedCoupon.applicableEvents.length > 0) {
+                        isApplicable = appliedCoupon.applicableEvents.map(id => id.toString()).includes(event._id.toString());
+                    }
+
+                    if (isApplicable) {
+                        if (appliedCoupon.discountType === 'percentage') {
+                            finalAmount = Math.max(0, finalAmount - (finalAmount * appliedCoupon.discountValue / 100));
+                        } else {
+                            finalAmount = Math.max(0, finalAmount - appliedCoupon.discountValue);
+                        }
+                        appliedCoupon.usedCount += 1;
+                        await appliedCoupon.save({ session });
+                    }
+                }
+            }
+
             const ticket = new Ticket({
                 event: event._id,
                 user: req.user._id,
                 seatNumber: event.seating.seatMap[seatIndex].seatNumber,
                 payment: {
-                    amount: event.pricing?.amount || 0,
+                    amount: finalAmount,
                     currency: event.pricing?.currency || 'USD',
                     paymentMethod,
                     transactionId: paymentId,
                     status: 'completed',
                     paymentDate: new Date(),
                 },
-                metadata: { bookingId: bookingId || null },
+                metadata: {
+                    bookingId: bookingId || null,
+                    ...(appliedCoupon && { couponCode: appliedCoupon.code })
+                },
             });
 
             await ticket.save({ session });

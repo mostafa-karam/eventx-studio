@@ -35,7 +35,6 @@ const ReportsCenter = () => {
     status: 'all'
   });
 
-  const { token } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
@@ -46,10 +45,7 @@ const ReportsCenter = () => {
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/analytics/reports`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
@@ -72,14 +68,8 @@ const ReportsCenter = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/analytics/reports/generate`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: reportType,
-          filters: filters
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: reportType, filters: filters }),
       });
 
       if (response.ok) {
@@ -99,9 +89,7 @@ const ReportsCenter = () => {
   const downloadReport = async (reportId) => {
     try {
       const response = await fetch(`${API_BASE_URL}/analytics/reports/${reportId}/download`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: {}
       });
 
       if (response.ok) {

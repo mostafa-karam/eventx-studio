@@ -13,6 +13,15 @@ const logger = require('./utils/logger');
 
 dotenv.config();
 
+// ─── Startup Environment Validation ────────────────────────────────
+const REQUIRED_ENV = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'MONGODB_URI'];
+const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]);
+if (missingEnv.length > 0) {
+  console.error(`[FATAL] Missing required environment variables: ${missingEnv.join(', ')}`);
+  console.error('[FATAL] Server will not start. Please check your .env file.');
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -85,10 +94,18 @@ app.use(xss());
 app.use(compression());
 
 // CSRF Protection
-const csrfProtection = csrf({ cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' } });
+const csrfProtection = csrf({
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+  }
+});
 // We apply this selectively later, or globally except for certain endpoints.
 // For SPA API usage, we will apply it globally to all /api routes that mutate state, which csurf does automatically.
-app.use('/api', csrfProtection);
+if (process.env.NODE_ENV !== 'test') {
+  app.use('/api', csrfProtection);
+}
 
 // CSRF Token Provider Endpoint
 app.get('/api/auth/csrf-token', csrfProtection, (req, res) => {
@@ -137,6 +154,7 @@ const publicRoutes = require('./routes/public');
 const auditLogRoutes = require('./routes/auditLog');
 const searchRoutes = require('./routes/search');
 const uploadRoutes = require('./routes/upload');
+const couponRoutes = require('./routes/coupons');
 const reviewsRoutes = require('./routes/reviews');
 
 app.use('/api/auth', authLimiter, authRoutes);
@@ -157,6 +175,7 @@ app.use('/api/audit-log', auditLogRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/events/:eventId/reviews', reviewsRoutes);
+app.use('/api/coupons', couponRoutes);
 
 app.get('/', (_req, res) => res.json({ message: 'EventX Studio API is running!', version: '2.0.0' }));
 
@@ -188,6 +207,17 @@ app.use('*', (_req, res) => res.status(404).json({ success: false, message: 'Rou
 
 const startServer = async () => {
   await connectDB();
+
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const seedUsers = require('./utils/seed');
+      await seedUsers();
+      logger.info('Demo users seeded automatically for development');
+    } catch (err) {
+      logger.error('Failed to seed demo users:', err);
+    }
+  }
+
   const server = app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
   server.timeout = 30000; // 30 second request timeout
 

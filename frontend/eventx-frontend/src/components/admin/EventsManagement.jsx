@@ -35,7 +35,6 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
   const [specificDate, setSpecificDate] = useState('');
   const [cloneLoading, setCloneLoading] = useState(null);
 
-  const { token } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
@@ -62,10 +61,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
       if (dateTo) params.append('dateTo', dateTo);
 
       const response = await fetch(`${API_BASE_URL}/events/admin/my-events?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
@@ -88,10 +84,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
     try {
       const res = await fetch(`${API_BASE_URL}/events/${evt._id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus })
       });
       const data = await res.json();
@@ -114,10 +107,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
@@ -139,10 +129,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/events/${eventId}/clone`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {

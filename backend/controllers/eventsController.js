@@ -281,3 +281,18 @@ exports.publishEvent = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error while publishing event' });
     }
 };
+
+// @desc    Get user's waitlist entries
+// @access  Private
+exports.getMyWaitlists = async (req, res) => {
+    try {
+        const waitlists = await Waitlist.find({ user: req.user._id })
+            .populate('event', 'title date venue images category pricing')
+            .sort({ createdAt: -1 });
+
+        res.json({ success: true, data: { waitlists } });
+    } catch (error) {
+        logger.error('Get my waitlists error:', error);
+        res.status(500).json({ success: false, message: 'Server error while fetching waitlists' });
+    }
+};

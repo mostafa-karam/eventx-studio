@@ -6,7 +6,7 @@ import { Button } from '../ui/button';
 import { Settings, User, Lock, Shield } from 'lucide-react';
 
 const AdminSettings = () => {
-    const { token, user, setUser } = useAuth();
+    const { user, setUser } = useAuth();
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
     // Profile state
@@ -28,10 +28,7 @@ const AdminSettings = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/profile`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, phone })
             });
             const data = await res.json();
@@ -55,10 +52,7 @@ const AdminSettings = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ currentPassword, newPassword })
             });
             const data = await res.json();
@@ -124,8 +118,8 @@ const AdminSettings = () => {
                             />
                         </div>
                         <div className="md:col-span-2 flex justify-end">
-                            <Button 
-                                type="submit" 
+                            <Button
+                                type="submit"
                                 disabled={savingProfile}
                                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
                             >
@@ -174,8 +168,8 @@ const AdminSettings = () => {
                             />
                         </div>
                         <div className="md:col-span-2 flex justify-end">
-                            <Button 
-                                type="submit" 
+                            <Button
+                                type="submit"
                                 disabled={changingPwd}
                                 className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
                             >

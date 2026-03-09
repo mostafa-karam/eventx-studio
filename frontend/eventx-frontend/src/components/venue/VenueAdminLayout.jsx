@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
-    Building2, Home, ClipboardCheck, User as UserIcon, Eye,
+    Building2, Home, ClipboardCheck, User as UserIcon, Wrench,
     Moon, Sun, LogOut, Menu
 } from 'lucide-react';
-import { Toaster } from '../ui/sonner';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const VenueAdminLayout = () => {
@@ -21,6 +20,7 @@ const VenueAdminLayout = () => {
         { to: '/venue/dashboard', icon: Home, label: 'Dashboard' },
         { to: '/venue/halls', icon: Building2, label: 'Hall Management' },
         { to: '/venue/bookings', icon: ClipboardCheck, label: 'Booking Requests' },
+        { to: '/venue/maintenance', icon: Wrench, label: 'Maintenance' },
         { to: '/venue/profile', icon: UserIcon, label: 'Profile' },
     ];
 
@@ -110,7 +110,7 @@ const VenueAdminLayout = () => {
                 <main className="flex-1 overflow-y-auto">
                     <Outlet />
                 </main>
-                <Toaster />
+
             </div>
         </div>
     );

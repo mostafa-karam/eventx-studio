@@ -35,10 +35,15 @@ window.fetch = async function (...args) {
     const urlString = url.toString();
     const isApiCall = urlString.startsWith(API_BASE_URL) || urlString.startsWith('/api') || !urlString.startsWith('http');
 
-    if (isApiCall && isMutation && globalCsrfToken) {
-        // Only set if not already set manually
-        if (!headers.has('X-CSRF-Token')) {
-            headers.set('X-CSRF-Token', globalCsrfToken);
+    if (isApiCall) {
+        // Guarantee cookies are transmitted
+        config.credentials = config.credentials || 'include';
+
+        if (isMutation && globalCsrfToken) {
+            // Only set if not already set manually
+            if (!headers.has('X-CSRF-Token')) {
+                headers.set('X-CSRF-Token', globalCsrfToken);
+            }
         }
     }
 
@@ -47,7 +52,15 @@ window.fetch = async function (...args) {
     // but fetch accepts Headers objects too.
     config.headers = headers;
 
-    return originalFetch(url, config);
+    return originalFetch(url, config).then(response => {
+        // Intercept 401 responses to handle session expiry automatically
+        if (response.status === 401 && isApiCall && !urlString.includes('/auth/login') && !urlString.includes('/auth/register') && !urlString.includes('/auth/csrf-token')) {
+            window.dispatchEvent(new CustomEvent('session-expired'));
+        }
+        return response;
+    });
 };
 
-console.log('Global CSRF fetch interceptor initialized');
+if (import.meta.env.DEV) {
+    console.log('Global CSRF fetch interceptor initialized');
+}

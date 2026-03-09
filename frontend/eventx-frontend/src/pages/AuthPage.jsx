@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import LoginForm from '../components/auth/LoginForm';
 import RegisterForm from '../components/auth/RegisterForm';
+import { useAuth } from '../contexts/AuthContext';
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const { isAuthenticated, loading } = useAuth();
+
+  // Redirect already-authenticated users to their dashboard
+  if (!loading && isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const toggleMode = () => {
     setIsLogin(!isLogin);
@@ -23,7 +30,7 @@ const AuthPage = () => {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">EventX Studio</h1>
           <p className="text-gray-600">Professional Event Management System</p>
         </div>
-        
+
         {isLogin ? (
           <LoginForm onToggleMode={toggleMode} />
         ) : (

@@ -44,7 +44,7 @@ const AdvancedAnalytics = () => {
   const [timeRange, setTimeRange] = useState('30d');
   const [refreshing, setRefreshing] = useState(false);
 
-  const { token } = useAuth();
+  const { } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
@@ -55,10 +55,7 @@ const AdvancedAnalytics = () => {
     setRefreshing(true);
     try {
       const response = await fetch(`${API_BASE_URL}/analytics/dashboard?timeRange=${timeRange}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
@@ -139,7 +136,7 @@ const AdvancedAnalytics = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
@@ -173,9 +170,9 @@ const AdvancedAnalytics = () => {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 onClick={fetchAnalytics}
               >
@@ -249,9 +246,9 @@ const AdvancedAnalytics = () => {
               </SelectContent>
             </Select>
 
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
               onClick={fetchAnalytics}
             >
@@ -259,9 +256,9 @@ const AdvancedAnalytics = () => {
               Refresh
             </Button>
 
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
               <Download className="h-4 w-4 mr-2" />

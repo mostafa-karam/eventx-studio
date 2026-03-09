@@ -11,5 +11,6 @@ router.put('/:id/status', authenticate, requireAdmin, usersController.updateUser
 router.delete('/:id', authenticate, requireAdmin, usersController.deleteUser);
 router.get('/profile/me', authenticate, usersController.getProfile);
 router.put('/profile/me', authenticate, usersController.updateProfile);
+router.get('/organizer/:id', usersController.getOrganizerProfile);
 
 module.exports = router;

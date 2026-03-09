@@ -36,10 +36,12 @@ const ForgotPasswordPage = () => {
                     <p className="text-gray-600 mb-2">
                         If an account with <strong>{email}</strong> exists, a password reset link has been sent.
                     </p>
-                    <p className="text-xs text-gray-400 mb-6">
-                        No email provider configured? Check{' '}
-                        <code className="bg-gray-100 px-1 rounded">%TEMP%/eventx-emails.log</code>
-                    </p>
+                    {import.meta.env.DEV && (
+                        <p className="text-xs text-gray-400 mb-6">
+                            Dev: Check{' '}
+                            <code className="bg-gray-100 px-1 rounded">%TEMP%/eventx-emails.log</code>
+                        </p>
+                    )}
                     <div className="space-y-3">
                         <button
                             onClick={() => setSubmitted(false)}

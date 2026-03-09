@@ -6,9 +6,10 @@ const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&');
 
 class EventsService {
     buildEventQuery(queryParams) {
-        const { category, search, city, dateFrom, dateTo, priceMin, priceMax } = queryParams;
+        const { category, search, city, dateFrom, dateTo, priceMin, priceMax, organizerId } = queryParams;
         let query = { status: 'published' };
 
+        if (organizerId) query.organizer = organizerId;
         if (category) query.category = category;
 
         if (search) {

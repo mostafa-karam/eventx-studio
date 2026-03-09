@@ -7,7 +7,6 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Loader2, Calendar, Clock, Users, ArrowLeft, Info, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import apiFetch from '../utils/apiUtils';
 
 const HallRentalPage = () => {
     const { hallId } = useParams();
@@ -37,7 +36,7 @@ const HallRentalPage = () => {
         const fetchHall = async () => {
             try {
                 setLoading(true);
-                const res = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/public/halls/${hallId}`);
+                const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/public/halls/${hallId}`);
                 const data = await res.json();
                 if (data.success) {
                     setHall(data.data.hall);
@@ -88,7 +87,7 @@ const HallRentalPage = () => {
                 specialRequirements: bookingDetails.specialRequirements,
             };
 
-            const res = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/hall-bookings`, {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/hall-bookings`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

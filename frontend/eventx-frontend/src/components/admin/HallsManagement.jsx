@@ -5,7 +5,6 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { toast } from 'sonner';
-import apiFetch from '../../utils/apiUtils';
 
 const HallsManagement = () => {
     const [halls, setHalls] = useState([]);
@@ -29,7 +28,7 @@ const HallsManagement = () => {
     const fetchHalls = async () => {
         try {
             setLoading(true);
-            const res = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/halls`, {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/halls`, {
                 credentials: 'include'
             });
             const data = await res.json();
@@ -109,7 +108,7 @@ const HallsManagement = () => {
 
             const method = editingHall ? 'PUT' : 'POST';
 
-            const res = await apiFetch(url, {
+            const res = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -135,7 +134,7 @@ const HallsManagement = () => {
         if (!window.confirm('Are you sure you want to delete this hall? This action cannot be undone.')) return;
 
         try {
-            const res = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/halls/${id}`, {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/halls/${id}`, {
                 method: 'DELETE'
             });
             const data = await res.json();

@@ -10,21 +10,23 @@ exports.getNotifications = async (req, res) => {
     try {
         const notifications = [];
 
-        // Get recent bookings
-        const recentTickets = await Ticket.find({})
+        // Get recent bookings for the current user only
+        const isAdmin = req.user.role === 'admin';
+        const ticketFilter = isAdmin ? {} : { user: req.user._id };
+        const recentTickets = await Ticket.find(ticketFilter)
             .populate('user', 'name')
             .populate('event', 'title')
             .sort({ bookingDate: -1 })
             .limit(10);
 
-        // Get recent user registrations
-        const recentUsers = await User.find({ role: 'user' })
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .select('name createdAt');
+        // Get recent user registrations (admin only)
+        const recentUsers = isAdmin
+            ? await User.find({ role: 'user' }).sort({ createdAt: -1 }).limit(5).select('name createdAt')
+            : [];
 
-        // Get recent events
-        const recentEvents = await Event.find({})
+        // Get recent events (admin sees all; others see their own)
+        const eventFilter = isAdmin ? {} : {};
+        const recentEvents = await Event.find(eventFilter)
             .sort({ createdAt: -1 })
             .limit(5)
             .select('title createdAt status');

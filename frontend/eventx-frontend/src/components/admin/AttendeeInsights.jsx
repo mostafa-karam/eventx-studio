@@ -4,25 +4,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Alert, AlertDescription } from '../ui/alert';
-import { 
-  Users, 
-  Calendar, 
-  MapPin, 
-  Star, 
-  BarChart3, 
-  ArrowLeft, 
-  TrendingUp, 
-  TrendingDown, 
-  Filter, 
-  Search 
+import {
+  Users,
+  Calendar,
+  MapPin,
+  Star,
+  BarChart3,
+  ArrowLeft,
+  TrendingUp,
+  TrendingDown,
+  Filter,
+  Search
 } from 'lucide-react';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -41,7 +41,7 @@ const AttendeeInsights = ({ onBack }) => {
   const [search, setSearch] = useState('');
   const [eventMeta, setEventMeta] = useState(null);
 
-  const { token } = useAuth();
+  const { } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
@@ -53,13 +53,13 @@ const AttendeeInsights = ({ onBack }) => {
     const loadEvents = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/events/admin/my-events?limit=100&search=${encodeURIComponent(search)}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: {}
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
           setEvents(data.data?.events || []);
         }
-      } catch (_) {}
+      } catch (_) { }
     };
     loadEvents();
   }, [search]);
@@ -69,7 +69,7 @@ const AttendeeInsights = ({ onBack }) => {
       if (viewType === 'single' && selectedEvent) {
         try {
           const res = await fetch(`${API_BASE_URL}/events/${selectedEvent}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: {}
           });
           const data = await res.json().catch(() => ({}));
           if (res.ok) setEventMeta(data.data?.event || null);
@@ -85,17 +85,14 @@ const AttendeeInsights = ({ onBack }) => {
   const fetchInsightsData = async () => {
     try {
       setLoading(true);
-      const endpoint = viewType === 'single' 
-        ? selectedEvent 
+      const endpoint = viewType === 'single'
+        ? selectedEvent
           ? `/analytics/attendee-insights?eventId=${selectedEvent}`
           : '/analytics/all-attendee-insights'
         : '/analytics/all-attendee-insights';
-      
+
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
@@ -201,11 +198,11 @@ const AttendeeInsights = ({ onBack }) => {
           </Button>
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Search..." 
+            <input
+              type="text"
+              placeholder="Search..."
               value={search}
-              onChange={(e)=>setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -236,10 +233,10 @@ const AttendeeInsights = ({ onBack }) => {
           <select
             className="border rounded-md px-3 py-2 text-sm"
             value={selectedEvent || ''}
-            onChange={(e)=>{ setSelectedEvent(e.target.value || null); }}
+            onChange={(e) => { setSelectedEvent(e.target.value || null); }}
           >
             <option value="">Select an event</option>
-            {events.map((ev)=> (
+            {events.map((ev) => (
               <option key={ev._id} value={ev._id}>{ev.title}</option>
             ))}
           </select>
@@ -440,18 +437,18 @@ const AttendeeInsights = ({ onBack }) => {
                     <ResponsiveContainer width="100%" height={400}>
                       <BarChart data={computedLocations.map(l => ({ city: l.city || l.location, count: l.count }))}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                        <XAxis 
-                          dataKey="city" 
+                        <XAxis
+                          dataKey="city"
                           axisLine={false}
                           tickLine={false}
                           tick={{ fontSize: 12, fill: '#6B7280' }}
                         />
-                        <YAxis 
+                        <YAxis
                           axisLine={false}
                           tickLine={false}
                           tick={{ fontSize: 12, fill: '#6B7280' }}
                         />
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{
                             backgroundColor: 'white',
                             border: '1px solid #E5E7EB',
@@ -496,7 +493,7 @@ const AttendeeInsights = ({ onBack }) => {
                               stroke="none"
                             >
                               {computedInterests.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color || ['#8B5CF6','#3B82F6','#F59E0B','#10B981','#EF4444'][index % 5]} />
+                                <Cell key={`cell-${index}`} fill={entry.color || ['#8B5CF6', '#3B82F6', '#F59E0B', '#10B981', '#EF4444'][index % 5]} />
                               ))}
                             </Pie>
                             <Tooltip />
@@ -505,9 +502,9 @@ const AttendeeInsights = ({ onBack }) => {
                         <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                           {computedInterests.map((item, index) => (
                             <div key={index} className="flex items-center space-x-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: item.color || ['#8B5CF6','#3B82F6','#F59E0B','#10B981','#EF4444'][index % 5] }}
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: item.color || ['#8B5CF6', '#3B82F6', '#F59E0B', '#10B981', '#EF4444'][index % 5] }}
                               ></div>
                               <span>{item.name}</span>
                             </div>
@@ -546,7 +543,7 @@ const AttendeeInsights = ({ onBack }) => {
                               stroke="none"
                             >
                               {computedAges.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color || ['#8B5CF6','#7C2D12','#10B981','#EAB308'][index % 4]} />
+                                <Cell key={`cell-${index}`} fill={entry.color || ['#8B5CF6', '#7C2D12', '#10B981', '#EAB308'][index % 4]} />
                               ))}
                             </Pie>
                             <Tooltip />
@@ -555,9 +552,9 @@ const AttendeeInsights = ({ onBack }) => {
                         <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                           {computedAges.map((item, index) => (
                             <div key={index} className="flex items-center space-x-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: item.color || ['#8B5CF6','#7C2D12','#10B981','#EAB308'][index % 4] }}
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: item.color || ['#8B5CF6', '#7C2D12', '#10B981', '#EAB308'][index % 4] }}
                               ></div>
                               <span>{item.name || item.age}</span>
                             </div>
@@ -682,7 +679,7 @@ const AttendeeInsights = ({ onBack }) => {
                         <PieChart>
                           <Pie data={computedInterests} cx="50%" cy="50%" outerRadius={80} innerRadius={40} dataKey="value" stroke="none">
                             {computedInterests.map((entry, index) => (
-                              <Cell key={`si-cell-${index}`} fill={entry.color || ['#8B5CF6','#3B82F6','#F59E0B','#10B981','#EF4444'][index % 5]} />
+                              <Cell key={`si-cell-${index}`} fill={entry.color || ['#8B5CF6', '#3B82F6', '#F59E0B', '#10B981', '#EF4444'][index % 5]} />
                             ))}
                           </Pie>
                           <Tooltip />

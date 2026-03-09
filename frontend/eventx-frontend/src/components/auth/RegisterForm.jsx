@@ -675,9 +675,9 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
                   />
                   <span className="text-sm text-gray-700">
                     I agree to the{' '}
-                    <a href="#" className="text-blue-600 hover:underline">Terms of Service</a>
+                    <a href="/terms" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Terms of Service</a>
                     {' '}and{' '}
-                    <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>
+                    <a href="/privacy" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Privacy Policy</a>
                   </span>
                 </label>
                 {errors.acceptedTerms && (

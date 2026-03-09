@@ -14,7 +14,7 @@ import {
 import Breadcrumbs from './Breadcrumbs';
 
 const HallDetail = ({ hall, onBack }) => {
-    const { token, isOrganizer } = useAuth();
+    const { isOrganizer } = useAuth();
     const [bookingForm, setBookingForm] = useState({
         startDate: '',
         endDate: '',
@@ -46,10 +46,7 @@ const HallDetail = ({ hall, onBack }) => {
         try {
             const res = await fetch(`${API_BASE_URL}/hall-bookings`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     hall: hall._id,
                     ...bookingForm

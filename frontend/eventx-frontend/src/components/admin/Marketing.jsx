@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Mail, 
+import {
+  Mail,
   Users,
-  TrendingUp, 
-  Send, 
-  Eye, 
-  Target, 
-  Calendar, 
+  TrendingUp,
+  Send,
+  Eye,
+  Target,
+  Calendar,
   PlusCircle,
   Filter,
   Search,
@@ -32,10 +32,7 @@ const Marketing = () => {
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
       const response = await fetch(`${API_BASE_URL}/marketing/campaigns`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       });
 
       if (response.ok) {
@@ -190,11 +187,10 @@ const Marketing = () => {
             variant={activeTab === key ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setActiveTab(key)}
-            className={`flex items-center space-x-2 ${
-              activeTab === key 
-                ? 'bg-white shadow-md border border-gray-200 text-gray-900' 
+            className={`flex items-center space-x-2 ${activeTab === key
+                ? 'bg-white shadow-md border border-gray-200 text-gray-900'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-            }`}
+              }`}
           >
             <Icon className="w-4 h-4" />
             <span>{label}</span>
@@ -267,14 +263,14 @@ const Marketing = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-4">
                         <Badge className={`${getStatusColor(campaign.status)} border font-medium`}>
                           {campaign.status === 'active' && <Play className="w-3 h-3 mr-1" />}
                           {campaign.status === 'draft' && <Edit className="w-3 h-3 mr-1" />}
                           {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
                         </Badge>
-                        
+
                         <div className="flex items-center space-x-2">
                           <Button variant="outline" size="sm">
                             <Eye className="h-4 w-4 mr-1" />

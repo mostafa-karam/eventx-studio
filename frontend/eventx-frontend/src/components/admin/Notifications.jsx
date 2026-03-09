@@ -9,7 +9,7 @@ const Notifications = ({ onOpenAction }) => {
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  const { token } = useAuth();
+  const { } = useAuth();
 
   useEffect(() => {
     fetchNotifications();
@@ -19,10 +19,7 @@ const Notifications = ({ onOpenAction }) => {
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
       const response = await fetch(`${API_BASE_URL}/notifications`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       });
 
       if (response.ok) {
@@ -46,10 +43,7 @@ const Notifications = ({ onOpenAction }) => {
     try {
       const res = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       });
       if (!res.ok) {
         throw new Error('Failed to mark as read');
@@ -69,10 +63,7 @@ const Notifications = ({ onOpenAction }) => {
     try {
       const res = await fetch(`${API_BASE_URL}/notifications/mark-all-read`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       });
       if (!res.ok) {
         throw new Error('Failed to mark all as read');
@@ -92,10 +83,7 @@ const Notifications = ({ onOpenAction }) => {
     try {
       const res = await fetch(`${API_BASE_URL}/notifications/${notificationId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       });
       if (!res.ok) {
         throw new Error('Failed to delete notification');
@@ -109,7 +97,7 @@ const Notifications = ({ onOpenAction }) => {
 
   const getNotificationIcon = (type, priority) => {
     const iconClass = "w-5 h-5";
-    
+
     switch (type) {
       case 'booking':
         return <Ticket className={`${iconClass} text-blue-500`} />;
@@ -120,7 +108,7 @@ const Notifications = ({ onOpenAction }) => {
       case 'analytics':
         return <Info className={`${iconClass} text-orange-500`} />;
       case 'system':
-        return priority === 'high' ? 
+        return priority === 'high' ?
           <AlertCircle className={`${iconClass} text-red-500`} /> :
           <Info className={`${iconClass} text-gray-500`} />;
       default:
@@ -186,7 +174,7 @@ const Notifications = ({ onOpenAction }) => {
             </p>
           </div>
         </div>
-        
+
         {unreadCount > 0 && (
           <Button onClick={markAllAsRead} variant="outline">
             <CheckCircle className="w-4 h-4 mr-2" />
@@ -236,18 +224,17 @@ const Notifications = ({ onOpenAction }) => {
           </Card>
         ) : (
           filteredNotifications.map((notification) => (
-            <Card 
-              key={notification.id} 
-              className={`transition-all duration-200 hover:shadow-md ${
-                !notification.read ? 'bg-blue-50 border-blue-200' : 'bg-white'
-              }`}
+            <Card
+              key={notification.id}
+              className={`transition-all duration-200 hover:shadow-md ${!notification.read ? 'bg-blue-50 border-blue-200' : 'bg-white'
+                }`}
             >
               <CardContent className="p-4">
                 <div className="flex items-start space-x-4">
                   <div className="flex-shrink-0 mt-1">
                     {getNotificationIcon(notification.type, notification.priority)}
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -270,7 +257,7 @@ const Notifications = ({ onOpenAction }) => {
                           {formatTimestamp(notification.timestamp)}
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-2 ml-4">
                         {!notification.read && (
                           <Button
@@ -292,7 +279,7 @@ const Notifications = ({ onOpenAction }) => {
                         </Button>
                       </div>
                     </div>
-                    
+
                     {notification.actionUrl && (
                       <div className="mt-3">
                         <Button size="sm" variant="outline" onClick={() => onOpenAction && onOpenAction(notification.actionUrl)}>

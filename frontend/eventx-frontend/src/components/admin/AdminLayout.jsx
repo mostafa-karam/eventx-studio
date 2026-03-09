@@ -22,9 +22,10 @@ import {
   Menu,
   X,
   Shield,
-  Building2
+  Building2,
+  QrCode,
+  Tag
 } from 'lucide-react';
-import { Toaster } from '../ui/sonner';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const AdminLayout = () => {
@@ -134,6 +135,16 @@ const AdminLayout = () => {
               <Building2 className="w-4 h-4" />
               <span>Halls</span>
             </NavLink>
+            <NavLink to="/admin/checkin" onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => navCls(isActive)}>
+              <QrCode className="w-4 h-4" />
+              <span>Check-In</span>
+            </NavLink>
+            <NavLink to="/admin/coupons" onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => navCls(isActive)}>
+              <Tag className="w-4 h-4" />
+              <span>Coupons</span>
+            </NavLink>
             <NavLink to="/admin/audit-log" onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => navCls(isActive)}>
               <Shield className="w-4 h-4" />
@@ -225,7 +236,7 @@ const AdminLayout = () => {
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
-        <Toaster />
+
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { setGlobalCsrfToken } from '../utils/csrf';
+import { toast } from 'sonner';
 
 const AuthContext = createContext();
 
@@ -37,7 +38,12 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user is authenticated on app load
   useEffect(() => {
-    const checkAuth = async () => {
+    const initializeAuth = async () => {
+      // Fetch CSRF token first so the _csrf cookie is set before calling /auth/me
+      // Doing this sequentially prevents a race condition where both endpoints 
+      // generate and overwrite the CSRF cookie simultaneously.
+      await fetchCsrfToken();
+
       try {
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
           credentials: 'include',
@@ -57,9 +63,21 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     };
 
-    checkAuth();
-    fetchCsrfToken();
+    initializeAuth();
   }, []);
+
+  // Listen for session-expired events
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      if (user) {
+        toast.error('Session expired. Please log in again.');
+        setUser(null);
+      }
+    };
+
+    window.addEventListener('session-expired', handleSessionExpired);
+    return () => window.removeEventListener('session-expired', handleSessionExpired);
+  }, [user]);
 
   const login = async (email, password, twoFactorCode) => {
     try {

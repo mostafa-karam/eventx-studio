@@ -11,7 +11,8 @@ import {
   Ticket,
   Bell,
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  MapPin
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -22,7 +23,7 @@ const AdminDashboard = ({ onTabChange }) => {
   const [activityFilter, setActivityFilter] = useState('all');
   const [selectedEventId, setSelectedEventId] = useState(null);
 
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
@@ -32,10 +33,7 @@ const AdminDashboard = ({ onTabChange }) => {
   const fetchDashboardData = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/analytics/dashboard`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
