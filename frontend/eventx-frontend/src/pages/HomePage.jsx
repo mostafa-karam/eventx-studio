@@ -91,7 +91,6 @@ const HomePage = () => {
             <Link to="/contact" className="hover:text-gray-900">Contact</Link>
           </nav>
           <div className="flex items-center gap-3">
-            <Link to="/auth" className="hidden sm:flex px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 items-center justify-center">Sign in</Link>
             <Link to="/auth" className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 shadow flex items-center justify-center">Get started</Link>
             {/* Mobile hamburger */}
             <button onClick={() => setMobileMenuOpen(v => !v)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Toggle menu">
@@ -110,7 +109,6 @@ const HomePage = () => {
             <Link to="/contact" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">Contact</Link>
             <Link to="/faq" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">FAQ</Link>
             <div className="pt-2 border-t flex gap-3">
-              <Link to="/auth" className="flex-1 text-center py-2 rounded-md border border-gray-300 hover:bg-gray-50">Sign in</Link>
               <Link to="/auth" className="flex-1 text-center py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">Get started</Link>
             </div>
           </div>

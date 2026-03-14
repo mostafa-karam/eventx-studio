@@ -789,8 +789,8 @@ exports.handler_13 = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to refund this ticket' });
     }
 
-    if (ticket.status === 'cancelled' || ticket.status === 'refunded') {
-      return res.status(400).json({ success: false, message: `Ticket is already ${ticket.status}` });
+    if (ticket.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Ticket is already cancelled' });
     }
 
     if (ticket.status === 'used') {
@@ -800,7 +800,8 @@ exports.handler_13 = async (req, res) => {
     // In a real app, integrate Stripe/PayPal refund here
     // ...
 
-    ticket.status = 'refunded';
+    ticket.status = 'cancelled';
+    ticket.payment.status = 'refunded';
     await ticket.save();
 
     // Free up seat
@@ -812,7 +813,7 @@ exports.handler_13 = async (req, res) => {
     notificationService.notify(ticket.user, {
       title: 'Ticket Refund Processed',
       message: `Your ticket for "${event.title}" has been successfully refunded.`,
-      type: 'ticket',
+      type: 'booking',
       metadata: { ticketId: ticket._id, eventId: event._id },
     });
 

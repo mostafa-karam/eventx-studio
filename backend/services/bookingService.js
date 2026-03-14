@@ -51,7 +51,7 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode }) 
   if (couponCode) {
     appliedCoupon = await Coupon.findOne({
       code: couponCode.toUpperCase(),
-      status: 'active',
+      isActive: true,
       expiresAt: { $gt: new Date() },
     });
 
@@ -63,7 +63,7 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode }) 
       }
 
       // Increment coupon usage
-      appliedCoupon.currentUses = (appliedCoupon.currentUses || 0) + 1;
+      appliedCoupon.usedCount = (appliedCoupon.usedCount || 0) + 1;
       await appliedCoupon.save();
     }
   }
@@ -93,12 +93,10 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode }) 
     status: 'booked',
     payment: {
       amount: finalAmount,
-      originalAmount: payment?.amount || 0,
-      discount,
-      method: payment?.method || 'simulated',
+      paymentMethod: payment?.method || 'free',
       status: 'completed',
-      paidAt: new Date(),
-      couponCode: couponCode || undefined,
+      paymentDate: new Date(),
+      transactionId: payment?.transactionId || undefined,
     },
     bookingDate: new Date(),
   });
@@ -109,7 +107,7 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode }) 
   notificationService.notify(userId, {
     title: 'Booking Confirmed!',
     message: `Your ticket for "${event.title}" has been confirmed.`,
-    type: 'ticket',
+    type: 'booking',
     priority: 'high',
     actionUrl: `/user/tickets/${ticket._id}`,
     metadata: { eventId: event._id, ticketId: ticket._id },
@@ -173,7 +171,7 @@ exports.cancelBooking = async (ticketId, userId) => {
         title: 'A spot opened up!',
         message: `A seat is now available for "${event.title}". You have 24 hours to book.`,
         type: 'event',
-        priority: 'urgent',
+        priority: 'high',
         actionUrl: `/user/events/${event._id}`,
       });
     }
@@ -182,15 +180,14 @@ exports.cancelBooking = async (ticketId, userId) => {
   // Update ticket status
   ticket.status = 'cancelled';
   ticket.payment.status = 'refunded';
-  ticket.payment.refundedAt = new Date();
   await ticket.save();
 
   // Notify user
   notificationService.notify(userId, {
     title: 'Booking Cancelled',
     message: `Your ticket for "${event?.title || 'the event'}" has been cancelled.`,
-    type: 'ticket',
-    priority: 'normal',
+    type: 'booking',
+    priority: 'medium',
     actionUrl: `/user/tickets`,
   });
 

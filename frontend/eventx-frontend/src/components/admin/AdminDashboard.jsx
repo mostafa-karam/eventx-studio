@@ -1,20 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import {
-  Calendar,
-  Users,
-  DollarSign,
-  Ticket,
-  Bell,
-  ArrowRight,
-  TrendingUp,
-  MapPin
+  Calendar, Users, DollarSign, Ticket, Bell, ArrowRight, TrendingUp, MapPin, Activity
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const AdminDashboard = ({ onTabChange }) => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -50,28 +43,37 @@ const AdminDashboard = ({ onTabChange }) => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+  const GlassCard = ({ children, className = '' }) => (
+    <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-0.5 ${className}`}>
+      {children}
+    </div>
+  );
+
+  const SkeletonLoader = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[...Array(4)].map((_, i) => (
+          <GlassCard key={i}>
+            <div className="p-6">
+              <div className="animate-pulse flex space-x-4">
+                <div className="flex-1 space-y-4 py-1">
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                   <div className="h-8 bg-gray-200 rounded w-1/2"></div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                <div className="rounded-xl bg-gray-200 h-12 w-12"></div>
+              </div>
+            </div>
+          </GlassCard>
+        ))}
       </div>
-    );
-  }
+    </div>
+  );
+
+  if (loading) return <SkeletonLoader />;
 
   if (error) {
     return (
-      <Alert variant="destructive">
+      <Alert variant="destructive" className="bg-red-50 text-red-900 border-red-200 rounded-2xl">
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
@@ -79,7 +81,6 @@ const AdminDashboard = ({ onTabChange }) => {
 
   const { overview } = dashboardData || {};
 
-  // Use API-provided series when available; otherwise render empty states
   const revenueData = Array.isArray(dashboardData?.revenueData) && dashboardData.revenueData.length > 0
     ? dashboardData.revenueData
     : null;
@@ -90,51 +91,57 @@ const AdminDashboard = ({ onTabChange }) => {
     ? dashboardData.notifications
     : [];
 
-  // Filter notifications based on selected filter
   const filteredNotifications = activityFilter === 'all'
     ? notifications
     : notifications.filter(notification => notification.type === activityFilter);
 
-  // Match Figma KPIs: Events, Bookings, Revenue
   const stats = [
     {
-      title: 'Events',
-      value: `${overview?.totalEvents || 0} Events`,
-      icon: Calendar,
-      description: `${overview?.activeEvents || 0} active`,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-    },
-    {
-      title: 'Bookings',
-      value: (overview?.totalTicketsSold || 0).toLocaleString(),
-      icon: Ticket,
-      description: 'Total tickets',
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
-    },
-    {
-      title: 'Revenue',
+      title: 'Total Revenue',
       value: `$${(overview?.totalRevenue || 0).toLocaleString()}`,
       icon: DollarSign,
-      description: `Avg ${(overview?.averageTicketPrice || 0) > 0 ? `$${(overview?.averageTicketPrice || 0).toFixed(0)}` : 'Free'}/ticket`,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
+      trend: '+12.5%',
+      isPositive: true,
+      color: 'from-emerald-500 to-green-600',
+      lightColor: 'bg-emerald-50 text-emerald-600',
+    },
+    {
+      title: 'Active Events',
+      value: overview?.activeEvents || 0,
+      icon: Calendar,
+      trend: `${overview?.totalEvents || 0} total`,
+      isPositive: true,
+      color: 'from-blue-500 to-indigo-600',
+      lightColor: 'bg-blue-50 text-blue-600',
+    },
+    {
+      title: 'Tickets Sold',
+      value: (overview?.totalTicketsSold || 0).toLocaleString(),
+      icon: Ticket,
+      trend: '+4.2%',
+      isPositive: true,
+      color: 'from-violet-500 to-purple-600',
+      lightColor: 'bg-violet-50 text-violet-600',
+    },
+    {
+      title: 'Avg Ticket Price',
+      value: (overview?.averageTicketPrice || 0) > 0 ? `$${(overview?.averageTicketPrice || 0).toFixed(0)}` : 'Free',
+      icon: Activity,
+      trend: 'Per user',
+      isPositive: true,
+      color: 'from-amber-500 to-orange-600',
+      lightColor: 'bg-amber-50 text-amber-600',
     },
   ];
 
-  // Events derived from API
   const events = Array.isArray(dashboardData?.topPerformers?.events)
     ? dashboardData.topPerformers.events
     : [];
   const upcomingEvents = events
     .filter((e) => (e?.date ? new Date(e.date) > new Date() : false))
-    .slice(0, 5);
+    .slice(0, 4);
 
-  // Get all events for selection
   const allEvents = dashboardData?.allEvents || events || [];
-
-  // Get selected event or default to latest
   const selectedEvent = selectedEventId
     ? allEvents.find(e => e._id === selectedEventId)
     : (dashboardData?.latestEventAnalytics || allEvents.reduce((latest, e) => {
@@ -145,666 +152,393 @@ const AdminDashboard = ({ onTabChange }) => {
       return d > ld ? e : latest;
     }, null));
 
-  const latestEvent = selectedEvent;
+  const PIE_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#06B6D4'];
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white/90 backdrop-blur-md border border-gray-100 p-3 rounded-xl shadow-xl">
+          <p className="font-semibold text-gray-800 mb-1">{label}</p>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+            <p className="text-gray-600">
+              <span className="font-medium text-gray-900">${payload[0].value.toLocaleString()}</span> revenue
+            </p>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const PieTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white/90 backdrop-blur-md border border-gray-100 p-2.5 rounded-xl shadow-xl flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: payload[0].payload.fill }}></div>
+          <p className="text-sm font-medium text-gray-800">{payload[0].name}: <span className="font-bold">{payload[0].value}</span></p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const getTimeAgo = (timestamp) => {
+    if (!timestamp) return 'Just now';
+    const diff = Math.floor((new Date() - new Date(timestamp)) / 60000);
+    if (diff < 1) return 'Just now';
+    if (diff < 60) return `${diff}m`;
+    if (diff < 1440) return `${Math.floor(diff / 60)}h`;
+    return `${Math.floor(diff / 1440)}d`;
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Welcome Section (Premium aesthetic) */}
-      <div className="bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 text-white p-8 rounded-2xl shadow-xl border border-indigo-500/20 relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-purple-500 rounded-full blur-3xl opacity-20"></div>
-        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-blue-500 rounded-full blur-3xl opacity-20"></div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-5">
-            <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 shadow-inner">
-              <TrendingUp className="w-7 h-7 text-indigo-100" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Welcome, {user?.name?.split(' ')[0] || 'Admin'}</h1>
-              <p className="text-sm md:text-base text-indigo-200 mt-1 font-medium">{user?.role ? String(user.role).replace(/\b\w/g, c => c.toUpperCase()) : 'System Administrator'}</p>
-            </div>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 max-w-7xl mx-auto">
+      {/* Welcome Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-8 sm:p-10 shadow-lg text-white">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-white to-white/80">
+              Welcome back, {user?.name?.split(' ')[0] || 'Admin'}
+            </h1>
+            <p className="text-indigo-100 text-lg font-medium max-w-2xl">
+              Here's what's happening with your events today. You have {overview?.activeEvents || 0} active events running.
+            </p>
           </div>
-          <div className="flex items-center space-x-3">
-            <Button variant="outline" size="sm" className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20 hover:text-white transition-all shadow-sm" onClick={() => onTabChange && onTabChange('notifications')}>
-              <Bell className="w-4 h-4 mr-2" />
-              Notifications
+          <div className="flex items-center gap-3">
+            <Button className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-md border border-white/30 rounded-full px-6 transition-all" onClick={() => onTabChange && onTabChange('events')}>
+              <Calendar className="w-4 h-4 mr-2" />
+              Manage Events
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {stats.map((stat, index) => {
-          const IconComponent = stat.icon;
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, i) => {
+          const Icon = stat.icon;
           return (
-            <Card key={index} className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 shadow-md bg-white overflow-hidden group">
-              <CardContent className="p-6 relative">
-                <div className={`absolute top-0 right-0 w-32 h-32 ${stat.bgColor} rounded-bl-full -mr-16 -mt-16 opacity-50 group-hover:scale-110 transition-transform duration-500`}></div>
-                <div className="flex items-center justify-between relative z-10">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">{stat.title}</p>
-                    <p className={`text-3xl md:text-4xl font-extrabold tracking-tight ${stat.color}`}>{stat.value}</p>
-                    <p className="text-sm font-medium text-gray-500 mt-2">{stat.description}</p>
-                  </div>
-                  <div className={`w-14 h-14 ${stat.bgColor} rounded-2xl flex items-center justify-center shadow-inner group-hover:rotate-12 transition-transform duration-300`}>
-                    <IconComponent className={`w-7 h-7 ${stat.color}`} />
-                  </div>
+            <GlassCard key={i} className="group cursor-default p-6 flex flex-col justify-between h-full relative overflow-hidden">
+              <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 rounded-full opacity-10 blur-2xl transition-all duration-500 group-hover:opacity-20 group-hover:scale-150" style={{ background: `linear-gradient(to bottom right, var(--tw-gradient-stops))` }} ></div>
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <p className="text-gray-500 font-medium text-sm mb-1">{stat.title}</p>
+                  <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{stat.value}</h3>
                 </div>
-              </CardContent>
-            </Card>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${stat.lightColor} shadow-inner`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <span className={`text-xs font-bold px-2 py-1 rounded-full ${stat.isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                  {stat.trend}
+                </span>
+                <span className="text-xs text-gray-400 font-medium">vs last month</span>
+              </div>
+            </GlassCard>
           );
         })}
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* NET SALES (line chart) */}
-        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="bg-gray-50/80 border-b border-gray-100 pb-6 rounded-t-xl">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2 text-gray-800">
-                <span className="font-extrabold tracking-tight">NET SALES</span>
-              </CardTitle>
-              <div className="space-x-2">
-                <Button variant="outline" size="sm" className="bg-white">Filter</Button>
-                <Button variant="outline" size="sm" className="bg-white">Weekly</Button>
-              </div>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Revenue Area Chart */}
+        <GlassCard className="lg:col-span-2 p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 tracking-tight">Revenue Overview</h3>
+              <p className="text-sm text-gray-500 font-medium">Monthly revenue performance</p>
             </div>
-            <div className="grid grid-cols-3 gap-4 mt-6">
-              <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-green-100">
-                <p className="text-sm font-medium text-gray-500 mb-1">Total Revenue</p>
-                <p className="text-2xl font-bold text-green-600">{`$${(overview?.totalRevenue || 0).toLocaleString()}`}</p>
-              </div>
-              <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-blue-100">
-                <p className="text-sm font-medium text-gray-500 mb-1">Total Tickets</p>
-                <p className="text-2xl font-bold text-blue-600">{overview?.totalTicketsSold || 0}</p>
-              </div>
-              <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-purple-100">
-                <p className="text-sm font-medium text-gray-500 mb-1">Avg. Price</p>
-                <p className="text-2xl font-bold text-purple-600">{(overview?.averageTicketPrice || 0) > 0 ? `$${(overview?.averageTicketPrice || 0).toFixed(0)}` : 'Free'}</p>
-              </div>
+            <div className="flex gap-2 mt-4 sm:mt-0">
+              <select className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block px-3 py-1.5 outline-none font-medium">
+                <option>This Year</option>
+                <option>Last 6 Months</option>
+              </select>
             </div>
-          </CardHeader>
-          <CardContent className="pt-6">
+          </div>
+          
+          <div className="h-[300px] w-full mt-4">
             {revenueData ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#fff',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#EF4444"
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} dx={-10} tickFormatter={(val) => `$${val}`} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#6366f1" 
                     strokeWidth={3}
-                    dot={{ fill: '#EF4444', strokeWidth: 2, r: 5 }}
-                    activeDot={{ r: 7, fill: '#DC2626' }}
+                    fillOpacity={1} 
+                    fill="url(#colorRevenue)" 
+                    activeDot={{ r: 6, strokeWidth: 0, fill: '#4f46e5' }}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex flex-col items-center justify-center text-gray-500">
-                <TrendingUp className="w-12 h-12 text-gray-300 mb-2" />
-                <p className="text-sm">No revenue data available</p>
-                <p className="text-xs">Data will appear once you have events with sales</p>
+              <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                <TrendingUp className="w-10 h-10 mb-3 text-gray-300" />
+                <p className="font-medium text-sm">No revenue data available</p>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
 
-        {/* Customer Engagement (donut) */}
-        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="bg-gray-50/80 border-b border-gray-100 pb-6 rounded-t-xl">
-            <CardTitle className="text-center font-bold text-gray-800 tracking-tight">Customer Engagement</CardTitle>
-            <CardDescription className="text-center">Engagement distribution</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
+        {/* Categories Donut Chart */}
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-bold text-gray-900 tracking-tight">Event Distribution</h3>
+          <p className="text-sm text-gray-500 font-medium mb-6">Events by category</p>
+          
+          <div className="h-[240px] w-full relative">
             {eventCategories ? (
-              <>
-                <ResponsiveContainer width="100%" height={280}>
-                  <PieChart>
-                    <Pie
-                      data={eventCategories}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {eventCategories.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'][index % 6]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex flex-wrap gap-4 justify-center mt-4 text-sm">
-                  {eventCategories.map((item, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'][index % 6] }} />
-                      <span className="text-gray-700">{item.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={eventCategories}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={3}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {eventCategories.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} className="focus:outline-none" />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
             ) : (
-              <div className="h-[250px] flex flex-col items-center justify-center text-gray-500">
-                <Calendar className="w-12 h-12 text-gray-300 mb-2" />
-                <p className="text-sm">No engagement data available</p>
-                <p className="text-xs">Create events to see engagement distribution</p>
+              <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                <PieChart className="w-10 h-10 mb-3 text-gray-300" />
+                <p className="font-medium text-sm">No categories available</p>
               </div>
             )}
-          </CardContent>
-        </Card>
+            
+            {/* Center Label */}
+            {eventCategories && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <p className="text-sm text-gray-500 font-medium">Total</p>
+                <p className="text-2xl font-bold text-gray-900 text-center -mt-1">
+                  {eventCategories.reduce((acc, curr) => acc + curr.value, 0)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {eventCategories?.slice(0, 4).map((item, index) => (
+              <div key={index} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
+                  <span className="text-gray-600 font-medium">{item.name}</span>
+                </div>
+                <span className="font-bold text-gray-900">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
       </div>
 
-      {/* Latest Event, Upcoming Events & Notifications */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[750px]">
-        {/* Latest Event - Enhanced */}
-        <Card className="flex flex-col border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden">
-          <CardHeader className="flex-shrink-0 bg-gradient-to-br from-indigo-50 to-white border-b border-indigo-100 pb-5">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-3">
-                <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <span className="font-bold text-gray-800">Event Details</span>
-              </CardTitle>
-              {latestEvent && (
-                <div className="flex items-center space-x-2">
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${latestEvent.date && new Date(latestEvent.date) > new Date()
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-orange-100 text-orange-800'
-                    }`}>
-                    {latestEvent.date && new Date(latestEvent.date) > new Date() ? 'Upcoming' : 'Past'}
-                  </div>
-                </div>
-              )}
+      {/* Bottom Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Latest Event Spotlight */}
+        <GlassCard className="lg:col-span-2 p-0 flex flex-col">
+          <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 tracking-tight">Event Spotlight</h3>
+              <p className="text-sm text-gray-500 font-medium">Performance of selected event</p>
             </div>
-            {allEvents.length > 1 && (
-              <div className="mt-5">
-                <Select value={selectedEventId || ''} onValueChange={setSelectedEventId}>
-                  <SelectTrigger className="w-full bg-white h-11 border-indigo-200">
-                    <SelectValue placeholder="Select an event to view details" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allEvents.map((event) => (
-                      <SelectItem key={event._id} value={event._id}>
-                        <div className="flex items-center justify-between w-full">
-                          <span className="truncate">{event.title}</span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {event.date ? new Date(event.date).toLocaleDateString() : 'TBD'}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {allEvents.length > 0 && (
+              <Select value={selectedEventId || ''} onValueChange={setSelectedEventId}>
+                <SelectTrigger className="w-[200px] h-9 bg-white border-gray-200 rounded-xl outline-none ring-0 focus:ring-2 focus:ring-blue-100 font-medium text-gray-700">
+                  <SelectValue placeholder="Select event..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl shadow-xl min-w-[200px]">
+                  {allEvents.map((event) => (
+                    <SelectItem key={event._id} value={event._id} className="cursor-pointer font-medium">
+                      {event.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
-          </CardHeader>
-          <CardContent className="p-0 flex-1 flex flex-col">
-            {latestEvent ? (
-              <div className="p-6 space-y-6 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2 truncate">{latestEvent.title}</h3>
-                      <div className="flex items-center space-x-4 text-sm font-medium text-gray-500">
-                        <div className="flex items-center space-x-1.5 bg-gray-100 px-3 py-1 rounded-full">
-                          <Calendar className="w-4 h-4 text-indigo-500" />
-                          <span>{latestEvent.date ? new Date(latestEvent.date).toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          }) : '—'}</span>
-                        </div>
-                        {latestEvent.venue?.name && (
-                          <div className="flex items-center space-x-1.5 bg-gray-100 px-3 py-1 rounded-full">
-                            <MapPin className="w-4 h-4 text-indigo-500" />
-                            <span className="truncate max-w-[150px]">{latestEvent.venue.name}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onTabChange && onTabChange('events')}
-                      className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 shadow-sm transition-all"
-                    >
-                      View Details
-                    </Button>
-                  </div>
-                </div>
+          </div>
 
-                {/* Performance Metrics */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-blue-700">Tickets Sold</p>
-                        <p className="text-2xl font-bold text-blue-800">
-                          {latestEvent.analytics?.ticketsSold || (latestEvent.seating ? (latestEvent.seating.totalSeats || 0) - (latestEvent.seating.availableSeats || 0) : 0)}
-                        </p>
-                        {latestEvent.analytics?.totalRevenue !== undefined && (
-                          <p className="text-xs text-blue-600 mt-1">
-                            {(latestEvent.analytics.totalRevenue || 0) > 0 ? `$${latestEvent.analytics.totalRevenue.toLocaleString()} revenue` : 'Free event'}
-                          </p>
-                        )}
-                      </div>
-                      <Ticket className="w-8 h-8 text-blue-600" />
+          <div className="p-6 flex-1 flex flex-col">
+            {selectedEvent ? (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight leading-tight mb-2">{selectedEvent.title}</h2>
+                    <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {selectedEvent.date ? new Date(selectedEvent.date).toLocaleDateString() : 'TBD'}
+                      </span>
+                      {selectedEvent.venue?.name && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full">
+                          <MapPin className="w-3.5 h-3.5" />
+                          <span className="truncate max-w-[150px]">{selectedEvent.venue.name}</span>
+                        </span>
+                      )}
+                      
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                        selectedEvent.date && new Date(selectedEvent.date) > new Date() 
+                          ? 'bg-emerald-100 text-emerald-700' 
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {selectedEvent.date && new Date(selectedEvent.date) > new Date() ? 'UPCOMING' : 'PAST'}
+                      </span>
                     </div>
                   </div>
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-green-700">Occupancy Rate</p>
-                        <p className="text-2xl font-bold text-green-800">
-                          {latestEvent.analytics?.occupancyRate || (latestEvent.seating && latestEvent.seating.totalSeats > 0
-                            ? Math.round(((latestEvent.seating.totalSeats - latestEvent.seating.availableSeats) / latestEvent.seating.totalSeats) * 100)
-                            : 0)}%
-                        </p>
-                        {latestEvent.analytics?.views > 0 && (
-                          <p className="text-xs text-green-600 mt-1">
-                            {latestEvent.analytics.views} views
-                          </p>
-                        )}
-                      </div>
-                      <TrendingUp className="w-8 h-8 text-green-600" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Analytics */}
-                {latestEvent.analytics && (
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
-                      <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">Revenue</p>
-                      <p className="text-lg font-bold text-purple-800">
-                        {(latestEvent.analytics.totalRevenue || 0) > 0 ? `$${latestEvent.analytics.totalRevenue?.toLocaleString() || '0'}` : 'Free'}
-                      </p>
-                    </div>
-                    <div className="text-center p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-                      <p className="text-xs font-medium text-indigo-600 uppercase tracking-wide">Avg Price</p>
-                      <p className="text-lg font-bold text-indigo-800">
-                        {(latestEvent.analytics.averageTicketPrice || 0) > 0 ? `$${latestEvent.analytics.averageTicketPrice?.toFixed(0) || '0'}` : 'Free'}
-                      </p>
-                    </div>
-                    <div className="text-center p-3 bg-pink-50 rounded-lg border border-pink-200">
-                      <p className="text-xs font-medium text-pink-600 uppercase tracking-wide">Views</p>
-                      <p className="text-lg font-bold text-pink-800">
-                        {latestEvent.analytics.views?.toLocaleString() || '0'}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Seating Visualization */}
-                {latestEvent.seating && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold text-gray-700">Seat Allocation</h4>
-                      <div className="flex items-center space-x-4 text-xs">
-                        <div className="flex items-center space-x-1">
-                          <div className="w-3 h-3 bg-orange-500 rounded-sm" />
-                          <span className="text-gray-600">Booked</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <div className="w-3 h-3 bg-green-500 rounded-sm" />
-                          <span className="text-gray-600">Available</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Total Seats</p>
-                        <p className="text-xl font-bold text-blue-800">{latestEvent.seating.totalSeats || 0}</p>
-                      </div>
-                      <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                        <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Available</p>
-                        <p className="text-xl font-bold text-green-800">{latestEvent.seating.availableSeats || 0}</p>
-                      </div>
-                      <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-200">
-                        <p className="text-xs font-medium text-orange-600 uppercase tracking-wide">Booked</p>
-                        <p className="text-xl font-bold text-orange-800">
-                          {(latestEvent.seating.totalSeats || 0) - (latestEvent.seating.availableSeats || 0)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Seat Map Visualization */}
-                    {latestEvent.seating.seatMap && Array.isArray(latestEvent.seating.seatMap) && latestEvent.seating.seatMap.length > 0 && (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="grid grid-cols-10 gap-1 mb-3">
-                          {latestEvent.seating.seatMap.slice(0, 50).map((s, i) => (
-                            <div
-                              key={i}
-                              className={`w-3 h-3 rounded-sm transition-all duration-200 hover:scale-110 ${s.isBooked ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'
-                                }`}
-                              title={`Seat ${s.seatNumber}: ${s.isBooked ? 'Booked' : 'Available'}`}
-                            />
-                          ))}
-                        </div>
-                        <p className="text-xs text-gray-500 text-center">
-                          Showing first 50 seats • Hover for details
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Quick Actions */}
-                <div className="flex space-x-2 pt-2 border-t border-gray-200">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-purple-600 border-purple-200 hover:bg-purple-50"
-                    onClick={() => onTabChange && onTabChange('events')}
-                  >
+                  <Button variant="outline" className="rounded-xl border-gray-200 shadow-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 flex-shrink-0" onClick={() => onTabChange && onTabChange('events')}>
                     Manage Event
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-blue-600 border-blue-200 hover:bg-blue-50"
-                    onClick={() => onTabChange && onTabChange('analytics')}
-                  >
-                    View Analytics
-                  </Button>
+                </div>
+
+                {/* Sub-metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Total Revenue</p>
+                    <p className="text-xl font-bold text-gray-900">
+                       {(selectedEvent.analytics?.totalRevenue || 0) > 0 ? `$${selectedEvent.analytics.totalRevenue.toLocaleString()}` : 'Free'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Tickets Sold</p>
+                    <p className="text-xl font-bold text-gray-900">
+                      {selectedEvent.analytics?.ticketsSold || (selectedEvent.seating ? (selectedEvent.seating.totalSeats || 0) - (selectedEvent.seating.availableSeats || 0) : 0)}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Occupancy</p>
+                    <p className="text-xl font-bold text-gray-900">
+                      {selectedEvent.analytics?.occupancyRate || (selectedEvent.seating && selectedEvent.seating.totalSeats > 0
+                        ? Math.round(((selectedEvent.seating.totalSeats - selectedEvent.seating.availableSeats) / selectedEvent.seating.totalSeats) * 100)
+                        : 0)}%
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Page Views</p>
+                    <p className="text-xl font-bold text-gray-900">
+                      {selectedEvent.analytics?.views?.toLocaleString() || '0'}
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="w-8 h-8 text-gray-400" />
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-10">
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                  <Calendar className="w-8 h-8 text-gray-300" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Events Yet</h3>
-                <p className="text-sm text-gray-500 mb-4">Create your first event to get started with EventX</p>
-                <Button
-                  onClick={() => onTabChange && onTabChange('events')}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                >
+                <h3 className="text-lg font-bold text-gray-900">No Events Found</h3>
+                <p className="text-sm text-gray-500 mt-1 mb-4">Create your first event to see insights</p>
+                <Button className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30" onClick={() => onTabChange && onTabChange('events')}>
                   Create Event
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
 
-        {/* Right Column: Upcoming Events and Notifications */}
-        <div className="flex flex-col gap-6 h-[750px]">
-          <Card className="flex flex-col border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden pb-4">
-            <CardHeader className="flex-shrink-0 bg-gradient-to-br from-indigo-50 to-white border-b border-indigo-100 pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center space-x-3">
-                  <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                    <Calendar className="w-5 h-5" />
-                  </div>
-                  <span className="font-bold text-gray-800">Upcoming Events</span>
-                </CardTitle>
-                <Button variant="ghost" size="sm" className="hover:bg-indigo-100">
-                  <ArrowRight className="w-4 h-4 text-indigo-600" />
-                </Button>
+        {/* Activity Feed (Timeline) */}
+        <GlassCard className="p-0 flex flex-col">
+          <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 tracking-tight">Recent Activity</h3>
+              <p className="text-sm text-gray-500 font-medium">Latest system events</p>
+            </div>
+            <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">{notifications.length}</span>
+          </div>
+          
+          <div className="p-6 flex-1 overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-gray-200">
+            {notifications.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center">
+                <Bell className="w-10 h-10 text-gray-300 mb-3" />
+                <p className="text-sm font-medium text-gray-500">No recent activity</p>
               </div>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-              <div className="flex-1 overflow-y-auto px-6 pb-4">
-                {upcomingEvents.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No upcoming events</p>
-                    <p className="text-xs text-gray-400">Create an event to get started</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {upcomingEvents.map((ev) => (
-                      <div key={ev._id || ev.id} className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
-                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Calendar className="w-5 h-5 text-blue-600" />
+            ) : (
+              <div className="relative border-l-2 border-gray-100 ml-4 space-y-8 pb-4">
+                {notifications.slice(0, 5).map((notification, idx) => {
+                  let Icon = Bell;
+                  let colorClass = "bg-orange-100 text-orange-600 ring-orange-100";
+                  
+                  if (notification.type === 'booking') { Icon = Ticket; colorClass = "bg-emerald-100 text-emerald-600 ring-emerald-100"; }
+                  if (notification.type === 'registration') { Icon = Users; colorClass = "bg-blue-100 text-blue-600 ring-blue-100"; }
+                  if (notification.type === 'event') { Icon = Calendar; colorClass = "bg-purple-100 text-purple-600 ring-purple-100"; }
+
+                  return (
+                    <div key={notification.id || idx} className="relative pl-6 sm:pl-8 group">
+                      {/* Timeline Dot */}
+                      <span className={`absolute -left-[17px] top-1 flex items-center justify-center w-8 h-8 rounded-full ring-4 ring-white ${colorClass} shadow-sm group-hover:scale-110 transition-transform`}>
+                        <Icon className="w-4 h-4" />
+                      </span>
+                      
+                      <div className="flex flex-col">
+                        <div className="flex items-center justify-between gap-4 mb-1">
+                          <h4 className="text-sm font-bold text-gray-900 leading-tight">
+                            {notification.message}
+                          </h4>
+                          <span className="text-xs font-medium text-gray-400 whitespace-nowrap bg-gray-50 px-2 py-0.5 rounded-full">
+                            {getTimeAgo(notification.timestamp)}
+                          </span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-gray-900 truncate">{ev.title}</p>
-                          <p className="text-xs text-gray-500">{ev.date ? new Date(ev.date).toLocaleDateString() : '—'}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <Button
-                variant="link"
-                className="w-full text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center pt-5"
-                onClick={() => onTabChange && onTabChange('events')}
-              >
-                View All Events
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="flex flex-col border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden max-h-[400px] pb-4">
-            <CardHeader className="flex-shrink-0 bg-gradient-to-br from-indigo-50 to-white border-b border-indigo-100 pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center space-x-3 text-gray-800">
-                  <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                    <Bell className="w-5 h-5" />
-                  </div>
-                  <span className="font-bold text-gray-800">Recent Activity</span>
-                </CardTitle>
-                <div className="flex items-center space-x-2">
-                  <div className="px-3 py-1 bg-green-100 text-green-700 border border-green-200 rounded-full text-xs font-bold">
-                    {filteredNotifications.length} items
-                  </div>
-                  <Button variant="ghost" size="sm" className="text-indigo-600 hover:bg-indigo-100">
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
-              {notifications.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Bell className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Recent Activity</h3>
-                  <p className="text-sm text-gray-500 mb-4">Activity from bookings, registrations, and events will appear here</p>
-                  <Button
-                    variant="outline"
-                    onClick={() => onTabChange && onTabChange('events')}
-                    className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                  >
-                    Create Event
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  {/* Activity Filter Buttons */}
-                  <div className="px-6 py-4 bg-white flex-shrink-0">
-                    <div className="flex space-x-2">
-                      <Button
-                        variant={activityFilter === 'all' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setActivityFilter('all')}
-                        className={activityFilter === 'all'
-                          ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                          : 'text-gray-600 border-gray-300 hover:bg-gray-100'
-                        }
-                      >
-                        All ({notifications.length})
-                      </Button>
-                      <Button
-                        variant={activityFilter === 'booking' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setActivityFilter('booking')}
-                        className={activityFilter === 'booking'
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'text-gray-600 border-gray-300 hover:bg-gray-100'
-                        }
-                      >
-                        Bookings ({notifications.filter(n => n.type === 'booking').length})
-                      </Button>
-                      <Button
-                        variant={activityFilter === 'registration' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setActivityFilter('registration')}
-                        className={activityFilter === 'registration'
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                          : 'text-gray-600 border-gray-300 hover:bg-gray-100'
-                        }
-                      >
-                        Users ({notifications.filter(n => n.type === 'registration').length})
-                      </Button>
-                      <Button
-                        variant={activityFilter === 'event' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setActivityFilter('event')}
-                        className={activityFilter === 'event'
-                          ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                          : 'text-gray-600 border-gray-300 hover:bg-gray-100'
-                        }
-                      >
-                        Events ({notifications.filter(n => n.type === 'event').length})
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4 recent-activity-scroll">
-                    {filteredNotifications.length === 0 ? (
-                      <div className="flex items-center justify-center h-full">
-                        <div className="text-center">
-                          <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                          <p className="text-sm text-gray-500">No {activityFilter === 'all' ? '' : activityFilter} activity found</p>
-                          <p className="text-xs text-gray-400">Try selecting a different filter</p>
-                        </div>
-                      </div>
-                    ) : (
-                      filteredNotifications.map((notification, index) => {
-                        const getActivityIcon = (type) => {
-                          switch (type) {
-                            case 'booking':
-                              return <Ticket className="w-4 h-4" />;
-                            case 'registration':
-                              return <Users className="w-4 h-4" />;
-                            case 'event':
-                              return <Calendar className="w-4 h-4" />;
-                            default:
-                              return <Bell className="w-4 h-4" />;
-                          }
-                        };
-
-                        const getActivityColor = (type) => {
-                          switch (type) {
-                            case 'booking':
-                              return 'bg-green-100 text-green-600';
-                            case 'registration':
-                              return 'bg-blue-100 text-blue-600';
-                            case 'event':
-                              return 'bg-purple-100 text-purple-600';
-                            default:
-                              return 'bg-orange-100 text-orange-600';
-                          }
-                        };
-
-                        const getTimeAgo = (timestamp) => {
-                          if (!timestamp) return 'Just now';
-                          const now = new Date();
-                          const time = new Date(timestamp);
-                          const diffInMinutes = Math.floor((now - time) / (1000 * 60));
-
-                          if (diffInMinutes < 1) return 'Just now';
-                          if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-                          if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-                          return `${Math.floor(diffInMinutes / 1440)}d ago`;
-                        };
-
-                        return (
-                          <div key={notification.id || index} className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getActivityColor(notification.type)} group-hover:scale-105 transition-transform`}>
-                              {getActivityIcon(notification.type)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900 leading-relaxed">
-                                    {notification.message}
-                                  </p>
-                                  {notification.description && (
-                                    <p className="text-xs text-gray-600 mt-1">
-                                      {notification.description}
-                                    </p>
-                                  )}
-                                  <div className="flex items-center space-x-2 mt-2">
-                                    <span className="text-xs text-gray-500">
-                                      {getTimeAgo(notification.timestamp)}
-                                    </span>
-                                    {notification.type && (
-                                      <>
-                                        <span className="text-xs text-gray-300">•</span>
-                                        <span className={`text-xs px-2 py-1 rounded-full ${notification.type === 'booking' ? 'bg-green-100 text-green-700' :
-                                          notification.type === 'registration' ? 'bg-blue-100 text-blue-700' :
-                                            notification.type === 'event' ? 'bg-purple-100 text-purple-700' :
-                                              'bg-orange-100 text-orange-700'
-                                          }`}>
-                                          {notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}
-                                        </span>
-                                      </>
-                                    )}
-                                    {notification.metadata?.amount !== undefined && (
-                                      <>
-                                        <span className="text-xs text-gray-300">•</span>
-                                        <span className="text-xs text-green-600 font-medium">
-                                          {(notification.metadata.amount || 0) > 0 ? `$${notification.metadata.amount}` : 'Free'}
-                                        </span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                                {notification.metadata?.ticketId && (
-                                  <div className="text-right">
-                                    <span className="text-xs text-gray-400 font-mono">
-                                      #{notification.metadata.ticketId}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                        
+                        {notification.description && (
+                          <p className="text-xs font-medium text-gray-500 leading-relaxed mb-2">
+                            {notification.description}
+                          </p>
+                        )}
+                        
+                        {/* Meta Tags */}
+                        {(notification.metadata?.amount || notification.metadata?.ticketId) && (
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {notification.metadata.amount && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-700 border border-green-100">
+                                ${(notification.metadata.amount).toLocaleString()}
+                              </span>
+                            )}
+                            {notification.metadata.ticketId && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200 font-mono">
+                                #{notification.metadata.ticketId.substring(0,8)}
+                              </span>
+                            )}
                           </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {notifications.length > 0 && (
-                    <Button
-                      variant="link"
-                      className="w-full text-orange-600 hover:text-orange-700 font-medium flex items-center justify-center pt-5"
-                      onClick={() => onTabChange && onTabChange('notifications')}
-                    >
-                      View All Activity
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          
+          {notifications.length > 5 && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+              <Button variant="ghost" className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-sm font-semibold rounded-xl" onClick={() => onTabChange && onTabChange('notifications')}>
+                View All Activity <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+            </div>
+          )}
+        </GlassCard>
       </div>
     </div>
   );
 };
 
 export default AdminDashboard;
-

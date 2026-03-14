@@ -1,26 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Badge } from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
 import {
-  Calendar,
-  MapPin,
-  Users,
-  DollarSign,
-  Search,
-  Plus,
-  Edit,
-  Trash2,
-  Eye,
-  MoreHorizontal,
-  Filter,
-  ArrowRight,
-  Clock,
-  Ticket,
-  Copy
+  Calendar, MapPin, Users, DollarSign, Search, Plus, Edit, Trash2, Eye,
+  MoreHorizontal, Filter, Copy, ChevronLeft, ChevronRight, CheckCircle2,
+  XCircle, ArrowUpDown, ChevronDown
 } from 'lucide-react';
 
 const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
@@ -34,14 +19,23 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
   const [dateTo, setDateTo] = useState('');
   const [specificDate, setSpecificDate] = useState('');
   const [cloneLoading, setCloneLoading] = useState(null);
+  
+  // Pagination & Sorting state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+  const [activeDropdown, setActiveDropdown] = useState(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchEvents();
-  }, [searchTerm, categoryFilter, dateFrom, dateTo]);
+  }, [categoryFilter, dateFrom, dateTo]);
 
-  // When specificDate changes, constrain the range to that exact day
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page on search/filter 
+  }, [searchTerm, categoryFilter, specificDate]);
+
   useEffect(() => {
     if (specificDate) {
       setDateFrom(specificDate);
@@ -54,8 +48,9 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
 
   const fetchEvents = async () => {
     try {
+      setLoading(true);
       const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
+      // We'll handle search locally for better UX, but keep API filters for categories/dates
       if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter);
       if (dateFrom) params.append('dateFrom', dateFrom);
       if (dateTo) params.append('dateTo', dateTo);
@@ -66,7 +61,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setEvents(data.data.events);
+        setEvents(data.data.events || []);
       } else {
         setError('Failed to load events');
       }
@@ -87,11 +82,12 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus })
       });
-      const data = await res.json();
       if (!res.ok) {
+        const data = await res.json();
         throw new Error(data?.message || 'Failed to update status');
       }
       setEvents((prev) => prev.map((e) => (e._id === evt._id ? { ...e, status: nextStatus } : e)));
+      setActiveDropdown(null);
     } catch (e) {
       console.error('Publish toggle error:', e);
       setError(e.message || 'Failed to update status');
@@ -100,9 +96,9 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
 
   const handleDeleteEvent = async (eventId) => {
     if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      setActiveDropdown(null);
       return;
     }
-
     setDeleteLoading(eventId);
     try {
       const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
@@ -112,6 +108,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
 
       if (response.ok) {
         setEvents(events.filter(event => event._id !== eventId));
+        setActiveDropdown(null);
       } else {
         setError('Failed to delete event');
       }
@@ -126,6 +123,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
   const handleCloneEvent = async (eventId) => {
     setCloneLoading(eventId);
     setError('');
+    setActiveDropdown(null);
     try {
       const response = await fetch(`${API_BASE_URL}/events/${eventId}/clone`, {
         method: 'POST',
@@ -147,23 +145,69 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
     }
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  // Process data for table
+  const processedEvents = useMemo(() => {
+    let result = [...events];
+    
+    // Apply local search
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      result = result.filter(e => 
+        e.title?.toLowerCase().includes(lowerSearch) || 
+        e.venue?.name?.toLowerCase().includes(lowerSearch)
+      );
+    }
+
+    // Apply sorting
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        let aVal = a[sortConfig.key];
+        let bVal = b[sortConfig.key];
+        
+        if (sortConfig.key === 'tickets') {
+          aVal = a.seating?.totalSeats || 0;
+          bVal = b.seating?.totalSeats || 0;
+        } else if (sortConfig.key === 'price') {
+          aVal = a.pricing?.amount || 0;
+          bVal = b.pricing?.amount || 0;
+        } else if (sortConfig.key === 'date') {
+          aVal = new Date(a.date).getTime();
+          bVal = new Date(b.date).getTime();
+        } else if (sortConfig.key === 'status') {
+          aVal = a.status || 'draft';
+          bVal = b.status || 'draft';
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [events, searchTerm, sortConfig]);
+
+  // Pagination
+  const totalPages = Math.ceil(processedEvents.length / itemsPerPage) || 1;
+  const currentEvents = processedEvents.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+    setSortConfig({ key, direction });
   };
 
-  const formatPrice = (event) => {
-    if (event?.pricing?.type === 'free') {
-      return 'Free';
-    }
-    return `$${event?.pricing?.amount ?? 0}`;
+  const formatDate = (dateString, includeTime = true) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      ...(includeTime && { hour: '2-digit', minute: '2-digit' })
+    });
   };
 
   const getEventStatus = (event) => {
@@ -171,303 +215,331 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
     const eventDate = new Date(event.date);
 
     if (eventDate < now) {
-      return { status: 'past', label: 'Past', color: 'bg-gray-100 text-gray-600' };
-    } else if ((event?.seating?.availableSeats ?? 0) === 0) {
-      return { status: 'sold-out', label: 'Sold Out', color: 'bg-red-100 text-red-600' };
+      return { label: 'Past', color: 'bg-gray-100 text-gray-600 border-gray-200' };
+    } else if ((event?.seating?.availableSeats ?? 0) === 0 && (event?.seating?.totalSeats ?? 0) > 0) {
+      return { label: 'Sold Out', color: 'bg-red-50 text-red-700 border-red-200' };
     } else {
-      return { status: 'active', label: 'Active', color: 'bg-green-100 text-green-600' };
+      return { label: 'Active', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
     }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-6">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-                  <div className="h-20 bg-gray-200 rounded mb-4"></div>
-                  <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const getCategoryEmoji = (category) => {
+    const map = { music: '🎵', sports: '🏆', conference: '💼', workshop: '🛠️', festival: '🎪' };
+    return map[category] || '📅';
+  };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.action-dropdown-container')) {
+        setActiveDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const GlassCard = ({ children, className = '' }) => (
+    <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden ${className}`}>
+      {children}
+    </div>
+  );
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Calendar className="w-8 h-8 text-blue-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Event Management</h1>
-            <p className="text-gray-600">Create, manage, and track your events</p>
-          </div>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+            <span className="bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">Events Management</span>
+          </h1>
+          <p className="text-gray-500 font-medium mt-1">Create, manage, and track your events</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline">
-            <Eye className="w-4 h-4 mr-2" />
+        <div className="flex items-center gap-3">
+          <Button variant="outline" className="bg-white/60 backdrop-blur-md border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 hidden sm:flex">
+            <Eye className="w-4 h-4 mr-2 text-gray-500" />
             Preview Mode
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700" onClick={onCreateEvent}>
+          <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 rounded-xl" onClick={onCreateEvent}>
             <Plus className="w-4 h-4 mr-2" />
             Create Event
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Events</p>
-                <p className="text-3xl font-bold text-gray-900">{events.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-blue-600" />
-              </div>
+      {/* KPI Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+        {[
+          { label: 'Total Events', val: events.length, icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50 pt-2 shadow-inner' },
+          { label: 'Published', val: events.filter(e => e.status === 'published').length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Drafts', val: events.filter(e => e.status !== 'published').length, icon: Edit, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Total Tickets', val: events.reduce((s, e) => s + (e.seating?.totalSeats || 0), 0), icon: Ticket, color: 'text-purple-600', bg: 'bg-purple-50' }
+        ].map((stat, i) => (
+          <GlassCard key={i} className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
+            <div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{stat.label}</p>
+              <p className="text-3xl font-black text-gray-900">{stat.val}</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Published</p>
-                <p className="text-3xl font-bold text-green-600">{events.filter(e => e.status === 'published').length}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Eye className="w-6 h-6 text-green-600" />
-              </div>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${stat.bg} shadow-sm border border-white/50`}>
+              <stat.icon className={`w-6 h-6 ${stat.color}`} />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Draft Events</p>
-                <p className="text-3xl font-bold text-yellow-600">{events.filter(e => e.status === 'draft' || !e.status).length}</p>
-              </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Edit className="w-6 h-6 text-yellow-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Tickets</p>
-                <p className="text-3xl font-bold text-purple-600">{events.reduce((sum, e) => sum + (e.seating?.totalSeats || 0), 0)}</p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Ticket className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          </GlassCard>
+        ))}
       </div>
 
-      {/* Filters and Search */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search events..."
-              className="pl-10 w-80"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">All Categories</option>
-            <option value="music">🎵 Music</option>
-            <option value="sports">🏆 Sports</option>
-            <option value="conference">💼 Conference</option>
-            <option value="workshop">🛠️ Workshop</option>
-            <option value="festival">🎪 Festival</option>
-          </select>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
-            Filter
-          </Button>
-          <input
-            type="date"
-            value={specificDate}
-            onChange={(e) => setSpecificDate(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-          />
-        </div>
-      </div>
-
-
-      {/* Error Message */}
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="bg-red-50 text-red-900 border-red-200 rounded-xl">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      {/* Events List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Calendar className="w-5 h-5" />
-            <span>Events Overview</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {events.length === 0 && !loading ? (
-            <div className="text-center py-12">
-              <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No events found</h3>
-              <p className="text-gray-600 mb-4">
-                {searchTerm ? 'Try adjusting your search criteria.' : 'Create your first event to get started.'}
+      {/* Main Table Container */}
+      <GlassCard className="flex flex-col">
+        {/* Toolbar */}
+        <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/50 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 w-full lg:w-auto">
+            <div className="relative flex-1 lg:w-80 group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 group-focus-within:text-blue-500 transition-colors" />
+              <input
+                placeholder="Search events by name or venue..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all text-gray-700"
+              />
+            </div>
+            <div className="relative">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="appearance-none pl-4 pr-10 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all text-gray-700 cursor-pointer font-medium"
+              >
+                <option value="all">All Categories</option>
+                <option value="music">🎵 Music</option>
+                <option value="sports">🏆 Sports</option>
+                <option value="conference">💼 Conference</option>
+                <option value="workshop">🛠️ Workshop</option>
+                <option value="festival">🎪 Festival</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 w-full lg:w-auto">
+            <Button variant="outline" className="bg-white border-gray-200 shadow-sm rounded-xl text-gray-700 hidden sm:flex">
+              <Filter className="w-4 h-4 mr-2 text-gray-500" /> Filters
+            </Button>
+            <div className="relative flex-1 sm:flex-none">
+              <input
+                type="date"
+                value={specificDate}
+                onChange={(e) => setSpecificDate(e.target.value)}
+                className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all text-gray-700 font-medium cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto min-h-[400px]">
+          {loading ? (
+             <div className="p-8 space-y-4">
+               {[...Array(5)].map((_, i) => (
+                 <div key={i} className="animate-pulse flex items-center gap-4">
+                   <div className="h-10 w-10 bg-gray-200 rounded-lg"></div>
+                   <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                   <div className="h-4 bg-gray-200 rounded w-1/5 ml-auto"></div>
+                   <div className="h-8 bg-gray-200 rounded w-16"></div>
+                 </div>
+               ))}
+             </div>
+          ) : currentEvents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center h-[400px]">
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                <Search className="w-8 h-8 text-gray-300" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">No events found</h3>
+              <p className="text-sm text-gray-500 max-w-sm mb-6">
+                We couldn't find any events matching your current filters. Try adjusting your search or create a new event.
               </p>
-              {!searchTerm && (
-                <Button onClick={onCreateEvent}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Your First Event
+              {!searchTerm && !specificDate && categoryFilter === 'all' && (
+                <Button className="bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20" onClick={onCreateEvent}>
+                  <Plus className="w-4 h-4 mr-2" /> Create First Event
                 </Button>
               )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {events.map((event) => {
-                const eventStatus = getEventStatus(event);
-                const totalSeats = event?.seating?.totalSeats ?? 0;
-                const availableSeats = event?.seating?.availableSeats ?? 0;
-                const soldSeats = Math.max(0, totalSeats - availableSeats);
-                const eventEmoji = event.category === 'music' ? '🎵' :
-                  event.category === 'sports' ? '🏆' :
-                    event.category === 'conference' ? '💼' :
-                      event.category === 'workshop' ? '🛠️' :
-                        event.category === 'festival' ? '🎪' : '📅';
+            <table className="w-full text-sm text-left whitespace-nowrap">
+              <thead className="text-xs text-gray-500 uppercase bg-gray-50/80 border-b border-gray-100 sticky top-0 z-10">
+                <tr>
+                  <th scope="col" className="px-6 py-4 font-bold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('title')}>
+                    <div className="flex items-center gap-2">Event <ArrowUpDown className="w-3 h-3 opacity-50" /></div>
+                  </th>
+                  <th scope="col" className="px-6 py-4 font-bold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('date')}>
+                    <div className="flex items-center gap-2">Date & Venue <ArrowUpDown className="w-3 h-3 opacity-50" /></div>
+                  </th>
+                  <th scope="col" className="px-6 py-4 font-bold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('status')}>
+                    <div className="flex items-center gap-2">Status <ArrowUpDown className="w-3 h-3 opacity-50" /></div>
+                  </th>
+                  <th scope="col" className="px-6 py-4 font-bold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('price')}>
+                    <div className="flex items-center gap-2">Price <ArrowUpDown className="w-3 h-3 opacity-50" /></div>
+                  </th>
+                  <th scope="col" className="px-6 py-4 font-bold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('tickets')}>
+                    <div className="flex items-center gap-2">Tickets Sold <ArrowUpDown className="w-3 h-3 opacity-50" /></div>
+                  </th>
+                  <th scope="col" className="px-6 py-4 font-bold tracking-wider text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {currentEvents.map((event) => {
+                  const evtState = getEventStatus(event);
+                  const isPublished = event.status === 'published';
+                  const totalSeats = event?.seating?.totalSeats || 0;
+                  const availableSeats = event?.seating?.availableSeats || 0;
+                  const soldSeats = Math.max(0, totalSeats - availableSeats);
+                  const progress = totalSeats > 0 ? (soldSeats / totalSeats) * 100 : 0;
+                  
+                  return (
+                    <tr key={event._id} className="bg-white hover:bg-gray-50/80 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-lg shadow-sm">
+                            {getCategoryEmoji(event.category)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors max-w-[200px] truncate">{event.title}</div>
+                            <div className="text-xs text-gray-500 mt-0.5 capitalize">{event.category || 'Event'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-gray-900 font-medium flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                          {formatDate(event.date, false)}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 truncate max-w-[150px]">
+                          <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          <span className="truncate">{event?.venue?.name || 'TBD'}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1.5 items-start">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border ${isPublished ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                            {isPublished ? 'PUBLISHED' : 'DRAFT'}
+                          </span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border ${evtState.color}`}>
+                            {evtState.label.toUpperCase()}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-gray-900">
+                          {event.pricing?.type === 'free' ? (
+                            <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 text-xs">FREE</span>
+                          ) : (
+                            `$${event.pricing?.amount || 0}`
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="w-32">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="font-bold text-gray-700">{soldSeats}</span>
+                            <span className="text-gray-400">/ {totalSeats}</span>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-1.5 mb-1 overflow-hidden">
+                            <div className={`h-1.5 rounded-full ${progress >= 100 ? 'bg-red-500' : progress > 80 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${progress}%` }}></div>
+                          </div>
+                          <span className="text-[10px] text-gray-500 font-medium">{Math.round(progress)}% sold</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="relative inline-block text-left action-dropdown-container">
+                          <button 
+                            onClick={() => setActiveDropdown(activeDropdown === event._id ? null : event._id)}
+                            className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-100"
+                          >
+                            <MoreHorizontal className="w-5 h-5" />
+                          </button>
+                          
+                          {activeDropdown === event._id && (
+                            <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                              <button onClick={() => { onEditEvent(event); setActiveDropdown(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center font-medium">
+                                <Edit className="w-4 h-4 mr-2" /> Edit Event
+                              </button>
+                              <button onClick={() => togglePublish(event)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center font-medium">
+                                {isPublished ? <XCircle className="w-4 h-4 mr-2 text-amber-500" /> : <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-500" />}
+                                {isPublished ? 'Unpublish' : 'Publish'}
+                              </button>
+                              <button onClick={() => handleCloneEvent(event._id)} disabled={cloneLoading === event._id} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center font-medium">
+                                <Copy className="w-4 h-4 mr-2" /> {cloneLoading === event._id ? 'Cloning...' : 'Clone Event'}
+                              </button>
+                              <div className="h-px bg-gray-100 my-1"></div>
+                              <button onClick={() => handleDeleteEvent(event._id)} disabled={deleteLoading === event._id} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center font-medium">
+                                <Trash2 className="w-4 h-4 mr-2" /> {deleteLoading === event._id ? 'Deleting...' : 'Delete Event'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
 
+        {/* Pagination */}
+        {!loading && processedEvents.length > 0 && (
+          <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span className="text-sm text-gray-500 font-medium">
+              Showing <span className="font-bold text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-bold text-gray-900">{Math.min(currentPage * itemsPerPage, processedEvents.length)}</span> of <span className="font-bold text-gray-900">{processedEvents.length}</span> entries
+            </span>
+            <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              
+              {/* Simple page numbers */}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum = i + 1;
+                if (totalPages > 5 && currentPage > 3) {
+                  pageNum = currentPage - 2 + i;
+                  if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+                }
+                
                 return (
-                  <div key={event._id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-4 flex-1">
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-xl">
-                          {eventEmoji}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <h3 className="font-semibold text-gray-900 text-lg">{event.title}</h3>
-                            <Badge className={event.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
-                              {event.status === 'published' ? 'Published' : 'Draft'}
-                            </Badge>
-                            <Badge className={eventStatus.color}>
-                              {eventStatus.label}
-                            </Badge>
-                          </div>
-
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                            <div className="flex items-center space-x-2">
-                              <MapPin className="w-4 h-4 text-gray-400" />
-                              <span className="text-sm text-gray-600">{event?.venue?.name || 'TBD'}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Calendar className="w-4 h-4 text-gray-400" />
-                              <span className="text-sm text-gray-600">{formatDate(event.date)}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <DollarSign className="w-4 h-4 text-green-500" />
-                              <span className="text-sm font-medium text-green-600">{formatPrice(event)}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Users className="w-4 h-4 text-purple-500" />
-                              <span className="text-sm text-gray-600">{soldSeats}/{totalSeats} tickets</span>
-                            </div>
-                          </div>
-
-                          {/* Progress Bar */}
-                          <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${totalSeats > 0 ? (soldSeats / totalSeats) * 100 : 0}%` }}
-                            ></div>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            {soldSeats} of {totalSeats} tickets sold ({totalSeats > 0 ? Math.round((soldSeats / totalSeats) * 100) : 0}%)
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => togglePublish(event)}
-                          className={event.status === 'published' ? 'text-yellow-600 border-yellow-600 hover:bg-yellow-50' : 'text-green-600 border-green-600 hover:bg-green-50'}
-                        >
-                          {event.status === 'published' ? 'Unpublish' : 'Publish'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onEditEvent(event)}
-                          className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                        >
-                          <Edit className="w-4 h-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleCloneEvent(event._id)}
-                          disabled={cloneLoading === event._id}
-                          className="text-purple-600 border-purple-600 hover:bg-purple-50 flex-1 whitespace-nowrap"
-                        >
-                          <Copy className="w-4 h-4 mr-1 hidden sm:block" />
-                          <span className="sm:hidden w-4 h-4 mr-1 flex items-center justify-center"><Copy size={16} /></span>
-                          {cloneLoading === event._id ? 'Cloning...' : 'Clone'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDeleteEvent(event._id)}
-                          disabled={deleteLoading === event._id}
-                          className="text-red-600 border-red-600 hover:bg-red-50 flex-1 whitespace-nowrap"
-                        >
-                          <Trash2 className="w-4 h-4 mr-1 hidden sm:block" />
-                          <span className="sm:hidden w-4 h-4 mr-1 flex items-center justify-center"><Trash2 size={16} /></span>
-                          {deleteLoading === event._id ? 'Deleting...' : 'Delete'}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-semibold transition-colors ${
+                      currentPage === pageNum 
+                        ? 'bg-blue-600 text-white shadow-sm' 
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
                 );
               })}
+              
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </GlassCard>
     </div>
   );
 };
 
 export default EventsManagement;
-

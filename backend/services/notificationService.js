@@ -15,15 +15,15 @@ const logger = require('../utils/logger');
  * @param {object} opts
  * @param {string} opts.title
  * @param {string} opts.message
- * @param {string} [opts.type='info'] - info | success | warning | error | event | ticket | booking | system
- * @param {string} [opts.priority='normal'] - low | normal | high | urgent
+ * @param {string} [opts.type='booking'] - booking | event | user | analytics | system
+ * @param {string} [opts.priority='medium'] - low | medium | high
  * @param {string} [opts.actionUrl] - Deep link URL
  * @param {object} [opts.metadata] - Extra structured data
  */
-exports.notify = async (userId, { title, message, type = 'info', priority = 'normal', actionUrl, metadata } = {}) => {
+exports.notify = async (userId, { title, message, type = 'booking', priority = 'medium', actionUrl, metadata } = {}) => {
   try {
     const notification = await Notification.create({
-      user: userId,
+      userId,
       title,
       message,
       type,
@@ -45,11 +45,11 @@ exports.notify = async (userId, { title, message, type = 'info', priority = 'nor
  */
 exports.notifyMany = async (userIds, opts) => {
   const docs = userIds.map(userId => ({
-    user: userId,
+    userId,
     title: opts.title,
     message: opts.message,
-    type: opts.type || 'info',
-    priority: opts.priority || 'normal',
+    type: opts.type || 'booking',
+    priority: opts.priority || 'medium',
     actionUrl: opts.actionUrl,
     metadata: opts.metadata,
   }));
@@ -67,7 +67,7 @@ exports.notifyMany = async (userIds, opts) => {
  */
 exports.markAsRead = async (notificationId, userId) => {
   return Notification.findOneAndUpdate(
-    { _id: notificationId, user: userId },
+    { _id: notificationId, userId },
     { read: true },
     { new: true }
   );
@@ -78,7 +78,7 @@ exports.markAsRead = async (notificationId, userId) => {
  */
 exports.markAllAsRead = async (userId) => {
   return Notification.updateMany(
-    { user: userId, read: false },
+    { userId, read: false },
     { read: true }
   );
 };

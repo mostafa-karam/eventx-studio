@@ -1,40 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Badge } from '../ui/badge';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import {
-  TrendingUp,
-  TrendingDown,
-  Users,
-  Calendar,
-  DollarSign,
-  Ticket,
-  Download,
-  Filter,
-  RefreshCw,
-  BarChart3,
-  PieChart as PieChartIcon,
-  Activity
+  TrendingUp, TrendingDown, Users, Calendar, DollarSign, Ticket, Download,
+  RefreshCw, BarChart3, PieChart as PieChartIcon, Activity, AlertCircle, MapPin
 } from 'lucide-react';
 
 const AdvancedAnalytics = () => {
@@ -49,9 +24,11 @@ const AdvancedAnalytics = () => {
 
   useEffect(() => {
     fetchAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
   const fetchAnalytics = async () => {
+    setLoading(true);
     setRefreshing(true);
     try {
       const response = await fetch(`${API_BASE_URL}/analytics/dashboard?timeRange=${timeRange}`, {
@@ -75,80 +52,88 @@ const AdvancedAnalytics = () => {
     }
   };
 
-
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
+      style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0,
+    }).format(value || 0);
   };
 
   const formatNumber = (value) => {
-    return new Intl.NumberFormat('en-US').format(value);
+    return new Intl.NumberFormat('en-US').format(value || 0);
   };
 
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+  const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
 
-  const StatCard = ({ title, value, change = 0, icon: Icon }) => {
+  const GlassCard = ({ children, className = '' }) => (
+    <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden ${className}`}>
+        {children}
+    </div>
+  );
+
+  const StatCard = ({ title, value, change = 0, icon: Icon, colorClass }) => {
     const isUp = Number(change) >= 0;
     const pct = Math.abs(Number(change)).toFixed(1);
+    
+    // Mapping base colors to gradient and icon colors
+    const styleMap = {
+      blue: { bg: 'bg-blue-50', text: 'text-blue-600', grad: 'from-blue-600 to-indigo-600' },
+      green: { bg: 'bg-emerald-50', text: 'text-emerald-600', grad: 'from-emerald-500 to-teal-500' },
+      purple: { bg: 'bg-purple-50', text: 'text-purple-600', grad: 'from-purple-500 to-fuchsia-500' },
+      amber: { bg: 'bg-amber-50', text: 'text-amber-600', grad: 'from-amber-500 to-orange-500' }
+    };
+    const style = styleMap[colorClass] || styleMap.blue;
+
     return (
-      <Card className="hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-gray-50">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">{title}</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
-              <div className={`flex items-center mt-3 text-sm font-medium ${isUp ? 'text-green-600' : 'text-red-600'}`}>
-                {isUp ? (
-                  <TrendingUp className="h-4 w-4 mr-1" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 mr-1" />
-                )}
-                {pct}% from last period
-              </div>
-            </div>
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center">
-              <Icon className="h-7 w-7 text-black" />
-            </div>
+      <GlassCard className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
+        <div>
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{title}</p>
+          <p className="text-3xl font-black text-gray-900">{value}</p>
+          <div className={`flex items-center mt-2 text-xs font-bold ${isUp ? 'text-emerald-600' : 'text-red-500'}`}>
+            {isUp ? <TrendingUp className="h-3.5 w-3.5 mr-1" /> : <TrendingDown className="h-3.5 w-3.5 mr-1" />}
+            {pct}% <span className="text-gray-400 ml-1 font-medium">vs last period</span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${style.bg} shadow-sm border border-white/50`}>
+          <Icon className={`w-7 h-7 ${style.text}`} />
+        </div>
+      </GlassCard>
     );
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="bg-black rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-white/20 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
-                <p className="text-gray-300">Loading analytics data...</p>
-              </div>
+  const CustomTooltip = ({ active, payload, label, prefix = '' }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white/90 backdrop-blur-md border border-gray-100 p-4 rounded-xl shadow-xl">
+          <p className="text-sm font-bold text-gray-800 mb-2">{label}</p>
+          {payload.map((entry, index) => (
+            <div key={index} className="flex items-center gap-2 text-sm font-semibold text-gray-600">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color || entry.fill }} />
+              {entry.name}: <span className="text-gray-900 ml-1">{prefix}{entry.value}</span>
             </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                </div>
-              </CardContent>
-            </Card>
           ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  if (loading && !analytics) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
+        <div className="animate-pulse space-y-6">
+          <div className="flex justify-between items-end">
+            <div>
+              <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-48"></div>
+            </div>
+            <div className="h-10 bg-gray-200 rounded w-48"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded-2xl blur-sm opacity-50"></div>
+            ))}
+          </div>
+          <div className="h-96 bg-gray-200 rounded-2xl blur-sm opacity-50"></div>
         </div>
       </div>
     );
@@ -156,51 +141,22 @@ const AdvancedAnalytics = () => {
 
   if (error || !analytics) {
     return (
-      <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="bg-black rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-white/20 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
-                <p className="text-gray-300">Comprehensive insights into your events</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                onClick={fetchAnalytics}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
-              </Button>
-            </div>
-          </div>
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-6">
+          <AlertCircle className="w-10 h-10 text-red-500" />
         </div>
-
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="text-center">
-            <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Analytics Data Available</h3>
-            <p className="text-gray-600 mb-4">
-              {error || 'Unable to load analytics data. Please check your connection and try again.'}
-            </p>
-            <Button onClick={fetchAnalytics} className="bg-blue-600 hover:bg-blue-700">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry Loading
-            </Button>
-          </div>
-        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Failed to load analytics</h2>
+        <p className="text-gray-500 mb-6 text-center max-w-md">
+          {error || 'There was a problem communicating with the analytics server. Please try again.'}
+        </p>
+        <Button onClick={fetchAnalytics} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/20">
+          <RefreshCw className="w-4 h-4 mr-2" /> Retry Connection
+        </Button>
       </div>
     );
   }
 
-  // Safe defaults to avoid runtime errors if backend omits fields
+  // Safe defaults
   const safeOverview = {
     totalEvents: analytics?.overview?.totalEvents ?? 0,
     totalTicketsSold: analytics?.overview?.totalTicketsSold ?? 0,
@@ -220,341 +176,328 @@ const AdvancedAnalytics = () => {
   const safeTopEvents = analytics?.topEvents ?? [];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
       {/* Header */}
-      <div className="bg-black rounded-lg p-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-white/20 rounded-lg">
-              <BarChart3 className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
-              <p className="text-gray-300">Comprehensive insights into your events</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+            <span className="bg-gradient-to-br from-blue-600 to-violet-600 bg-clip-text text-transparent">Advanced Analytics</span>
+          </h1>
+          <p className="text-gray-500 font-medium mt-1">Deep insights and comprehensive reports for your platform</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative">
             <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-36 bg-white/10 border-white/20 text-white">
+              <SelectTrigger className="w-36 bg-white border-gray-200 text-gray-700 rounded-xl font-medium focus:ring-blue-500 focus:border-blue-500 shadow-sm">
                 <SelectValue placeholder="Time range" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="90d">Last 90 days</SelectItem>
-                <SelectItem value="1y">Last year</SelectItem>
+              <SelectContent className="rounded-xl border border-gray-100 shadow-xl">
+                <SelectItem value="7d" className="font-medium cursor-pointer">Last 7 days</SelectItem>
+                <SelectItem value="30d" className="font-medium cursor-pointer">Last 30 days</SelectItem>
+                <SelectItem value="90d" className="font-medium cursor-pointer">Last 90 days</SelectItem>
+                <SelectItem value="1y" className="font-medium cursor-pointer">Last 12 months</SelectItem>
               </SelectContent>
             </Select>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              onClick={fetchAnalytics}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
           </div>
+          
+          <Button
+            variant="outline"
+            onClick={fetchAnalytics}
+            disabled={refreshing}
+            className="bg-white/60 backdrop-blur-md border border-gray-200 text-gray-700 shadow-sm hover:bg-gray-50 rounded-xl transition-all"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin text-blue-500' : ''}`} />
+            Refresh
+          </Button>
+          
+          <Button className="bg-gray-900 hover:bg-gray-800 text-white rounded-xl shadow-lg">
+            <Download className="w-4 h-4 mr-2" /> Export
+          </Button>
         </div>
       </div>
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Events"
-          value={formatNumber(safeOverview.totalEvents)}
-          change={safeOverview.growthRate.events}
-          icon={Calendar}
-        />
-        <StatCard
-          title="Tickets Sold"
-          value={formatNumber(safeOverview.totalTicketsSold)}
-          change={safeOverview.growthRate.tickets}
-          icon={Ticket}
-        />
-        <StatCard
-          title="Total Revenue"
-          value={formatCurrency(safeOverview.totalRevenue)}
-          change={safeOverview.growthRate.revenue}
-          icon={DollarSign}
-        />
-        <StatCard
-          title="Total Attendees"
-          value={formatNumber(safeOverview.totalAttendees)}
-          change={safeOverview.growthRate.attendees}
-          icon={Users}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <StatCard title="Total Revenue" value={formatCurrency(safeOverview.totalRevenue)} change={safeOverview.growthRate.revenue} icon={DollarSign} colorClass="blue" />
+        <StatCard title="Tickets Sold" value={formatNumber(safeOverview.totalTicketsSold)} change={safeOverview.growthRate.tickets} icon={Ticket} colorClass="green" />
+        <StatCard title="Total Events" value={formatNumber(safeOverview.totalEvents)} change={safeOverview.growthRate.events} icon={Calendar} colorClass="purple" />
+        <StatCard title="Total Attendees" value={formatNumber(safeOverview.totalAttendees)} change={safeOverview.growthRate.attendees} icon={Users} colorClass="amber" />
       </div>
 
-      {/* Charts Tabs */}
-      <Tabs defaultValue="revenue" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 bg-gray-100 p-1 rounded-lg">
-          <TabsTrigger value="revenue" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Revenue & Sales</TabsTrigger>
-          <TabsTrigger value="events" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Event Categories</TabsTrigger>
-          <TabsTrigger value="demographics" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Demographics</TabsTrigger>
-          <TabsTrigger value="performance" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Top Events</TabsTrigger>
-        </TabsList>
-
-        {/* Revenue & Sales Tab */}
-        <TabsContent value="revenue" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
-                <CardTitle className="flex items-center text-gray-900">
-                  <BarChart3 className="h-5 w-5 mr-2" />
-                  Monthly Revenue
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Revenue trends over the selected time period
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={safeRevenueData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => formatCurrency(value)} />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#3B82F6"
-                      fill="#3B82F6"
-                      fillOpacity={0.1}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
-                <CardTitle className="flex items-center text-gray-900">
-                  <Activity className="h-5 w-5 mr-2" />
-                  Tickets Sold
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Ticket sales volume over time
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={safeRevenueData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="tickets"
-                      stroke="#10B981"
-                      strokeWidth={3}
-                      dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+      {/* Interactive Tabs */}
+      <GlassCard className="p-1">
+        <Tabs defaultValue="revenue" className="w-full">
+          <div className="p-3 border-b border-gray-100/50 flex overflow-x-auto hide-scrollbar">
+            <TabsList className="bg-gray-100/50 p-1.5 rounded-xl gap-2 w-max">
+              {[
+                { id: 'revenue', icon: BarChart3, label: 'Revenue & Sales' },
+                { id: 'events', icon: PieChartIcon, label: 'Categories' },
+                { id: 'demographics', icon: Users, label: 'Demographics' },
+                { id: 'performance', icon: Activity, label: 'Top Performers' }
+              ].map(tab => (
+                <TabsTrigger 
+                  key={tab.id} 
+                  value={tab.id} 
+                  className="rounded-lg px-4 py-2 font-semibold text-sm transition-all data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm hover:bg-gray-50"
+                >
+                  <tab.icon className="w-4 h-4 mr-2" /> {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
           </div>
-        </TabsContent>
 
-        {/* Event Categories Tab */}
-        <TabsContent value="events" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
-                <CardTitle className="flex items-center text-gray-900">
-                  <PieChartIcon className="h-5 w-5 mr-2" />
-                  Events by Category
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Distribution of events across different categories
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={safeEventCategories}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={85}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {safeEventCategories.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex flex-wrap gap-4 justify-center mt-4 text-sm">
-                  {(() => {
-                    const total = safeEventCategories.reduce((sum, c) => sum + (c.value || 0), 0) || 1;
-                    return safeEventCategories.map((c, i) => (
-                      <div key={c.name} className="flex items-center space-x-2">
-                        <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                        <span className="text-gray-700">{c.name}</span>
-                        <Badge variant="secondary">{Math.round(((c.value || 0) / total) * 100)}%</Badge>
+          <div className="p-5 sm:p-6 bg-gray-50/20">
+            {/* Revenue & Sales Tab */}
+            <TabsContent value="revenue" className="space-y-6 mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <DollarSign className="w-4 h-4 text-blue-600" />
                       </div>
-                    ));
-                  })()}
+                      Revenue Over Time
+                    </h3>
+                  </div>
+                  <div className="flex-1 min-h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={safeRevenueData}>
+                        <defs>
+                          <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dx={-10} tickFormatter={(val) => `$${val}`} />
+                        <Tooltip content={<CustomTooltip prefix="$" />} />
+                        <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
-                <CardTitle className="text-gray-900">Category Performance</CardTitle>
-                <CardDescription className="text-gray-600">
-                  Event count and performance by category
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {safeEventCategories.map((category, index) => (
-                    <div key={category.name} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                        />
-                        <span className="font-medium">{category.name}</span>
+                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                        <Ticket className="w-4 h-4 text-emerald-600" />
                       </div>
-                      <div className="flex items-center space-x-4">
-                        <Badge variant="secondary">
-                          {category.count} events
-                        </Badge>
-                        <span className="text-sm text-gray-600">
-                          {category.value}%
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                      Ticket Volume
+                    </h3>
+                  </div>
+                  <div className="flex-1 min-h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={safeRevenueData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dx={-10} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Line type="monotone" dataKey="tickets" name="Tickets Sold" stroke="#10B981" strokeWidth={4} dot={{ fill: '#10B981', strokeWidth: 2, r: 4, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+              </div>
+            </TabsContent>
 
-        {/* Demographics Tab */}
-        <TabsContent value="demographics" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
-                <CardTitle className="text-gray-900">Age Distribution</CardTitle>
-                <CardDescription className="text-gray-600">
-                  Attendee age groups breakdown
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={safeAgeGroups}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="age" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#3B82F6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
-                <CardTitle className="text-gray-900">Geographic Distribution</CardTitle>
-                <CardDescription className="text-gray-600">
-                  Top cities by attendee count
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {safeLocations.map((location, index) => (
-                    <div key={location.city} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-600">
-                          {index + 1}
-                        </div>
-                        <span className="font-medium">{location.city}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{
-                              width: `${safeLocations.length ? (location.count / safeLocations[0].count) * 100 : 0}%`
-                            }}
-                          />
-                        </div>
-                        <span className="text-sm text-gray-600 w-12 text-right">
-                          {location.count}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Top Events Tab */}
-        <TabsContent value="performance" className="space-y-6">
-          <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="px-6 py-4 border-b border-gray-200 rounded-t-lg bg-white">
-              <CardTitle className="text-gray-900">Top Performing Events</CardTitle>
-              <CardDescription className="text-gray-600">
-                Events ranked by tickets sold and revenue generated
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {safeTopEvents.map((event, index) => (
-                  <div key={event.name} className="flex items-center justify-between p-6 border border-gray-200 rounded-lg bg-white hover:shadow-sm transition-shadow">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-lg font-bold text-white">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-gray-900 text-lg">{event.name}</h4>
-                        <p className="text-sm text-gray-600 flex items-center">
-                          <Users className="w-4 h-4 mr-1" />
-                          {event.attendees} attendees
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-8 text-sm">
-                      <div className="text-center bg-blue-50 px-4 py-2 rounded-lg">
-                        <p className="font-bold text-blue-900 text-lg">{event.tickets}</p>
-                        <p className="text-blue-600 font-medium">Tickets</p>
-                      </div>
-                      <div className="text-center bg-green-50 px-4 py-2 rounded-lg">
-                        <p className="font-bold text-green-900 text-lg">{formatCurrency(event.revenue)}</p>
-                        <p className="text-green-600 font-medium">Revenue</p>
-                      </div>
+            {/* Event Categories Tab */}
+            <TabsContent value="events" className="space-y-6 mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col items-center">
+                  <div className="w-full mb-2">
+                    <h3 className="text-lg font-bold text-gray-900">Category Make-up</h3>
+                    <p className="text-sm text-gray-500">Distribution of event types</p>
+                  </div>
+                  <div className="w-full flex-1 min-h-[320px] relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={safeEventCategories}
+                          cx="50%" cy="50%"
+                          labelLine={false}
+                          innerRadius={80}
+                          outerRadius={110}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {safeEventCategories.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="stroke-transparent outline-none hover:opacity-80 transition-opacity" />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+                       <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total</p>
+                       <p className="text-3xl font-black text-gray-900">{safeOverview.totalEvents}</p>
                     </div>
                   </div>
-                ))}
+                </div>
+
+                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold text-gray-900">Breakdown Metrics</h3>
+                    <p className="text-sm text-gray-500">Detailed category breakdown</p>
+                  </div>
+                  <div className="space-y-5">
+                    {safeEventCategories.length === 0 && (
+                        <p className="text-sm text-gray-500 italic">No category data available.</p>
+                    )}
+                    {safeEventCategories.map((category, index) => {
+                      const pct = Math.round(category.value);
+                      return (
+                        <div key={category.name} className="flex flex-col gap-2 relative group">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                              <span className="font-bold text-gray-800">{category.name}</span>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <span className="text-sm font-bold text-gray-500">{category.count} events</span>
+                              <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-xs font-bold">{pct}%</span>
+                            </div>
+                          </div>
+                          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full rounded-full transition-all duration-1000 ease-out"
+                                style={{ width: `${pct}%`, backgroundColor: COLORS[index % COLORS.length] }}
+                              />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+
+            {/* Demographics Tab */}
+            <TabsContent value="demographics" className="space-y-6 mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                       <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center">
+                        <Users className="w-4 h-4 text-pink-600" />
+                      </div>
+                      Age Demographics
+                    </h3>
+                  </div>
+                  <div className="flex-1 min-h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={safeAgeGroups}>
+                        <defs>
+                          <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.9}/>
+                            <stop offset="100%" stopColor="#3B82F6" stopOpacity={0.9}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                        <XAxis dataKey="age" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dx={-10} />
+                        <Tooltip content={<CustomTooltip />} cursor={{fill: '#f3f4f6'}} />
+                        <Bar dataKey="count" name="Users" fill="url(#colorBar)" radius={[6, 6, 0, 0]} barSize={40} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                       <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <MapPin className="w-4 h-4 text-blue-600" />
+                      </div>
+                      Top Locations
+                    </h3>
+                  </div>
+                  <div className="space-y-4 pt-2">
+                    {safeLocations.length === 0 && (
+                        <p className="text-sm text-gray-500 italic">No location data available.</p>
+                    )}
+                    {safeLocations.map((location, index) => {
+                       const maxCount = Math.max(...safeLocations.map(l => l.count)) || 1;
+                       const pct = (location.count / maxCount) * 100;
+                       
+                       return (
+                         <div key={location.city} className="flex items-center gap-4">
+                           <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 bg-gradient-to-br border border-white">
+                             #{index + 1}
+                           </div>
+                           <div className="flex-1">
+                             <div className="flex justify-between items-end mb-1">
+                               <span className="font-bold text-gray-800">{location.city}</span>
+                               <span className="text-sm font-bold text-gray-500">{location.count} users</span>
+                             </div>
+                             <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500"
+                                  style={{ width: `${pct}%` }}
+                                />
+                             </div>
+                           </div>
+                         </div>
+                       );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Top Events Tab */}
+            <TabsContent value="performance" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+               <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-gray-100">
+                    <h3 className="text-lg font-bold text-gray-900">Leaderboard: Top Performing Events</h3>
+                    <p className="text-sm text-gray-500">Ranked by overall platform revenue and ticket sales</p>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {safeTopEvents.length === 0 && (
+                         <p className="text-sm text-gray-500 italic p-6">No top events data available.</p>
+                    )}
+                    {safeTopEvents.map((event, index) => (
+                      <div key={event.name} className="flex flex-col sm:flex-row items-center justify-between p-6 hover:bg-gray-50/50 transition-colors gap-4">
+                        <div className="flex items-center space-x-4 w-full sm:w-auto">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold border-2 shadow-sm
+                            ${index === 0 ? 'bg-amber-100 text-amber-600 border-amber-200' :
+                              index === 1 ? 'bg-gray-200 text-gray-600 border-gray-300' :
+                              index === 2 ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                              'bg-gray-50 text-gray-400 border-gray-100'
+                            }
+                          `}>
+                            {index + 1}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">{event.name}</h4>
+                            <p className="text-sm text-gray-500 flex items-center mt-0.5">
+                              <Users className="w-3.5 h-3.5 mr-1" /> {event.attendees} registered attendees
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 w-full sm:w-auto mt-4 sm:mt-0 justify-end">
+                           <div className="text-right px-4 py-2 border border-gray-100 rounded-xl bg-gray-50/50">
+                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Tickets Sold</p>
+                             <p className="font-black text-gray-900 text-lg leading-none">{event.tickets}</p>
+                           </div>
+                           <div className="text-right px-4 py-2 border border-emerald-100 rounded-xl bg-emerald-50/50">
+                             <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5">Gross Revenue</p>
+                             <p className="font-black text-emerald-800 text-lg leading-none">{formatCurrency(event.revenue)}</p>
+                           </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+               </div>
+            </TabsContent>
+
+          </div>
+        </Tabs>
+      </GlassCard>
     </div>
   );
 };
 
 export default AdvancedAnalytics;
-
