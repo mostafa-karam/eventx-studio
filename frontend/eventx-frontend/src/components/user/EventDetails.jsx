@@ -51,7 +51,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
 
   // payment removed per request
 
-  const { user, csrfToken, fetchCsrfToken } = useAuth();
+  const { user, fetchCsrfToken } = useAuth();
 
   // Image gallery state
   const [activeImageIndex, setActiveImageIndex] = useState(0);

@@ -3,7 +3,11 @@
  * 
  * This module monkey-patches the global fetch function to automatically
  * include the X-CSRF-Token header in all state-mutating requests to the API.
+ * 
+ * Compatible with csrf-csrf (double-submit cookie pattern).
  */
+
+import { setCsrfToken as setApiClientToken, getCsrfToken } from './apiClient';
 
 let globalCsrfToken = null;
 
@@ -13,6 +17,7 @@ let globalCsrfToken = null;
  */
 export const setGlobalCsrfToken = (token) => {
     globalCsrfToken = token;
+    setApiClientToken(token);
 };
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -48,8 +53,6 @@ window.fetch = async function (...args) {
     }
 
     // Update config with normalized headers
-    // If original headers were a plain object, we should ideally convert back, 
-    // but fetch accepts Headers objects too.
     config.headers = headers;
 
     return originalFetch(url, config).then(response => {

@@ -5,7 +5,8 @@ const QRCode = require('qrcode');
 const jwt = require('jsonwebtoken');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
-const Notification = require('../models/Notification');
+const notificationService = require('../services/notificationService');
+const bookingService = require('../services/bookingService');
 
 // const router = express.Router();
 
@@ -614,95 +615,24 @@ exports.getTicketById = async (req, res) => {
 // @access  Private
 exports.cancelTicket = async (req, res) => {
   try {
-    const ticket = await Ticket.findById(req.params.id)
-      .populate('event');
-
-    if (!ticket) {
-      return res.status(404).json({
-        success: false,
-        message: 'Ticket not found'
-      });
-    }
-
-    // Check if user owns the ticket
-    if (ticket.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to cancel this ticket'
-      });
-    }
-
-    // Check if ticket can be cancelled
-    if (ticket.status === 'cancelled') {
-      return res.status(400).json({
-        success: false,
-        message: 'Ticket is already cancelled'
-      });
-    }
-
-    if (ticket.status === 'used') {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot cancel a used ticket'
-      });
-    }
-
-    // Check if event is in the past
-    if (ticket.event.date < new Date()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot cancel tickets for past events'
-      });
-    }
-
-    // Cancel the ticket
-    ticket.cancel();
-    await ticket.save();
-
-    // Free up the seat in the event
-    const event = await Event.findById(ticket.event._id).populate('organizer');
-    event.cancelSeat(ticket.seatNumber);
-    await event.save();
-
-    // Handle waitlist auto-notify if someone is waitlisted
-    try {
-      const waitlistEntry = await require('../models/Waitlist').findOne({ event: event._id }).sort({ createdAt: 1 });
-      if (waitlistEntry) {
-        // Notify the first person on the waitlist
-        await Notification.create({
-          userId: waitlistEntry.user,
-          type: 'booking',
-          title: 'A Spot Opened Up!',
-          message: `A ticket is now available for "${event.title}". Book quickly before it's gone!`,
-          metadata: { eventId: event._id }
-        });
-        // Remove them from waitlist since they are notified
-        await waitlistEntry.deleteOne();
-      }
-    } catch (wlError) {
-      logger.error('Waitlist processing error on ticket cancel: ' + wlError.message);
-    }
+    const { ticket } = await bookingService.cancelBooking(req.params.id, req.user._id);
 
     res.json({
       success: true,
       message: 'Ticket cancelled successfully',
-      data: {
-        ticket
-      }
+      data: { ticket },
     });
   } catch (error) {
     logger.error('Cancel ticket error:', error);
 
     if (error.name === 'CastError') {
-      return res.status(404).json({
-        success: false,
-        message: 'Ticket not found'
-      });
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
     }
 
-    res.status(500).json({
+    const status = error.status || 500;
+    res.status(status).json({
       success: false,
-      message: 'Server error while cancelling ticket'
+      message: error.message || 'Server error while cancelling ticket',
     });
   }
 };
@@ -878,14 +808,13 @@ exports.handler_13 = async (req, res) => {
     event.cancelSeat(ticket.seatNumber);
     await event.save();
 
-    // Notify user
-    await Notification.create({
-      user: ticket.user,
-      type: 'ticket_refunded',
+    // Notify user via centralized service
+    notificationService.notify(ticket.user, {
       title: 'Ticket Refund Processed',
       message: `Your ticket for "${event.title}" has been successfully refunded.`,
-      data: { ticketId: ticket._id, eventId: event._id }
-    }).catch(err => logger.error('Notification error (refund): ' + err.message));
+      type: 'ticket',
+      metadata: { ticketId: ticket._id, eventId: event._id },
+    });
 
     res.json({ success: true, message: 'Ticket refunded successfully', data: { ticket } });
   } catch (error) {

@@ -84,7 +84,6 @@ router.get('/users', authenticate, requireAdmin, authController.getAllUsers);
 router.post('/role-upgrade', authenticate, authController.requestRoleUpgrade);
 router.get('/role-upgrade-requests', authenticate, requireAdmin, authController.getRoleUpgradeRequests);
 router.put('/role-upgrade-requests/:userId', authenticate, requireAdmin, authController.updateRoleUpgradeRequest);
-router.get('/csrf-token', authController.getCsrfToken || ((_req, res) => res.json({ csrfToken: '' })));
 router.delete('/account', authenticate, authController.deleteAccount);
 
 module.exports = router;

@@ -1,78 +1,73 @@
-require('dotenv').config({ path: __dirname + '/../.env' });
+/**
+ * Database Seeder — Development Only
+ *
+ * Creates demo accounts for local development.
+ * Passwords meet the application's password strength policy.
+ */
+
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const logger = require('./logger');
 
-const demoUsers = [
-    {
-        name: 'Admin User',
-        email: 'mostafa.karam.work@gmail.com',
-        password: 'admin123',
-        role: 'admin',
-        emailVerified: true
-    },
-    {
-        name: 'Venue Admin',
-        email: 'venueadmin@eventx.com',
-        password: 'password123',
-        role: 'venue_admin',
-        emailVerified: true
-    },
-    {
-        name: 'Organizer User',
-        email: 'organizer@eventx.com',
-        password: 'password123',
-        role: 'organizer',
-        emailVerified: true
-    },
-    {
-        name: 'Regular User',
-        email: 'user@eventx.com',
-        password: 'user1234',
-        role: 'user',
-        emailVerified: true
-    }
+const DEMO_USERS = [
+  {
+    name: 'Admin User',
+    email: 'admin@eventx.dev',
+    password: 'Admin@Dev2024!',
+    role: 'admin',
+  },
+  {
+    name: 'Venue Admin',
+    email: 'venue@eventx.dev',
+    password: 'Venue@Dev2024!',
+    role: 'venue_admin',
+  },
+  {
+    name: 'Event Organizer',
+    email: 'organizer@eventx.dev',
+    password: 'Organizer@Dev2024!',
+    role: 'organizer',
+  },
+  {
+    name: 'Regular User',
+    email: 'user@eventx.dev',
+    password: 'User@Dev2024!',
+    role: 'user',
+  },
 ];
 
-const seedUsers = async () => {
-    try {
-        if (mongoose.connection.readyState !== 1) {
-            const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/eventx-studio';
-            await mongoose.connect(mongoURI);
-            logger.info('MongoDB connected for seeding');
-        }
+async function seedUsers() {
+  // Guard: only seed in development
+  if (process.env.NODE_ENV === 'production') {
+    logger.warn('Seed script skipped: NODE_ENV is production');
+    return;
+  }
 
-        for (const userData of demoUsers) {
-            let user = await User.findOne({ email: userData.email });
-            if (!user) {
-                user = new User(userData);
-                await user.save();
-                logger.info(`Created demo user: ${userData.email} (${userData.role})`);
-            } else {
-                // Update credentials and role if they already exist
-                user.password = userData.password;
-                user.role = userData.role;
-                user.emailVerified = userData.emailVerified;
-                // Deactivate any locks or 2FA for the demo account
-                user.isLocked = false;
-                user.lockUntil = undefined;
-                user.loginAttempts = 0;
-                user.twoFactorEnabled = false;
-                user.isActive = true;
-                await user.save();
-                logger.info(`Updated existing demo user: ${userData.email}`);
-            }
-        }
-    } catch (error) {
-        logger.error('Error seeding users:', error);
+  for (const userData of DEMO_USERS) {
+    const existing = await User.findOne({ email: userData.email });
+    if (existing) {
+      // Only update if it's a dev seed user (don't touch real users)
+      if (existing.name === userData.name) {
+        existing.role = userData.role;
+        existing.isActive = true;
+        existing.emailVerified = true;
+        await existing.save();
+        logger.info(`[Seed] Updated existing dev user: ${userData.email} (${userData.role})`);
+      }
+      continue;
     }
-};
 
-if (require.main === module) {
-    seedUsers().then(() => {
-        logger.info('Seeding finished');
-        process.exit(0);
+    const user = new User({
+      name: userData.name,
+      email: userData.email,
+      password: userData.password,
+      role: userData.role,
+      emailVerified: true,
+      isActive: true,
     });
+    await user.save();
+    logger.info(`[Seed] Created dev user: ${userData.email} (${userData.role})`);
+  }
 }
 
 module.exports = seedUsers;

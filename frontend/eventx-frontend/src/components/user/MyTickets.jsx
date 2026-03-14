@@ -73,7 +73,7 @@ const MyTickets = () => {
   const [ticketsPerPage] = useState(6);
   const [totalTickets, setTotalTickets] = useState(0);
 
-  const { user, csrfToken, fetchCsrfToken } = useAuth();
+  const { user, fetchCsrfToken } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {

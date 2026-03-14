@@ -4,12 +4,15 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
-const csrf = require('csurf');
+const { doubleCsrf } = require('csrf-csrf');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const compression = require('compression');
+const crypto = require('crypto');
+const path = require('path');
 const logger = require('./utils/logger');
+const AppError = require('./utils/AppError');
 
 dotenv.config();
 
@@ -25,29 +28,36 @@ if (missingEnv.length > 0) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Trust reverse proxies (needed for rate limiters behind Nginx/Docker)
-app.set('trust proxy', 1);
+// Trust reverse proxies only when explicitly configured
+if (process.env.TRUST_PROXY) {
+  app.set('trust proxy', parseInt(process.env.TRUST_PROXY) || 1);
+}
 
 // ─── Security Middleware ────────────────────────────────────────────
-// Basic security headers via Helmet
+// CSP nonce generation — attach a unique nonce per request
+app.use((_req, res, next) => {
+  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+  next();
+});
+
 app.use(helmet());
 
-// Content Security Policy - keep relatively strict but permissive for frontend assets
+// Content Security Policy — strict, nonce-based
 app.use(helmet.contentSecurityPolicy({
   directives: {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-inline'", 'https:'],
-    styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+    scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
+    styleSrc: ["'self'", 'https://fonts.googleapis.com', (req, res) => `'nonce-${res.locals.cspNonce}'`],
     imgSrc: ["'self'", 'data:', 'https:'],
     connectSrc: ["'self'", 'https:', 'ws:'],
-    fontSrc: ["'self'", 'https:', 'data:'],
+    fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
     objectSrc: ["'none'"],
     upgradeInsecureRequests: [],
   }
 }));
 
 // Parse cookies for httpOnly token support
-app.use(cookieParser());
+app.use(cookieParser(process.env.CSRF_SECRET || process.env.JWT_SECRET));
 
 // Global rate limiter — 200 requests per 15 minutes per IP
 const globalLimiter = rateLimit({
@@ -64,6 +74,15 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 15,
   message: { success: false, message: 'Too many authentication attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Stricter rate limiter for password reset — 5 requests per 15 minutes
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, message: 'Too many password reset attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -93,24 +112,44 @@ app.use(mongoSanitize());
 app.use(xss());
 app.use(compression());
 
-// CSRF Protection
-const csrfProtection = csrf({
-  cookie: {
+// ─── CSRF Protection (csrf-csrf double-submit cookie) ───────────────
+const csrfSecret = process.env.CSRF_SECRET || process.env.JWT_SECRET;
+
+const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
+  getSecret: () => csrfSecret,
+  getSessionIdentifier: (req) => {
+    // Use the access_token cookie as session identifier, or fallback for pre-auth requests
+    return req.cookies?.access_token || req.ip || 'anonymous';
+  },
+  cookieName: '__csrf',
+  cookieOptions: {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
-  }
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    path: '/',
+  },
+  getTokenFromRequest: (req) => req.headers['x-csrf-token'],
 });
-// We apply this selectively later, or globally except for certain endpoints.
-// For SPA API usage, we will apply it globally to all /api routes that mutate state, which csurf does automatically.
+
+// Apply CSRF protection to all /api routes (except in test mode)
 if (process.env.NODE_ENV !== 'test') {
-  app.use('/api', csrfProtection);
+  app.use('/api', doubleCsrfProtection);
 }
 
 // CSRF Token Provider Endpoint
-app.get('/api/auth/csrf-token', csrfProtection, (req, res) => {
-  res.json({ success: true, csrfToken: req.csrfToken() });
+app.get('/api/auth/csrf-token', (req, res) => {
+  const token = generateCsrfToken(req, res);
+  res.json({ success: true, csrfToken: token });
 });
+
+// ─── Serve Uploaded Files ────────────────────────────────────────────
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res) => {
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.set('Content-Disposition', 'inline');
+    res.set('Cache-Control', 'public, max-age=86400');
+  },
+}));
 
 // ─── Request Logging ─────────────────────────────────────────────────
 app.use((req, _res, next) => {
@@ -158,6 +197,9 @@ const couponRoutes = require('./routes/coupons');
 const reviewsRoutes = require('./routes/reviews');
 
 app.use('/api/auth', authLimiter, authRoutes);
+// Apply password-reset limiter specifically
+app.use('/api/auth/forgot-password', passwordResetLimiter);
+app.use('/api/auth/reset-password', passwordResetLimiter);
 app.use('/api/events', eventRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/analytics', analyticsRoutes);
@@ -191,12 +233,23 @@ app.get('/api/health', (_req, res) => {
 
 // ─── Error Handling ──────────────────────────────────────────────────
 app.use((err, req, res, _next) => {
-  if (err.code === 'EBADCSRFTOKEN') {
+  // CSRF token errors from csrf-csrf
+  if (err.message === 'invalid csrf token' || err.code === 'EBADCSRFTOKEN') {
     return res.status(403).json({ success: false, message: 'Invalid or missing CSRF token' });
   }
 
-  logger.error(`${err.status || 500} — ${err.message} — ${req.originalUrl}`);
-  const statusCode = err.statusCode || 500;
+  logger.error(`${err.statusCode || err.status || 500} — ${err.message} — ${req.originalUrl}`);
+
+  const statusCode = err.statusCode || err.status || 500;
+
+  // Only send detailed error messages for operational errors in non-production
+  if (err.isOperational) {
+    return res.status(statusCode).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
   res.status(statusCode).json({
     success: false,
     message: process.env.NODE_ENV === 'production' ? 'Something went wrong!' : err.message,

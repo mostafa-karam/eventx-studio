@@ -17,7 +17,7 @@ const auditLogSchema = new mongoose.Schema({
             'hall.create', 'hall.update', 'hall.delete',
             'hall_booking.create', 'hall_booking.approve', 'hall_booking.reject', 'hall_booking.cancel',
             'ticket.purchase', 'ticket.cancel', 'ticket.refund',
-            'auth.login', 'auth.logout', 'auth.password_reset', 'auth.role_upgrade_approve',
+            'auth.login', 'auth.logout', 'auth.password_reset', 'auth.role_upgrade_approve', 'auth.account_deleted',
         ],
     },
     resource: {

@@ -1,7 +1,7 @@
 const logger = require('../utils/logger');
 const HallBooking = require('../models/HallBooking');
 const Hall = require('../models/Hall');
-const Notification = require('../models/Notification');
+const notificationService = require('../services/notificationService');
 
 // @desc    Get all hall bookings (venue_admin, admin)
 // @access  Private (venue_admin, admin)
@@ -288,13 +288,12 @@ exports.approveBooking = async (req, res) => {
             .populate('reviewedBy', 'name');
 
         // Notify organizer (non-blocking)
-        Notification.create({
-            userId: booking.organizer,
-            type: 'booking',
+        notificationService.notify(booking.organizer, {
             title: 'Hall Booking Approved',
             message: `Your booking for hall "${populatedBooking.hall?.name}" has been approved.`,
+            type: 'booking',
             metadata: { bookingId: booking._id, hallId: booking.hall },
-        }).catch(err => logger.error('Notification error (approve): ' + err.message));
+        });
 
         res.json({
             success: true,
@@ -351,13 +350,12 @@ exports.rejectBooking = async (req, res) => {
             .populate('reviewedBy', 'name');
 
         // Notify organizer (non-blocking)
-        Notification.create({
-            userId: booking.organizer,
-            type: 'booking',
+        notificationService.notify(booking.organizer, {
             title: 'Hall Booking Rejected',
             message: `Your booking for hall "${populatedBooking.hall?.name}" was rejected. Reason: ${booking.rejectionReason}`,
+            type: 'booking',
             metadata: { bookingId: booking._id, hallId: booking.hall, reason: booking.rejectionReason },
-        }).catch(err => logger.error('Notification error (reject): ' + err.message));
+        });
 
         res.json({
             success: true,

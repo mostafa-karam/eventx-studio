@@ -1,97 +1,17 @@
-// const express = require('express');
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { body, validationResult } = require('express-validator');
-const UAParser = require('ua-parser-js');
 const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
-// const { authenticate, requireAdmin } = require('../middleware/auth');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/emailService');
 const logger = require('../utils/logger');
-
-// const router = express.Router();
-
-// ─── Token Helpers ───────────────────────────────────────────────────
-const generateAccessToken = (userId, sessionId = null) => {
-  const payload = { id: userId };
-  if (sessionId) payload.sessionId = sessionId;
-  return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '7d',
-  });
-};
-
-const generateRefreshToken = (userId) => {
-  return jwt.sign({ id: userId, type: 'refresh' }, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + '_refresh', {
-    expiresIn: '30d',
-  });
-};
-
-const cookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
-};
-
-const accessTokenMaxAge = (() => {
-  try {
-    const exp = process.env.JWT_EXPIRE || '7d';
-    // crude parse for days
-    if (exp.endsWith('d')) return parseInt(exp) * 24 * 60 * 60 * 1000;
-    return 7 * 24 * 60 * 60 * 1000;
-  } catch { return 7 * 24 * 60 * 60 * 1000; }
-})();
-
-const refreshTokenMaxAge = 30 * 24 * 60 * 60 * 1000;
-
-// ─── Password Strength ───────────────────────────────────────────────
-const validatePasswordStrength = (password) => {
-  const errors = [];
-  if (password.length < 8) errors.push('At least 8 characters');
-  if (!/[A-Z]/.test(password)) errors.push('At least one uppercase letter');
-  if (!/[a-z]/.test(password)) errors.push('At least one lowercase letter');
-  if (!/[0-9]/.test(password)) errors.push('At least one number');
-  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) errors.push('At least one special character');
-  return errors;
-};
-
-// ─── Device Info ─────────────────────────────────────────────────────
-const getDeviceInfo = (req) => {
-  const parser = new UAParser(req.headers['user-agent']);
-  const result = parser.getResult();
-  return {
-    userAgent: req.headers['user-agent'],
-    ip: req.ip || req.connection?.remoteAddress,
-    device: result.device.model || 'Unknown',
-    browser: `${result.browser.name || 'Unknown'} ${result.browser.version || ''}`.trim(),
-    os: `${result.os.name || 'Unknown'} ${result.os.version || ''}`.trim(),
-  };
-};
-
-// ─── Audit Helper ────────────────────────────────────────────────────
-const audit = async (req, actor, action, resource, resourceId, details = {}) => {
-  try {
-    await AuditLog.create({
-      actor: actor._id || actor,
-      actorName: actor.name,
-      actorRole: actor.role,
-      action,
-      resource,
-      resourceId,
-      details,
-      ip: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
-  } catch (err) {
-    logger.error('Audit log error: ' + err.message);
-  }
-};
-
-// ─── Disposable Email Block ───────────────────────────────────────────
-const DISPOSABLE_DOMAINS = [
-  '10minutemail.com', 'tempmail.org', 'guerrillamail.com',
-  'mailinator.com', 'yopmail.com', 'temp-mail.org',
-];
-const isDisposableEmail = (email) => DISPOSABLE_DOMAINS.includes(email.split('@')[1]);
+const {
+  validatePasswordStrength,
+  generateAccessToken,
+  generateRefreshToken,
+  COOKIE_OPTIONS,
+  ACCESS_TOKEN_MAX_AGE,
+  REFRESH_TOKEN_MAX_AGE,
+  getDeviceInfo,
+  createAuditLog,
+} = require('../utils/authUtils');
 
 // ─── Routes ──────────────────────────────────────────────────────────
 
@@ -101,13 +21,13 @@ exports.register = async (req, res) => {
     const authService = require('../services/authService');
     const result = await authService.registerUser(req.body, getDeviceInfo(req));
 
-    audit(req, result.user, 'user.create', 'User', result.user._id, { role: result.role });
+    createAuditLog(req, result.user, 'user.create', 'User', result.user._id, { role: result.role });
 
     if (result.accessToken) {
-      res.cookie('accessToken', result.accessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
+      res.cookie('accessToken', result.accessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE });
     }
     if (result.refreshToken) {
-      res.cookie('refreshToken', result.refreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+      res.cookie('refreshToken', result.refreshToken, { ...COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE });
     }
 
     res.status(201).json({
@@ -136,13 +56,13 @@ exports.login = async (req, res) => {
       return res.status(200).json({ success: true, twoFactorRequired: true, message: result.message });
     }
 
-    audit(req, result.user, 'auth.login', 'Auth', result.user._id, { device: getDeviceInfo(req).device });
+    createAuditLog(req, result.user, 'auth.login', 'Auth', result.user._id, { device: getDeviceInfo(req).device });
 
     if (result.accessToken) {
-      res.cookie('accessToken', result.accessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
+      res.cookie('accessToken', result.accessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE });
     }
     if (result.refreshToken) {
-      res.cookie('refreshToken', result.refreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+      res.cookie('refreshToken', result.refreshToken, { ...COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE });
     }
 
     res.json({
@@ -171,10 +91,10 @@ exports.refreshToken = async (req, res) => {
     const result = await authService.processRefreshToken(incomingRefresh, getDeviceInfo(req));
 
     if (result.newAccessToken) {
-      res.cookie('accessToken', result.newAccessToken, { ...cookieOptions, maxAge: accessTokenMaxAge });
+      res.cookie('accessToken', result.newAccessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE });
     }
     if (result.newRefreshToken) {
-      res.cookie('refreshToken', result.newRefreshToken, { ...cookieOptions, maxAge: refreshTokenMaxAge });
+      res.cookie('refreshToken', result.newRefreshToken, { ...COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE });
     }
 
     res.json({ success: true, data: { message: 'Token refreshed' } });
@@ -352,7 +272,7 @@ exports.resetPassword = async (req, res) => {
     user.lockUntil = undefined;
     await user.save();
 
-    audit(req, user, 'auth.password_reset', 'Auth', user._id);
+    createAuditLog(req, user, 'auth.password_reset', 'Auth', user._id);
     res.json({ success: true, message: 'Password reset successfully. You can now log in.' });
   } catch (error) {
     logger.error('Reset password error: ' + error.message);
@@ -517,7 +437,7 @@ exports.updateRoleUpgradeRequest = async (req, res) => {
     if (action === 'approve') {
       user.role = 'organizer';
       user.roleUpgradeRequest.status = 'approved';
-      audit(req, req.user, 'auth.role_upgrade_approve', 'User', user._id, { newRole: 'organizer' });
+      createAuditLog(req, req.user, 'auth.role_upgrade_approve', 'User', user._id, { newRole: 'organizer' });
     } else {
       user.roleUpgradeRequest.status = 'denied';
     }
@@ -559,17 +479,11 @@ exports.deleteAccount = async (req, res) => {
     await user.save();
 
     // Log the deletion
-    await AuditLog.create({
-      actor: req.user._id,
-      action: 'auth.account_deleted',
-      resource: 'User',
-      resourceId: req.user._id,
-      details: { anonymisedAs: anonymisedName },
-    });
+    createAuditLog(req, req.user, 'auth.account_deleted', 'User', req.user._id, { anonymisedAs: anonymisedName });
 
     // Clear cookies
-    res.clearCookie('accessToken', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
-    res.clearCookie('refreshToken', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+    res.clearCookie('accessToken', COOKIE_OPTIONS);
+    res.clearCookie('refreshToken', COOKIE_OPTIONS);
 
     res.json({ success: true, message: 'Your account has been deleted. We\'re sorry to see you go.' });
   } catch (error) {
@@ -577,5 +491,3 @@ exports.deleteAccount = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-// module.exports = router;
