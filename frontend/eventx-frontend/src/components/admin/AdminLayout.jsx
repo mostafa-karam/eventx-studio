@@ -92,17 +92,17 @@ const AdminLayout = () => {
             isCollapsed ? 'justify-center' : ''
           } ${
             isActive
-              ? 'bg-gradient-to-r from-blue-600/20 to-indigo-600/10 text-white shadow-sm'
-              : 'text-slate-400 hover:text-white hover:bg-white/5'
+              ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100/50'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
           }`
         }
       >
         {({ isActive }) => (
           <>
             {isActive && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-blue-400 to-indigo-500 rounded-r-full" />
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-blue-600 rounded-r-full" />
             )}
-            <Icon className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+            <Icon className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
             {!isCollapsed && <span className="truncate">{item.label}</span>}
           </>
         )}
@@ -111,17 +111,17 @@ const AdminLayout = () => {
   };
 
   const SidebarContent = ({ isCollapsed = false }) => (
-    <div className={`flex flex-col h-full bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 ${isCollapsed ? 'w-[72px]' : 'w-[260px]'} transition-all duration-300`}>
+    <div className={`flex flex-col h-full bg-white border-r border-gray-200 ${isCollapsed ? 'w-[72px]' : 'w-[260px]'} transition-all duration-300`}>
       {/* Logo */}
-      <div className={`flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-5'} h-16 border-b border-white/5`}>
+      <div className={`flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-5'} h-16 border-b border-gray-100`}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-500/20">
             <Calendar className="w-4 h-4 text-white" />
           </div>
           {!isCollapsed && (
             <div>
-              <h1 className="text-base font-bold text-white tracking-tight">EventX</h1>
-              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">Studio</p>
+              <h1 className="text-base font-extrabold text-gray-900 tracking-tight">EventX</h1>
+              <p className="text-[10px] text-gray-500 font-medium uppercase tracking-widest leading-none">Studio</p>
             </div>
           )}
         </div>
@@ -130,7 +130,7 @@ const AdminLayout = () => {
       {/* Quick Add */}
       <div className={`${isCollapsed ? 'px-2' : 'px-4'} pt-4 pb-2`}>
         <Button
-          className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/20 hover:shadow-blue-500/30 transition-all duration-300 rounded-xl h-9 ${isCollapsed ? 'px-0' : ''}`}
+          className={`w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all duration-300 rounded-xl h-9 ${isCollapsed ? 'px-0' : ''}`}
           onClick={() => { navigate('/admin/events/create'); setSidebarOpen(false); }}
         >
           <Plus className="w-4 h-4" />
@@ -139,10 +139,10 @@ const AdminLayout = () => {
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
         {/* Main */}
         <div>
-          {!isCollapsed && <p className="px-3 mb-2 text-[10px] font-semibold text-slate-600 uppercase tracking-widest">Main</p>}
+          {!isCollapsed && <p className="px-3 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Main</p>}
           <nav className="space-y-0.5">
             {navigationItems.map((item) => <NavItem key={item.to} item={item} isCollapsed={isCollapsed} />)}
           </nav>
@@ -150,7 +150,7 @@ const AdminLayout = () => {
 
         {/* Management */}
         <div>
-          {!isCollapsed && <p className="px-3 mb-2 text-[10px] font-semibold text-slate-600 uppercase tracking-widest">Management</p>}
+          {!isCollapsed && <p className="px-3 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Management</p>}
           <nav className="space-y-0.5">
             {managementItems.map((item) => <NavItem key={item.to} item={item} isCollapsed={isCollapsed} />)}
           </nav>
@@ -158,43 +158,47 @@ const AdminLayout = () => {
 
         {/* System */}
         <div>
-          {!isCollapsed && <p className="px-3 mb-2 text-[10px] font-semibold text-slate-600 uppercase tracking-widest">System</p>}
+          {!isCollapsed && <p className="px-3 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">System</p>}
           <nav className="space-y-0.5">
             {bottomItems.map((item) => <NavItem key={item.to} item={item} isCollapsed={isCollapsed} />)}
           </nav>
         </div>
       </div>
 
-      {/* User Section */}
-      <div className="border-t border-white/5 p-3">
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-2'} py-2 mb-1`}>
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0">
+      {/* User & Settings Section */}
+      <div className="border-t border-gray-200 p-4 space-y-3">
+        {/* User Card */}
+        <div className={`relative flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 p-2 rounded-xl hover:bg-gray-50 bg-white border border-gray-100 shadow-sm'} transition-all`}>
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0 border-2 border-white">
             {user?.name?.charAt(0)?.toUpperCase() || 'A'}
           </div>
           {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user?.name || 'Admin'}</p>
-              <p className="text-[11px] text-slate-500 truncate">{user?.email || 'admin@eventx.studio'}</p>
+            <div className="flex-1 min-w-0 pr-4">
+              <p className="text-sm font-bold text-gray-900 truncate">{user?.name || 'Administrator'}</p>
+              <p className="text-[11px] text-gray-500 truncate font-medium">{user?.email || 'admin@eventx.studio'}</p>
             </div>
           )}
         </div>
-        <button
-          onClick={logout}
-          className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : 'px-3'} py-2 rounded-xl text-xs text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 w-full`}
-        >
-          <LogOut className="w-4 h-4 flex-shrink-0" />
-          {!isCollapsed && <span>Sign out</span>}
-        </button>
-      </div>
-
-      {/* Collapse Toggle (desktop only, hidden on mobile sidebar) */}
-      <div className="hidden md:block border-t border-white/5 p-2">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-center py-2 rounded-xl text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-all"
-        >
-          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
+        
+        {/* Actions Row */}
+        <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'justify-between gap-2'}`}>
+          <button
+            onClick={logout}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 transition-all ${isCollapsed ? 'w-full px-0' : 'px-3'}`}
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+            {!isCollapsed && <span>Sign out</span>}
+          </button>
+          
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className={`hidden md:flex items-center justify-center w-10 h-8 rounded-xl bg-gray-50 text-gray-400 hover:text-gray-900 hover:bg-gray-100 border border-gray-200 transition-all flex-shrink-0 ${isCollapsed ? 'w-full' : ''}`}
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
     </div>
   );

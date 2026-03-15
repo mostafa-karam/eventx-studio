@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import './App.css';
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { SpeedInsights } from '@vercel/speed-insights/react';
@@ -117,6 +117,12 @@ const RequireAuth = ({ role }) => {
 };
 
 // ─── Main App ─────────────────────────────────────────────────────
+
+const NotificationsWithNav = () => {
+  const navigate = useNavigate();
+  return <Notifications onOpenAction={(url) => navigate(url)} />;
+};
+
 const AppContent = () => {
   useUpcomingNotifications();
 
@@ -156,7 +162,7 @@ const AppContent = () => {
             <Route path="attendees" element={<AttendeeInsights />} />
             <Route path="analytics" element={<AdvancedAnalytics />} />
             <Route path="users" element={<UserManagement />} />
-            <Route path="notifications" element={<Notifications />} />
+            <Route path="notifications" element={<NotificationsWithNav />} />
             <Route path="marketing" element={<Marketing />} />
             <Route path="categories" element={<EventCategories />} />
             <Route path="support" element={<ContactSupport />} />

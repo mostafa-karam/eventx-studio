@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Tag, Search, Filter, MoreVertical } from 'lucide-react';
+import { Plus, Edit, Trash2, Tag, Search, Filter, MoreHorizontal, ArrowRight, CircleDot } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 
 const EventCategories = () => {
@@ -143,282 +142,274 @@ const EventCategories = () => {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full animate-pulse">
+         <div className="h-12 bg-gray-200 rounded-xl w-64"></div>
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="h-28 bg-gray-200 rounded-2xl"></div>
+            <div className="h-28 bg-gray-200 rounded-2xl"></div>
+            <div className="h-28 bg-gray-200 rounded-2xl"></div>
+         </div>
       </div>
     );
   }
 
-  return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Tag className="w-8 h-8 text-blue-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Event Categories</h1>
-            <p className="text-gray-600">Manage event categories and classifications</p>
-          </div>
-        </div>
+  const WhiteCard = ({ children, className = '' }) => (
+    <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
+      {children}
+    </div>
+  );
 
-        <Button
-          onClick={() => setShowCreateForm(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Category
-        </Button>
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+             <span className="text-gray-900">Event Categories</span>
+          </h1>
+          <p className="text-gray-500 font-medium mt-1">Manage global event classifications & tags</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => setShowCreateForm(true)} className="bg-gray-900 hover:bg-black text-white shadow-md rounded-xl">
+             <Plus className="w-4 h-4 mr-2" />
+             Add Category
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Categories</p>
-                <p className="text-3xl font-bold text-gray-900">{categories.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Tag className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <WhiteCard className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
+           <div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Categories</p>
+              <p className="text-3xl font-black text-gray-900">{categories.length}</p>
+           </div>
+           <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100">
+              <Tag className="w-6 h-6 text-gray-600" />
+           </div>
+        </WhiteCard>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Categories</p>
-                <p className="text-3xl font-bold text-green-600">{activeCategories}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Tag className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <WhiteCard className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
+           <div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Active Categories</p>
+              <p className="text-3xl font-black text-emerald-600">{activeCategories}</p>
+           </div>
+           <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center border border-emerald-100">
+              <CircleDot className="w-6 h-6 text-emerald-600" />
+           </div>
+        </WhiteCard>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Events</p>
-                <p className="text-3xl font-bold text-purple-600">{totalEvents}</p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Tag className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <WhiteCard className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
+           <div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Events Tagged</p>
+              <p className="text-3xl font-black text-blue-600">{totalEvents}</p>
+           </div>
+           <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100">
+              <Tag className="w-6 h-6 text-blue-600" />
+           </div>
+        </WhiteCard>
       </div>
 
       {/* Search and Filters */}
-      <div className="flex items-center space-x-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+      <WhiteCard className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 lg:p-5 bg-gray-50/50">
+        <div className="relative flex-1 w-full md:max-w-md group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 group-focus-within:text-blue-500 transition-colors" />
           <input
             type="text"
             placeholder="Search categories..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
+            className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all text-gray-700 font-medium"
           />
         </div>
-        <Button variant="outline">
-          <Filter className="w-4 h-4 mr-2" />
-          Filter
-        </Button>
-      </div>
+      </WhiteCard>
 
       {/* Create/Edit Form */}
       {showCreateForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {editingCategory ? 'Edit Category' : 'Create New Category'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category Name
-                  </label>
+        <WhiteCard className="border-blue-100 shadow-md">
+          <div className="px-6 py-5 border-b border-gray-100 bg-blue-50/30">
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+               {editingCategory ? 'Edit Category' : 'Create New Category'}
+            </h2>
+          </div>
+          <div className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5 focus-within:text-blue-600">
+                  <label className="block text-sm font-bold text-gray-700 transition-colors">Category Name</label>
                   <input
                     type="text"
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter category name"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors font-medium text-gray-900"
+                    placeholder="e.g. Technology"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Emoji
-                  </label>
+                <div className="space-y-1.5 focus-within:text-blue-600">
+                  <label className="block text-sm font-bold text-gray-700 transition-colors">Emoji Icon</label>
                   <input
                     type="text"
                     value={formData.emoji}
                     onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors font-medium text-gray-900"
                     placeholder="🎉"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
+              <div className="space-y-1.5 focus-within:text-blue-600">
+                <label className="block text-sm font-bold text-gray-700 transition-colors">Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter category description"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors font-medium text-gray-900 resize-none"
+                  placeholder="Describe what this category entails"
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Color
-                  </label>
-                  <input
-                    type="color"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="w-full h-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-bold text-gray-700">Theme Color</label>
+                  <div className="flex gap-2">
+                     <input
+                       type="color"
+                       value={formData.color}
+                       onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                       className="h-10 w-10 p-0 border-0 rounded-lg focus:ring-2 focus:ring-blue-500 overflow-hidden shrink-0 cursor-pointer"
+                     />
+                     <input 
+                       type="text" 
+                       value={formData.color} 
+                       disabled 
+                       className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-gray-500 cursor-not-allowed" 
+                     />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-bold text-gray-700">Status</label>
                   <select
                     value={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors font-medium hover:border-blue-300 cursor-pointer text-gray-900"
                   >
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
+                    <option value="true">Active & Visible</option>
+                    <option value="false">Hidden</option>
                   </select>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3">
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                  {editingCategory ? 'Update Category' : 'Create Category'}
-                </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>
+              <div className="pt-4 flex items-center justify-end space-x-3 border-t border-gray-100 mt-6">
+                <Button type="button" variant="ghost" onClick={resetForm} className="text-gray-500 hover:text-gray-700 rounded-xl font-bold">
                   Cancel
+                </Button>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md font-bold px-6">
+                  {editingCategory ? 'Save Changes' : 'Create Category'}
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </WhiteCard>
       )}
 
       {/* Categories Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredCategories.map((category) => (
-          <Card key={category.id} className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
+          <WhiteCard key={category.id} className="hover:shadow-md transition-shadow flex flex-col group">
+            <div className="p-6 flex-1">
+              <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center space-x-3">
                   <div
-                    className="w-12 h-12 rounded-lg flex items-center justify-center text-white text-xl"
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm border border-black/5"
                     style={{ backgroundColor: category.color }}
                   >
                     {category.emoji}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{category.name}</h3>
-                    <Badge className={category.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                      {category.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
+                    <h3 className="font-extrabold text-gray-900 group-hover:text-blue-600 transition-colors">{category.name}</h3>
+                    <div className="mt-1 flex items-center gap-2">
+                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${category.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {category.isActive ? 'Active' : 'Hidden'}
+                       </span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="relative">
-                  <Button variant="ghost" size="sm">
-                    <MoreVertical className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full">
+                    <MoreHorizontal className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
 
-              <p className="text-sm text-gray-600 mb-4">{category.description}</p>
+              <p className="text-sm font-medium text-gray-600 mb-6 line-clamp-2 leading-relaxed">{category.description || 'No description provided.'}</p>
 
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900">{category.eventCount}</p>
-                  <p className="text-xs text-gray-600">Events</p>
+              <div className="flex items-center justify-between mt-auto">
+                <div className="bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 flex-1 mr-4">
+                  <p className="text-xl font-black text-gray-900 leading-none">{category.eventCount}</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Events</p>
                 </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-gray-900">
+                <div className="text-right">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-widest mb-1">Created</p>
+                  <p className="text-sm font-bold text-gray-800">
                     {category.createdAt.toLocaleDateString()}
                   </p>
-                  <p className="text-xs text-gray-600">Created</p>
                 </div>
               </div>
+            </div>
 
-              <div className="flex items-center space-x-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleEdit(category)}
-                  className="flex-1"
-                >
-                  <Edit className="w-3 h-3 mr-1" />
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => toggleStatus(category.id)}
-                  className="flex-1"
-                >
-                  {category.isActive ? 'Deactivate' : 'Activate'}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleDelete(category.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            <div className="border-t border-gray-100 p-3 bg-gray-50/50 flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleEdit(category)}
+                className="flex-1 rounded-xl border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-white bg-transparent font-semibold shadow-sm"
+              >
+                <Edit className="w-3.5 h-3.5 mr-1.5" />
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => toggleStatus(category.id)}
+                className={`flex-1 rounded-xl shadow-sm font-semibold border-gray-200 bg-transparent ${category.isActive ? 'text-amber-600 hover:text-amber-700 hover:bg-white hover:border-amber-200' : 'text-emerald-600 hover:text-emerald-700 hover:bg-white hover:border-emerald-200'}`}
+              >
+                {category.isActive ? 'Hide' : 'Publish'}
+              </Button>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => handleDelete(category.id)}
+                className="rounded-xl border-gray-200 text-red-500 hover:text-red-700 hover:bg-red-50 hover:border-red-200 bg-transparent shadow-sm shrink-0 w-9"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </WhiteCard>
         ))}
       </div>
 
       {filteredCategories.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <Tag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No categories found</h3>
-            <p className="text-gray-600 mb-4">
-              {searchTerm ? 'No categories match your search criteria.' : 'Get started by creating your first event category.'}
+        <WhiteCard>
+          <div className="p-12 text-center flex flex-col items-center">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                <Tag className="w-10 h-10 text-gray-300" />
+            </div>
+            <h3 className="text-xl font-extrabold text-gray-900 mb-2">No categories found</h3>
+            <p className="text-gray-500 font-medium mb-6 max-w-sm">
+              {searchTerm ? 'No categories match your search criteria.' : 'Get started by creating your first event classification.'}
             </p>
             {!searchTerm && (
-              <Button onClick={() => setShowCreateForm(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={() => setShowCreateForm(true)} className="bg-gray-900 hover:bg-black text-white rounded-xl shadow-md">
                 <Plus className="w-4 h-4 mr-2" />
-                Create Category
+                Create First Category
               </Button>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </WhiteCard>
       )}
     </div>
   );

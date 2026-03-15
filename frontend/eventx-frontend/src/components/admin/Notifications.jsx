@@ -135,17 +135,17 @@ const Notifications = ({ onOpenAction }) => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const GlassCard = ({ children, className = '' }) => (
-    <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden ${className}`}>
+    <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
         {children}
     </div>
   );
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1200px] mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 relative">
+          <div className="w-12 h-12 bg-gray-900 rounded-2xl flex items-center justify-center text-white shadow-md relative">
             <Bell className="w-6 h-6" />
             {unreadCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">

@@ -18,9 +18,10 @@ const reportsStore = [];
 // @access  Private/Admin
 exports.getDashboard = async (req, res) => {
   try {
+    const months = req.query.months ? parseInt(req.query.months) : 6;
     const [overview, monthlyRevenue, categoryDistribution, demographics, topPerformers] = await Promise.all([
       analyticsService.getDashboardOverview(),
-      analyticsService.getMonthlyRevenue(6),
+      analyticsService.getMonthlyRevenue(months),
       analyticsService.getCategoryDistribution(),
       analyticsService.getGlobalDemographics(),
       analyticsService.getTopPerformingEvents(),
@@ -32,12 +33,9 @@ exports.getDashboard = async (req, res) => {
       .limit(10)
       .select('title date venue.name venue.city seating category status createdAt pricing');
 
-    // Latest event analytics
-    let latestEventAnalytics = null;
-    if (topEvents.length > 0) {
-      const latest = topEvents[0];
+    const enrichedTopEvents = await Promise.all(topEvents.map(async (event) => {
       const eventTickets = await Ticket.aggregate([
-        { $match: { event: latest._id, status: { $in: ['booked', 'used'] } } },
+        { $match: { event: event._id, status: { $in: ['booked', 'used'] } } },
         {
           $group: {
             _id: null,
@@ -48,21 +46,24 @@ exports.getDashboard = async (req, res) => {
         },
       ]);
 
-      const eventViews = await Event.findById(latest._id).select('analytics.views');
+      const eventViews = await Event.findById(event._id).select('analytics.views');
 
-      latestEventAnalytics = {
-        ...latest.toObject(),
+      return {
+        ...event.toObject(),
         analytics: {
           ticketsSold: eventTickets[0]?.totalTicketsSold || 0,
           totalRevenue: eventTickets[0]?.totalRevenue || 0,
           averageTicketPrice: eventTickets[0]?.averageTicketPrice || 0,
           views: eventViews?.analytics?.views || 0,
-          occupancyRate: latest.seating?.totalSeats > 0
-            ? Math.round(((latest.seating.totalSeats - latest.seating.availableSeats) / latest.seating.totalSeats) * 100)
+          occupancyRate: event.seating?.totalSeats > 0
+            ? Math.round(((event.seating.totalSeats - event.seating.availableSeats) / event.seating.totalSeats) * 100)
             : 0,
         },
       };
-    }
+    }));
+
+    // Latest event analytics
+    let latestEventAnalytics = enrichedTopEvents.length > 0 ? enrichedTopEvents[0] : null;
 
     // Recent activity / notifications
     const [recentTickets, recentUsers, recentEvents] = await Promise.all([
@@ -135,8 +136,9 @@ exports.getDashboard = async (req, res) => {
         eventCategories: categoryDistribution.map((item) => ({ name: item._id || 'Uncategorized', value: item.count })),
         trends: { monthlyRevenue },
         distributions: { categories: categoryDistribution },
-        topPerformers: { events: topEvents },
-        allEvents: topEvents,
+        distributions: { categories: categoryDistribution },
+        topPerformers: { events: topPerformers },
+        allEvents: enrichedTopEvents,
         latestEventAnalytics,
         notifications: notifications.slice(0, 8),
         attendeeDemographics: demographics,

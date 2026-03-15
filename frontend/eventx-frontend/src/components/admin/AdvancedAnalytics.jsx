@@ -65,7 +65,7 @@ const AdvancedAnalytics = () => {
   const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
 
   const GlassCard = ({ children, className = '' }) => (
-    <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden ${className}`}>
+    <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
         {children}
     </div>
   );
@@ -119,7 +119,7 @@ const AdvancedAnalytics = () => {
 
   if (loading && !analytics) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
         <div className="animate-pulse space-y-6">
           <div className="flex justify-between items-end">
             <div>
@@ -141,7 +141,7 @@ const AdvancedAnalytics = () => {
 
   if (error || !analytics) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+      <div className="p-4 sm:p-6 lg:p-8 w-full flex flex-col items-center justify-center min-h-[60vh]">
         <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-6">
           <AlertCircle className="w-10 h-10 text-red-500" />
         </div>
@@ -176,12 +176,12 @@ const AdvancedAnalytics = () => {
   const safeTopEvents = analytics?.topEvents ?? [];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-            <span className="bg-gradient-to-br from-blue-600 to-violet-600 bg-clip-text text-transparent">Advanced Analytics</span>
+            <span className="text-gray-900">Advanced Analytics</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">Deep insights and comprehensive reports for your platform</p>
         </div>

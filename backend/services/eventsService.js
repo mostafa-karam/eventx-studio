@@ -148,6 +148,18 @@ class EventsService {
 
         eventData.title = `${originalEvent.title} (Copy)`;
         eventData.status = 'draft';
+        // Auto-fix date to bypass validation: Push forward 30 days securely
+        if (eventData.date) {
+            const nextMonth = new Date();
+            nextMonth.setDate(nextMonth.getDate() + 30);
+            eventData.date = nextMonth;
+        }
+        if (eventData.endDate) {
+            const nextMonthEnd = new Date(eventData.date);
+            nextMonthEnd.setHours(nextMonthEnd.getHours() + 4);
+            eventData.endDate = nextMonthEnd;
+        }
+        
         eventData.analytics = { views: 0, bookings: 0 };
         if (eventData.seating) {
             eventData.seating.availableSeats = eventData.seating.totalSeats;

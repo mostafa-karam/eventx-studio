@@ -126,23 +126,23 @@ const UserManagement = () => {
     };
 
     const GlassCard = ({ children, className = '' }) => (
-        <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden ${className}`}>
+        <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
             {children}
         </div>
     );
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-                        <span className="bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">User Directory</span>
+                        <span className="text-gray-900">User Directory</span>
                     </h1>
                     <p className="text-gray-500 font-medium mt-1">Manage users, roles, and system permissions</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 rounded-xl">
+                    <Button className="bg-gray-900 hover:bg-black text-white shadow-md rounded-xl">
                         <UserPlus className="w-4 h-4 mr-2" />
                         Add New User
                     </Button>

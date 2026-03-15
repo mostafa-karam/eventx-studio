@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { Tag, Plus, Trash2, Edit2, Loader2, Calendar as CalendarIcon, Hash } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
@@ -58,7 +58,7 @@ export default function AdminCoupons() {
                 const d = await res.json();
                 alert(d.message);
             }
-        } catch (e) {
+        } catch {
             alert('Failed to save coupon');
         }
     };
@@ -73,34 +73,44 @@ export default function AdminCoupons() {
         }
     };
 
+    const WhiteCard = ({ children, className = '' }) => (
+        <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
+            {children}
+        </div>
+    );
+
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900">Discount Coupons</h1>
-                    <p className="text-gray-500 mt-1">Manage promo codes and discounts</p>
+                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+                        <span className="text-gray-900">Discount Coupons</span>
+                    </h1>
+                    <p className="text-gray-500 font-medium mt-1">Manage promo codes and discounts</p>
                 </div>
                 <Button onClick={() => { setFormData({ code: '', description: '', discountType: 'percentage', discountValue: '', maxUses: '', expiresAt: '' }); setFormOpen(true); }}
-                    className="bg-indigo-600 hover:bg-indigo-700">
-                    <Plus className="w-4 h-4 mr-2" /> New Coupon
+                    className="bg-gray-900 hover:bg-black text-white font-bold rounded-xl shadow-sm px-5 h-12 w-full md:w-auto mt-4 md:mt-0">
+                    <Plus className="w-5 h-5 mr-2" /> New Coupon
                 </Button>
             </div>
 
-            {loading ? (
-                <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
-            ) : error ? (
-                <div className="text-red-500 text-center p-8">{error}</div>
-            ) : coupons.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                    <Tag className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                    <h3 className="text-lg font-semibold text-gray-900">No coupons yet</h3>
-                    <p className="text-gray-500 mb-4">Create your first promo code to boost sales.</p>
-                </div>
-            ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <WhiteCard>
+                {loading ? (
+                    <div className="flex justify-center py-32"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>
+                ) : error ? (
+                    <div className="text-red-500 text-center py-16 font-bold">{error}</div>
+                ) : coupons.length === 0 ? (
+                    <div className="py-24 text-center flex flex-col items-center">
+                        <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                            <Tag className="h-10 w-10 text-gray-300" />
+                        </div>
+                        <h3 className="text-xl font-extrabold text-gray-900 mb-2">No coupons yet</h3>
+                        <p className="text-gray-500 font-medium">Create your first promo code to boost sales.</p>
+                    </div>
+                ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 text-gray-500 font-semibold border-b">
+                            <thead className="text-xs font-bold text-gray-500 uppercase tracking-widest bg-gray-50/80 border-b border-gray-100">
                                 <tr>
                                     <th className="px-6 py-4">Code</th>
                                     <th className="px-6 py-4">Discount</th>
@@ -114,24 +124,24 @@ export default function AdminCoupons() {
                                     const isValid = c.isActive && (!c.expiresAt || new Date(c.expiresAt) > new Date()) && (c.maxUses === null || c.usedCount < c.maxUses);
                                     return (
                                         <tr key={c._id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-1 inline-block rounded border border-indigo-100">{c.code}</div>
-                                                <div className="text-xs text-gray-500 mt-1">{c.description}</div>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="font-mono font-bold text-blue-700 bg-blue-50 px-3 py-1.5 inline-block rounded-lg border border-blue-100">{c.code}</div>
+                                                <div className="text-xs font-semibold text-gray-500 mt-2">{c.description}</div>
                                             </td>
-                                            <td className="px-6 py-4 font-semibold text-gray-900">
+                                            <td className="px-6 py-4 font-extrabold text-gray-900 text-base">
                                                 {c.discountType === 'percentage' ? `${c.discountValue}% OFF` : `$${c.discountValue} OFF`}
                                             </td>
                                             <td className="px-6 py-4">
-                                                {c.usedCount} / {c.maxUses === null ? '∞' : c.maxUses}
+                                                <span className="font-bold text-gray-900">{c.usedCount}</span> <span className="text-gray-500 font-semibold">/ {c.maxUses === null ? '∞' : c.maxUses}</span>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 font-semibold text-gray-700">
                                                 {c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : 'Never'}
-                                                {!isValid && <Badge variant="destructive" className="ml-2 bg-red-100 text-red-700 hover:bg-red-100 border-0">Expired/Limit</Badge>}
-                                                {isValid && <Badge className="ml-2 bg-green-100 text-green-700 hover:bg-green-100 border-0 shadow-none">Active</Badge>}
+                                                {!isValid && <Badge variant="destructive" className="ml-3 bg-red-100 text-red-700 hover:bg-red-100 border-0 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest shadow-none">Expired/Limit</Badge>}
+                                                {isValid && <Badge className="ml-3 bg-green-100 text-green-700 hover:bg-green-100 border-0 shadow-none px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">Active</Badge>}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <Button variant="ghost" size="sm" onClick={() => setDeleteId(c._id)} className="text-red-600 hover:bg-red-50 hover:text-red-700">
-                                                    <Trash2 className="w-4 h-4" />
+                                                <Button variant="ghost" size="sm" onClick={() => setDeleteId(c._id)} className="text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl">
+                                                    <Trash2 className="w-5 h-5" />
                                                 </Button>
                                             </td>
                                         </tr>
@@ -140,8 +150,8 @@ export default function AdminCoupons() {
                             </tbody>
                         </table>
                     </div>
-                </div>
-            )}
+                )}
+            </WhiteCard>
 
             {/* Create Modal */}
             <Dialog open={formOpen} onOpenChange={setFormOpen}>
@@ -151,46 +161,46 @@ export default function AdminCoupons() {
                         <DialogDescription>Generate a new promo code for ticket purchases.</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Code</label>
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-bold text-gray-700">Code</label>
                             <div className="relative">
-                                <Hash className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                <Input required value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })} className="pl-9 font-mono uppercase" placeholder="SUMMER2026" />
+                                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Input required value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })} className="pl-9 font-mono uppercase bg-gray-50/50 border-gray-200 rounded-xl focus:ring-blue-100" placeholder="SUMMER2026" />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Type</label>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-bold text-gray-700">Type</label>
                                 <Select value={formData.discountType} onValueChange={(v) => setFormData({ ...formData, discountType: v })}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
+                                    <SelectTrigger className="bg-gray-50/50 border-gray-200 rounded-xl focus:ring-blue-100"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="rounded-xl shadow-xl border-gray-100">
                                         <SelectItem value="percentage">Percentage (%)</SelectItem>
                                         <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Value</label>
-                                <Input required type="number" min="1" max={formData.discountType === 'percentage' ? '100' : undefined} value={formData.discountValue} onChange={e => setFormData({ ...formData, discountValue: e.target.value })} placeholder="20" />
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-bold text-gray-700">Value</label>
+                                <Input required type="number" min="1" max={formData.discountType === 'percentage' ? '100' : undefined} value={formData.discountValue} onChange={e => setFormData({ ...formData, discountValue: e.target.value })} placeholder="20" className="bg-gray-50/50 border-gray-200 rounded-xl focus:ring-blue-100" />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Max Uses (Optional)</label>
-                                <Input type="number" min="1" value={formData.maxUses} onChange={e => setFormData({ ...formData, maxUses: e.target.value })} placeholder="Unlimited" />
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-bold text-gray-700">Max Uses (Optional)</label>
+                                <Input type="number" min="1" value={formData.maxUses} onChange={e => setFormData({ ...formData, maxUses: e.target.value })} placeholder="Unlimited" className="bg-gray-50/50 border-gray-200 rounded-xl focus:ring-blue-100" />
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Expiry Date (Optional)</label>
-                                <Input type="date" value={formData.expiresAt} onChange={e => setFormData({ ...formData, expiresAt: e.target.value })} />
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-bold text-gray-700">Expiry Date (Optional)</label>
+                                <Input type="date" value={formData.expiresAt} onChange={e => setFormData({ ...formData, expiresAt: e.target.value })} className="bg-gray-50/50 border-gray-200 rounded-xl focus:ring-blue-100" />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Description (Internal)</label>
-                            <Input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Summer promotion campaign" />
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-bold text-gray-700">Description (Internal)</label>
+                            <Input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Summer promotion campaign" className="bg-gray-50/50 border-gray-200 rounded-xl focus:ring-blue-100" />
                         </div>
-                        <DialogFooter className="pt-4">
-                            <DialogClose asChild><Button variant="outline" type="button">Cancel</Button></DialogClose>
-                            <Button type="submit" className="bg-indigo-600">Create Coupon</Button>
+                        <DialogFooter className="pt-4 border-t border-gray-100 mt-2">
+                            <DialogClose asChild><Button variant="outline" type="button" className="rounded-xl font-bold">Cancel</Button></DialogClose>
+                            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm font-bold">Create Coupon</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>

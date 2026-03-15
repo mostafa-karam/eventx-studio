@@ -70,7 +70,7 @@ const AdminSettings = () => {
     };
 
     const GlassCard = ({ children, className = '' }) => (
-        <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden ${className}`}>
+        <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
             {children}
         </div>
     );
@@ -89,11 +89,11 @@ const AdminSettings = () => {
     );
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-[1200px] mx-auto">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-8 w-full">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gray-900 rounded-2xl flex items-center justify-center text-white shadow-lg relative">
+                    <div className="w-12 h-12 bg-gray-900 rounded-2xl flex items-center justify-center text-white shadow-md relative">
                         <Settings className="w-6 h-6" />
                     </div>
                     <div>
@@ -143,7 +143,7 @@ const AdminSettings = () => {
 
                             <div className="flex items-center gap-6 mb-8 pb-8 border-b border-gray-100">
                                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg border-4 border-white">
-                                    {name ? name.charAt(0).toUpperCase() : 'U'}
+                                    {name ? name.charAt(0).toUpperCase() : (user?.email ? user.email.charAt(0).toUpperCase() : 'U')}
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-gray-900 text-lg">{user?.name || 'Administrator'}</h3>

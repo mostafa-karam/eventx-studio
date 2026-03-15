@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { QrCode, CheckCircle, XCircle, Camera, Loader2, Search, Users, Ticket, AlertCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
@@ -16,11 +16,23 @@ export default function CheckInDashboard() {
     const [recentCheckins, setRecentCheckins] = useState([]);
     const [stats, setStats] = useState({ total: 0, checkedIn: 0, remaining: 0 });
     const [eventFilter, setEventFilter] = useState('');
+    const [events, setEvents] = useState([]);
     const inputRef = useRef();
 
     useEffect(() => {
         inputRef.current?.focus();
+        fetchEvents();
     }, []);
+
+    const fetchEvents = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/events`, { credentials: 'include' });
+            const data = await res.json();
+            if (res.ok) setEvents(data.data?.events || []);
+        } catch (e) {
+            console.error("Failed to load events for check-in filter");
+        }
+    };
 
     const processCode = async (code) => {
         if (!code?.trim()) return;
@@ -28,7 +40,11 @@ export default function CheckInDashboard() {
         setResult(null);
         try {
             // Try to find ticket by QR code string first, then by ticket number
-            const res = await fetch(`${API_BASE_URL}/tickets/${encodeURIComponent(code.trim())}/checkin`, {
+            const endpoint = eventFilter 
+                ? `${API_BASE_URL}/tickets/${encodeURIComponent(code.trim())}/checkin?eventId=${eventFilter}`
+                : `${API_BASE_URL}/tickets/${encodeURIComponent(code.trim())}/checkin`;
+                
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
@@ -53,46 +69,67 @@ export default function CheckInDashboard() {
         if (e.key === 'Enter') processCode(manualCode);
     };
 
+    const WhiteCard = ({ children, className = '' }) => (
+        <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
+            {children}
+        </div>
+    );
+
     return (
-        <div className="p-6 max-w-6xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900">Check-In Dashboard</h1>
-                    <p className="text-gray-500 mt-1">Scan QR codes or enter ticket numbers to check in attendees</p>
+                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+                        <span className="text-gray-900">Check-In Dashboard</span>
+                        <Badge className="bg-emerald-100/50 text-emerald-700 text-xs uppercase font-bold tracking-widest px-3 py-1 border-0 rounded-full flex gap-1.5 items-center">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Live
+                        </Badge>
+                    </h1>
+                    <p className="text-gray-500 font-medium mt-1">Scan QR codes or enter ticket numbers to check in attendees</p>
                 </div>
-                <Badge className="bg-green-100 text-green-700 text-sm px-3 py-1">● Live</Badge>
+                <div className="w-full md:w-64 mt-4 md:mt-0">
+                    <Select value={eventFilter} onValueChange={setEventFilter}>
+                        <SelectTrigger className="bg-white border-gray-200 rounded-xl focus:ring-blue-100 font-medium">
+                            <SelectValue placeholder="All Events" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl shadow-xl border-gray-100">
+                            <SelectItem value="all_events">All Events</SelectItem>
+                            {events.map(ev => (
+                                <SelectItem key={ev._id} value={ev._id}>{ev.title}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 {[
-                    { label: 'Total Tickets', value: stats.total || '—', icon: Ticket, color: 'bg-blue-50 text-blue-600' },
-                    { label: 'Checked In', value: stats.checkedIn || recentCheckins.length, icon: CheckCircle, color: 'bg-green-50 text-green-600' },
-                    { label: 'Remaining', value: stats.remaining || '—', icon: Users, color: 'bg-orange-50 text-orange-600' },
+                    { label: 'Total Tickets', value: stats.total || '—', icon: Ticket, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+                    { label: 'Checked In', value: stats.checkedIn || recentCheckins.length, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+                    { label: 'Remaining', value: stats.remaining || '—', icon: Users, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
                 ].map(s => (
-                    <Card key={s.label} className="border-0 shadow-md">
-                        <CardContent className="p-5 flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${s.color}`}>
-                                <s.icon className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-black text-gray-900">{s.value}</p>
-                                <p className="text-sm text-gray-500">{s.label}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <WhiteCard key={s.label} className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
+                        <div>
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{s.label}</p>
+                            <p className="text-3xl font-black text-gray-900">{s.value}</p>
+                        </div>
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${s.bg} ${s.border}`}>
+                            <s.icon className={`w-6 h-6 ${s.color}`} />
+                        </div>
+                    </WhiteCard>
                 ))}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Scanner */}
-                <Card className="border-0 shadow-xl">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="flex items-center gap-2">
-                            <QrCode className="w-5 h-5 text-indigo-600" /> Scan / Enter Ticket
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                <WhiteCard className="flex flex-col">
+                    <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/30 flex items-center gap-3">
+                        <QrCode className="w-5 h-5 text-gray-400" /> 
+                        <h2 className="text-lg font-bold text-gray-900">Scan / Enter Ticket</h2>
+                    </div>
+                    <div className="p-6 space-y-6 flex-1">
                         {/* Manual input — acts as a barcode scanner target */}
                         <div className="relative">
                             <Input
@@ -101,86 +138,92 @@ export default function CheckInDashboard() {
                                 onChange={e => setManualCode(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Scan QR or type ticket number + Enter"
-                                className="pr-24 h-12 text-base font-mono"
+                                className="pr-16 h-14 text-lg font-mono rounded-xl bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all font-medium text-gray-900"
                                 autoComplete="off"
                             />
                             <Button
                                 onClick={() => processCode(manualCode)}
                                 disabled={loading || !manualCode.trim()}
-                                className="absolute right-1 top-1 bottom-1 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+                                className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
                             >
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
                             </Button>
                         </div>
 
-                        <p className="text-xs text-gray-400 text-center">
-                            Connect a QR scanner and it will auto-submit when it reads a code
-                        </p>
+                        <div className="bg-blue-50 rounded-xl p-4 flex items-start gap-3 border border-blue-100/50">
+                           <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                           <p className="text-sm font-medium text-blue-800">
+                               Connect a QR scanner. It will automatically submit when it successfully reads a Code from the attendee's ticket.
+                           </p>
+                        </div>
 
                         {/* Result */}
                         {result && (
-                            <div className={`rounded-2xl p-5 border-2 ${result.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-                                <div className="flex items-start gap-3">
-                                    {result.success
-                                        ? <CheckCircle className="w-8 h-8 text-green-500 flex-shrink-0 mt-0.5" />
-                                        : <XCircle className="w-8 h-8 text-red-500 flex-shrink-0 mt-0.5" />}
-                                    <div>
-                                        <p className={`font-bold text-lg ${result.success ? 'text-green-800' : 'text-red-800'}`}>
-                                            {result.success ? '✓ Checked In!' : '✗ Denied'}
+                            <div className={`rounded-xl p-5 border shadow-sm transition-all duration-300 ${result.success ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}`}>
+                                <div className="flex items-start gap-4">
+                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${result.success ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                                        {result.success ? <CheckCircle className="w-6 h-6" /> : <XCircle className="w-6 h-6" />}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className={`font-black text-xl ${result.success ? 'text-emerald-800' : 'text-red-800'}`}>
+                                            {result.success ? 'Success: Checked In!' : 'Access Denied'}
                                         </p>
-                                        <p className={`text-sm mt-0.5 ${result.success ? 'text-green-600' : 'text-red-600'}`}>
+                                        <p className={`text-sm mt-1 font-medium ${result.success ? 'text-emerald-600' : 'text-red-600'}`}>
                                             {result.message}
                                         </p>
                                         {result.ticket && (
-                                            <div className="mt-3 space-y-1 text-sm text-green-700">
-                                                <p><span className="font-semibold">Name:</span> {result.ticket?.user?.name || 'Attendee'}</p>
-                                                <p><span className="font-semibold">Event:</span> {result.ticket?.event?.title || '—'}</p>
-                                                <p><span className="font-semibold">Ticket #:</span> {result.ticket?.ticketNumber || '—'}</p>
-                                                <p><span className="font-semibold">Seat:</span> {result.ticket?.seatNumber || 'General'}</p>
+                                            <div className="mt-4 pt-4 border-t border-emerald-200/50 space-y-2 text-sm text-emerald-900">
+                                                <div className="flex justify-between items-center"><span className="font-bold text-emerald-700/80">Name</span> <span>{result.ticket?.user?.name || 'Attendee'}</span></div>
+                                                <div className="flex justify-between items-center"><span className="font-bold text-emerald-700/80">Event</span> <span>{result.ticket?.event?.title || '—'}</span></div>
+                                                <div className="flex justify-between items-center"><span className="font-bold text-emerald-700/80">Ticket #</span> <span className="font-mono">{result.ticket?.ticketNumber || '—'}</span></div>
+                                                <div className="flex justify-between items-center"><span className="font-bold text-emerald-700/80">Seat</span> <span>{result.ticket?.seatNumber || 'General Admission'}</span></div>
                                             </div>
                                         )}
                                     </div>
                                 </div>
                             </div>
                         )}
-                    </CardContent>
-                </Card>
+                    </div>
+                </WhiteCard>
 
                 {/* Recent check-ins */}
-                <Card className="border-0 shadow-xl">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5 text-green-600" /> Recent Check-Ins
-                            <span className="ml-auto text-sm font-normal text-gray-400">{recentCheckins.length} today</span>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                <WhiteCard className="flex flex-col">
+                    <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/30 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                           <CheckCircle className="w-5 h-5 text-emerald-500" /> 
+                           <h2 className="text-lg font-bold text-gray-900">Recent Check-Ins</h2>
+                        </div>
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">{recentCheckins.length} Today</span>
+                    </div>
+                    <div className="p-0 flex-1">
                         {recentCheckins.length === 0 ? (
-                            <div className="text-center py-12 text-gray-400">
-                                <QrCode className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                                <p className="font-medium">No check-ins yet</p>
-                                <p className="text-sm">Scan a ticket to get started</p>
+                            <div className="text-center py-16 flex flex-col items-center justify-center">
+                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                                   <QrCode className="w-8 h-8 text-gray-300" />
+                                </div>
+                                <p className="font-extrabold text-gray-900 text-lg">No check-ins yet</p>
+                                <p className="text-gray-500 font-medium">Scan a ticket to view activity history</p>
                             </div>
                         ) : (
-                            <div className="space-y-3 max-h-96 overflow-y-auto">
+                            <div className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
                                 {recentCheckins.map((t, i) => (
-                                    <div key={i} className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100">
-                                        <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <CheckCircle className="w-5 h-5 text-green-600" />
+                                    <div key={i} className="flex items-center gap-4 p-4 bg-emerald-50/50 rounded-xl border border-emerald-100/50 hover:bg-emerald-50 transition-colors">
+                                        <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                            <CheckCircle className="w-5 h-5 text-emerald-600" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-gray-900 truncate">{t?.user?.name || 'Attendee'}</p>
-                                            <p className="text-xs text-gray-500 truncate">{t?.event?.title || '—'} · #{t?.ticketNumber || '—'}</p>
+                                            <p className="font-bold text-gray-900 truncate">{t?.user?.name || 'Attendee'}</p>
+                                            <p className="text-xs font-medium text-gray-500 mt-0.5 truncate">{t?.event?.title || '—'} · <span className="font-mono text-gray-400">#{t?.ticketNumber || '—'}</span></p>
                                         </div>
-                                        <span className="text-xs text-green-600 font-mono whitespace-nowrap">
-                                            {new Date(t.checkedInAt).toLocaleTimeString()}
+                                        <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest bg-emerald-100/50 px-2 py-1 rounded-md">
+                                            {new Date(t.checkedInAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                         </span>
                                     </div>
                                 ))}
                             </div>
                         )}
-                    </CardContent>
-                </Card>
+                    </div>
+                </WhiteCard>
             </div>
         </div>
     );

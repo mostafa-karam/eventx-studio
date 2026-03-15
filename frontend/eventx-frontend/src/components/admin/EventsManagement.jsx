@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import {
   Calendar, MapPin, Users, DollarSign, Search, Plus, Edit, Trash2, Eye,
   MoreHorizontal, Filter, Copy, ChevronLeft, ChevronRight, CheckCircle2,
-  XCircle, ArrowUpDown, ChevronDown
+  XCircle, ArrowUpDown, ChevronDown, Ticket, AlertTriangle
 } from 'lucide-react';
 
-const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
+const EventsManagement = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const basePath = user?.role === 'admin' ? '/admin' : '/organizer';
+
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,6 +30,9 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
   const [itemsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
   const [activeDropdown, setActiveDropdown] = useState(null);
+  
+  // Custom Delete Modal State
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
@@ -45,6 +53,12 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
       setDateTo('');
     }
   }, [specificDate]);
+
+  const GlassCard = ({ children, className = '' }) => (
+    <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-0.5 ${className}`}>
+      {children}
+    </div>
+  );
 
   const fetchEvents = async () => {
     try {
@@ -94,21 +108,23 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
     }
   };
 
-  const handleDeleteEvent = async (eventId) => {
-    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-      setActiveDropdown(null);
-      return;
-    }
-    setDeleteLoading(eventId);
+  const triggerDelete = (eventId) => {
+    setItemToDelete(eventId);
+    setActiveDropdown(null);
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!itemToDelete) return;
+    setDeleteLoading(itemToDelete);
     try {
-      const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+      const response = await fetch(`${API_BASE_URL}/events/${itemToDelete}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
-        setEvents(events.filter(event => event._id !== eventId));
-        setActiveDropdown(null);
+        setEvents(events.filter(event => event._id !== itemToDelete));
+        setItemToDelete(null);
       } else {
         setError('Failed to delete event');
       }
@@ -117,6 +133,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
       setError('Network error. Please try again.');
     } finally {
       setDeleteLoading(null);
+      setItemToDelete(null);
     }
   };
 
@@ -239,28 +256,18 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const GlassCard = ({ children, className = '' }) => (
-    <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden ${className}`}>
-      {children}
-    </div>
-  );
-
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-            <span className="bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">Events Management</span>
+            <span className="text-gray-900">Events Directory</span>
           </h1>
-          <p className="text-gray-500 font-medium mt-1">Create, manage, and track your events</p>
+          <p className="text-gray-500 font-medium mt-1">Manage and track all scheduled events</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="bg-white/60 backdrop-blur-md border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 hidden sm:flex">
-            <Eye className="w-4 h-4 mr-2 text-gray-500" />
-            Preview Mode
-          </Button>
-          <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 rounded-xl" onClick={onCreateEvent}>
+          <Button className="bg-gray-900 hover:bg-black text-white shadow-md rounded-xl" onClick={() => navigate(`${basePath}/events/create`)}>
             <Plus className="w-4 h-4 mr-2" />
             Create Event
           </Button>
@@ -362,7 +369,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
                 We couldn't find any events matching your current filters. Try adjusting your search or create a new event.
               </p>
               {!searchTerm && !specificDate && categoryFilter === 'all' && (
-                <Button className="bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20" onClick={onCreateEvent}>
+                <Button className="bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20" onClick={() => navigate(`${basePath}/events/create`)}>
                   <Plus className="w-4 h-4 mr-2" /> Create First Event
                 </Button>
               )}
@@ -463,7 +470,7 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
                           
                           {activeDropdown === event._id && (
                             <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                              <button onClick={() => { onEditEvent(event); setActiveDropdown(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center font-medium">
+                              <button onClick={() => { navigate(`${basePath}/events/edit/${event._id}`); setActiveDropdown(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center font-medium">
                                 <Edit className="w-4 h-4 mr-2" /> Edit Event
                               </button>
                               <button onClick={() => togglePublish(event)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center font-medium">
@@ -474,8 +481,8 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
                                 <Copy className="w-4 h-4 mr-2" /> {cloneLoading === event._id ? 'Cloning...' : 'Clone Event'}
                               </button>
                               <div className="h-px bg-gray-100 my-1"></div>
-                              <button onClick={() => handleDeleteEvent(event._id)} disabled={deleteLoading === event._id} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center font-medium">
-                                <Trash2 className="w-4 h-4 mr-2" /> {deleteLoading === event._id ? 'Deleting...' : 'Delete Event'}
+                              <button onClick={() => triggerDelete(event._id)} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center font-medium">
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete Event
                               </button>
                             </div>
                           )}
@@ -538,6 +545,37 @@ const EventsManagement = ({ onCreateEvent, onEditEvent }) => {
           </div>
         )}
       </GlassCard>
+
+      {/* Delete Confirmation Modal */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
+              <AlertTriangle className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-xl font-bold text-center text-gray-900 tracking-tight mb-2">Delete Event?</h3>
+            <p className="text-sm text-gray-500 text-center font-medium mb-8">
+              Are you sure you want to delete this event? This action cannot be undone and will permanently remove all associated tickets and data.
+            </p>
+            <div className="flex flex-col gap-3">
+              <Button 
+                onClick={handleDeleteEvent} 
+                disabled={deleteLoading !== null}
+                className="w-full rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold h-12 shadow-md shadow-red-500/20"
+              >
+                {deleteLoading !== null ? 'Deleting...' : 'Yes, delete event'}
+              </Button>
+              <Button 
+                onClick={() => setItemToDelete(null)}
+                variant="outline"
+                className="w-full rounded-2xl bg-white border-gray-200 text-gray-700 hover:bg-gray-50 font-bold h-12 shadow-sm"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

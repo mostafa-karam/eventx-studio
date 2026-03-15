@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+
+
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix leaflet default icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 import {
   Calendar,
   MapPin,
@@ -35,6 +49,8 @@ const STEPS = [
 
 const EventForm = ({ event, onSave, onCancel }) => {
   const validStatuses = ['draft', 'published', 'cancelled', 'completed'];
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
@@ -71,8 +87,11 @@ const EventForm = ({ event, onSave, onCancel }) => {
 
   const draftKey = event ? `eventx_draft_${event._id}` : 'eventx_new_draft';
 
+  const draftRestored = React.useRef(false);
+
   // Restore draft on mount
   useEffect(() => {
+    if (draftRestored.current) return;
     const savedDraft = localStorage.getItem(draftKey);
     if (savedDraft) {
       try {
@@ -84,6 +103,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
         console.error('Failed to parse draft', e);
       }
     }
+    draftRestored.current = true;
   }, [draftKey]);
 
   // Save draft on change
@@ -166,7 +186,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
       } else {
         setError('Upload failed: ' + data.message);
       }
-    } catch (err) {
+    } catch {
       setError('Network error during upload');
     } finally {
       setUploadingImage(false);
@@ -254,15 +274,15 @@ const EventForm = ({ event, onSave, onCancel }) => {
 
   const validateStep = (step) => {
     if (step === 0) {
-      if (!formData.title) return 'Event Title is required';
-      if (!formData.description) return 'Description is required';
+      if (!formData.title?.trim()) return 'Event Title is required';
+      if (!formData.description?.trim() && formData.description !== '<p><br></p>') return 'Description is required';
       if (!formData.category) return 'Category is required';
       if (!formData.date) return 'Date & Time is required';
     } else if (step === 1) {
-      if (!formData.venue.name) return 'Venue Name is required';
-      if (!formData.venue.address) return 'Street Address is required';
-      if (!formData.venue.city) return 'City is required';
-      if (!formData.venue.country) return 'Country is required';
+      if (!formData.venue.name?.trim()) return 'Venue Name / Hall is required';
+      if (!formData.venue.address?.trim()) return 'Street Address is required';
+      if (!formData.venue.city?.trim()) return 'City is required';
+      if (!formData.venue.country?.trim()) return 'Country is required';
       const venueCapacityNum = parseInt(formData.venue.capacity);
       if (isNaN(venueCapacityNum) || venueCapacityNum < 1) return 'Venue capacity must be at least 1';
     } else if (step === 2) {
@@ -295,6 +315,17 @@ const EventForm = ({ event, onSave, onCancel }) => {
   const handleBack = () => {
     setError('');
     setCurrentStep(prev => Math.max(prev - 1, 0));
+  };
+
+  const handleCancelAction = () => {
+    if (onCancel) return onCancel();
+    if (location.pathname.startsWith('/admin')) {
+      navigate('/admin/events');
+    } else if (location.pathname.startsWith('/organizer')) {
+      navigate('/organizer/events');
+    } else {
+      navigate(-1);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -337,7 +368,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
         const backendErrors = Array.isArray(data?.errors) ? data.errors.join(', ') : '';
         setError(backendErrors || data.message || 'Failed to save event');
       }
-    } catch (error) {
+    } catch {
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
@@ -405,7 +436,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
               Discard Draft
             </Button>
           )}
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={handleCancelAction}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Cancel
           </Button>
@@ -436,12 +467,15 @@ const EventForm = ({ event, onSave, onCancel }) => {
 
             <div className="space-y-2">
               <Label htmlFor="description" className="text-sm font-medium text-gray-700">Event Description *</Label>
-              <Textarea
-                id="description" name="description"
-                value={formData.description} onChange={handleChange}
-                placeholder="Provide a detailed description of your event, including what attendees can expect..."
-                rows={5} className="resize-none" required
-              />
+              <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
+                <ReactQuill
+                  theme="snow"
+                  value={formData.description}
+                  onChange={(val) => setFormData({ ...formData, description: val })}
+                  placeholder="Provide a detailed description of your event, including what attendees can expect..."
+                  className="h-64 mb-12"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -538,6 +572,19 @@ const EventForm = ({ event, onSave, onCancel }) => {
                   placeholder="e.g., 123 Main Street, Suite 100"
                   className="pl-10 h-11" required
                 />
+              </div>
+              <div className="h-48 rounded-xl overflow-hidden border border-gray-200 mt-2 z-0 relative">
+                 <MapContainer center={[25.2048, 55.2708]} zoom={11} style={{ height: '100%', width: '100%' }} zIndex={0}>
+                   <TileLayer
+                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                   />
+                 </MapContainer>
+                 <div className="absolute inset-x-0 bottom-2 flex justify-center z-[400] pointer-events-none">
+                     <span className="bg-white/90 px-3 py-1 rounded-full text-xs font-bold text-gray-700 shadow-sm border border-gray-100 backdrop-blur-sm">
+                         Map view for reference (address text powers navigation)
+                     </span>
+                 </div>
               </div>
             </div>
 

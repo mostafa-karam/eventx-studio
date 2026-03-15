@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -9,23 +10,26 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-const AdminDashboard = ({ onTabChange }) => {
+const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activityFilter, setActivityFilter] = useState('all');
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const [revenueFilter, setRevenueFilter] = useState('This Year');
 
   const { user } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revenueFilter]);
 
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/analytics/dashboard`, {
+      const months = revenueFilter === 'This Year' ? 12 : 6;
+      const response = await fetch(`${API_BASE_URL}/analytics/dashboard?months=${months}`, {
         headers: { 'Content-Type': 'application/json' },
       });
 
@@ -91,17 +95,13 @@ const AdminDashboard = ({ onTabChange }) => {
     ? dashboardData.notifications
     : [];
 
-  const filteredNotifications = activityFilter === 'all'
-    ? notifications
-    : notifications.filter(notification => notification.type === activityFilter);
-
   const stats = [
     {
       title: 'Total Revenue',
       value: `$${(overview?.totalRevenue || 0).toLocaleString()}`,
       icon: DollarSign,
-      trend: '+12.5%',
-      isPositive: true,
+      trend: `${overview?.growthRate?.revenue > 0 ? '+' : ''}${overview?.growthRate?.revenue || 0}%`,
+      isPositive: (overview?.growthRate?.revenue || 0) >= 0,
       color: 'from-emerald-500 to-green-600',
       lightColor: 'bg-emerald-50 text-emerald-600',
     },
@@ -118,8 +118,8 @@ const AdminDashboard = ({ onTabChange }) => {
       title: 'Tickets Sold',
       value: (overview?.totalTicketsSold || 0).toLocaleString(),
       icon: Ticket,
-      trend: '+4.2%',
-      isPositive: true,
+      trend: `${overview?.growthRate?.tickets > 0 ? '+' : ''}${overview?.growthRate?.tickets || 0}%`,
+      isPositive: (overview?.growthRate?.tickets || 0) >= 0,
       color: 'from-violet-500 to-purple-600',
       lightColor: 'bg-violet-50 text-violet-600',
     },
@@ -137,9 +137,6 @@ const AdminDashboard = ({ onTabChange }) => {
   const events = Array.isArray(dashboardData?.topPerformers?.events)
     ? dashboardData.topPerformers.events
     : [];
-  const upcomingEvents = events
-    .filter((e) => (e?.date ? new Date(e.date) > new Date() : false))
-    .slice(0, 4);
 
   const allEvents = dashboardData?.allEvents || events || [];
   const selectedEvent = selectedEventId
@@ -193,23 +190,20 @@ const AdminDashboard = ({ onTabChange }) => {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 w-full">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-8 sm:p-10 shadow-lg text-white">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
-        
+      <div className="relative overflow-hidden rounded-3xl bg-white border border-gray-200 p-8 sm:p-10 shadow-sm text-gray-900">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-white to-white/80">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">
               Welcome back, {user?.name?.split(' ')[0] || 'Admin'}
             </h1>
-            <p className="text-indigo-100 text-lg font-medium max-w-2xl">
+            <p className="text-gray-500 text-lg font-medium max-w-2xl">
               Here's what's happening with your events today. You have {overview?.activeEvents || 0} active events running.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-md border border-white/30 rounded-full px-6 transition-all" onClick={() => onTabChange && onTabChange('events')}>
+            <Button className="bg-gray-900 hover:bg-black text-white rounded-full px-6 transition-all shadow-md" onClick={() => navigate('/admin/events')}>
               <Calendar className="w-4 h-4 mr-2" />
               Manage Events
             </Button>
@@ -254,9 +248,13 @@ const AdminDashboard = ({ onTabChange }) => {
               <p className="text-sm text-gray-500 font-medium">Monthly revenue performance</p>
             </div>
             <div className="flex gap-2 mt-4 sm:mt-0">
-              <select className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block px-3 py-1.5 outline-none font-medium">
-                <option>This Year</option>
-                <option>Last 6 Months</option>
+              <select 
+                className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block px-3 py-1.5 outline-none font-medium"
+                value={revenueFilter}
+                onChange={(e) => setRevenueFilter(e.target.value)}
+              >
+                <option value="This Year">This Year</option>
+                <option value="Last 6 Months">Last 6 Months</option>
               </select>
             </div>
           </div>
@@ -406,38 +404,88 @@ const AdminDashboard = ({ onTabChange }) => {
                       </span>
                     </div>
                   </div>
-                  <Button variant="outline" className="rounded-xl border-gray-200 shadow-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 flex-shrink-0" onClick={() => onTabChange && onTabChange('events')}>
+                  <Button variant="outline" className="rounded-xl border-gray-200 shadow-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 flex-shrink-0" onClick={() => navigate(`/admin/events/${selectedEvent._id}`)}>
                     Manage Event
                   </Button>
                 </div>
 
                 {/* Sub-metrics */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Total Revenue</p>
-                    <p className="text-xl font-bold text-gray-900">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:bg-white hover:shadow-md hover:border-blue-100 transition-all cursor-default">
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Total Revenue</p>
+                    <p className="text-2xl font-black text-gray-900">
                        {(selectedEvent.analytics?.totalRevenue || 0) > 0 ? `$${selectedEvent.analytics.totalRevenue.toLocaleString()}` : 'Free'}
                     </p>
                   </div>
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Tickets Sold</p>
-                    <p className="text-xl font-bold text-gray-900">
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:bg-white hover:shadow-md hover:border-emerald-100 transition-all cursor-default">
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Tickets Sold</p>
+                    <p className="text-2xl font-black text-gray-900">
                       {selectedEvent.analytics?.ticketsSold || (selectedEvent.seating ? (selectedEvent.seating.totalSeats || 0) - (selectedEvent.seating.availableSeats || 0) : 0)}
                     </p>
                   </div>
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Occupancy</p>
-                    <p className="text-xl font-bold text-gray-900">
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:bg-white hover:shadow-md hover:border-purple-100 transition-all cursor-default">
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Occupancy</p>
+                    <p className="text-2xl font-black text-gray-900">
                       {selectedEvent.analytics?.occupancyRate || (selectedEvent.seating && selectedEvent.seating.totalSeats > 0
                         ? Math.round(((selectedEvent.seating.totalSeats - selectedEvent.seating.availableSeats) / selectedEvent.seating.totalSeats) * 100)
                         : 0)}%
                     </p>
                   </div>
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Page Views</p>
-                    <p className="text-xl font-bold text-gray-900">
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:bg-white hover:shadow-md hover:border-amber-100 transition-all cursor-default">
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Page Views</p>
+                    <p className="text-2xl font-black text-gray-900">
                       {selectedEvent.analytics?.views?.toLocaleString() || '0'}
                     </p>
+                  </div>
+                </div>
+
+                {/* Additional Event Details to fill space */}
+                <div className="mt-8 pt-6 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider flex items-center gap-2">
+                       <Activity className="w-4 h-4 text-blue-500" /> Ticket Sales Velocity
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      {/* Visual Progress Bar */}
+                      <div>
+                        <div className="flex justify-between text-sm mb-1.5">
+                          <span className="font-bold text-gray-700">Sales Progress</span>
+                          <span className="font-bold text-blue-600">
+                            {selectedEvent.analytics?.occupancyRate || (selectedEvent.seating && selectedEvent.seating.totalSeats > 0 ? Math.round(((selectedEvent.seating.totalSeats - selectedEvent.seating.availableSeats) / selectedEvent.seating.totalSeats) * 100) : 0)}%
+                          </span>
+                        </div>
+                        <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full" 
+                            style={{ width: `${selectedEvent.analytics?.occupancyRate || (selectedEvent.seating && selectedEvent.seating.totalSeats > 0 ? Math.round(((selectedEvent.seating.totalSeats - selectedEvent.seating.availableSeats) / selectedEvent.seating.totalSeats) * 100) : 0)}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2 font-medium">
+                          {selectedEvent.seating?.availableSeats || 0} seats remaining out of {selectedEvent.seating?.totalSeats || 0} total capacity.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                     <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider flex items-center gap-2">
+                       <DollarSign className="w-4 h-4 text-emerald-500" /> Revenue Flow
+                     </h4>
+                     <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 flex items-center justify-between">
+                       <div>
+                         <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Average Ticket Value</p>
+                         <p className="text-2xl font-black text-emerald-900">
+                           {selectedEvent.analytics?.totalRevenue > 0 && selectedEvent.analytics?.ticketsSold > 0
+                             ? `$${Math.round(selectedEvent.analytics.totalRevenue / selectedEvent.analytics.ticketsSold)}` 
+                             : 'Free'
+                           }
+                         </p>
+                       </div>
+                       <Button variant="outline" className="border-emerald-200 text-emerald-700 hover:bg-emerald-100 bg-white"  onClick={() => navigate('/admin/analytics')}>
+                          Full Report
+                       </Button>
+                     </div>
                   </div>
                 </div>
               </div>
@@ -448,7 +496,7 @@ const AdminDashboard = ({ onTabChange }) => {
                 </div>
                 <h3 className="text-lg font-bold text-gray-900">No Events Found</h3>
                 <p className="text-sm text-gray-500 mt-1 mb-4">Create your first event to see insights</p>
-                <Button className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30" onClick={() => onTabChange && onTabChange('events')}>
+                <Button className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30" onClick={() => navigate('/admin/events/create')}>
                   Create Event
                 </Button>
               </div>
@@ -530,7 +578,7 @@ const AdminDashboard = ({ onTabChange }) => {
           
           {notifications.length > 5 && (
             <div className="p-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
-              <Button variant="ghost" className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-sm font-semibold rounded-xl" onClick={() => onTabChange && onTabChange('notifications')}>
+              <Button variant="ghost" className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-sm font-semibold rounded-xl" onClick={() => navigate('/admin/notifications')}>
                 View All Activity <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+
+
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -111,6 +111,13 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
     return `$${event?.pricing?.amount || 0}`;
   };
 
+  
+  const WhiteCard = ({ children, className = '' }) => (
+    <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
+      {children}
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="p-6">
@@ -176,8 +183,8 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
         {/* Left Column - Event Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Event Information */}
-          <Card>
-            <CardContent className="p-6">
+          <WhiteCard>
+            <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -240,12 +247,12 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </WhiteCard>
 
           {/* Event Description */}
-          <Card>
-            <CardContent className="p-6">
+          <WhiteCard>
+            <div className="p-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Event Description
               </label>
@@ -254,55 +261,55 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                 readOnly
                 className="w-full p-3 border border-gray-300 rounded-lg resize-none h-32 text-sm"
               />
-            </CardContent>
-          </Card>
+            </div>
+          </WhiteCard>
 
           {/* Event Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4 text-center">
+            <WhiteCard>
+              <div className="p-4 text-center">
                 <div className="flex items-center justify-center mb-2">
                   <Ticket className="w-5 h-5 text-purple-600" />
                 </div>
                 <p className="text-sm text-gray-600">Ticket Price</p>
                 <p className="text-lg font-bold">{formatPrice(event)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
+              </div>
+            </WhiteCard>
+            <WhiteCard>
+              <div className="p-4 text-center">
                 <div className="flex items-center justify-center mb-2">
                   <Users className="w-5 h-5 text-blue-600" />
                 </div>
                 <p className="text-sm text-gray-600">Seat Amount</p>
                 <p className="text-lg font-bold">{totalSeats}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
+              </div>
+            </WhiteCard>
+            <WhiteCard>
+              <div className="p-4 text-center">
                 <div className="flex items-center justify-center mb-2">
                   <Users className="w-5 h-5 text-green-600" />
                 </div>
                 <p className="text-sm text-gray-600">Available Seats</p>
                 <p className="text-lg font-bold">{availableSeats}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
+              </div>
+            </WhiteCard>
+            <WhiteCard>
+              <div className="p-4 text-center">
                 <div className="flex items-center justify-center mb-2">
                   <Star className="w-5 h-5 text-yellow-600" />
                 </div>
                 <p className="text-sm text-gray-600">Status</p>
                 <p className="text-sm font-bold text-yellow-600">{event.status || 'Draft'}</p>
-              </CardContent>
-            </Card>
+              </div>
+            </WhiteCard>
           </div>
 
           {/* Seat Allocation */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Seat Allocation</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <WhiteCard>
+            <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/30">
+              <h2 className="text-lg font-bold text-gray-900">Seat Allocation</h2>
+            </div>
+            <div className="p-6">
               <div className="mb-4">
                 <div className="flex items-center space-x-6">
                   <div className="flex items-center space-x-2">
@@ -329,15 +336,15 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
               ) : (
                 <div className="text-sm text-gray-500">Seat map not available</div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </WhiteCard>
         </div>
 
         {/* Right Column */}
         <div className="space-y-6">
           {/* Tags and Category */}
-          <Card>
-            <CardContent className="p-6">
+          <WhiteCard>
+            <div className="p-6">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -389,12 +396,12 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </WhiteCard>
 
           {/* Analytics */}
-          <Card>
-            <CardContent className="p-6">
+          <WhiteCard>
+            <div className="p-6">
               <h3 className="text-lg font-semibold mb-4">Analytics</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -410,18 +417,18 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                   <span className="text-sm font-semibold">${event.analytics?.revenue || 0}</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </WhiteCard>
 
           {/* QR Code */}
-          <Card>
-            <CardContent className="p-6 text-center">
+          <WhiteCard>
+            <div className="p-6 text-center">
               <div className="w-32 h-32 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
                 <QrCode className="w-16 h-16 text-gray-400" />
               </div>
               <p className="text-sm text-gray-600">Scan QR code for easy payments</p>
-            </CardContent>
-          </Card>
+            </div>
+          </WhiteCard>
 
           {/* Action Buttons */}
           <div className="space-y-3">

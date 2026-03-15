@@ -167,6 +167,110 @@ const TicketManagement = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const exportAsCSV = () => {
+        if (!processedTickets || processedTickets.length === 0) {
+            alert("No tickets to export with current filters.");
+            return;
+        }
+
+        const headers = ['Ticket ID', 'Attendee Name', 'Attendee Email', 'Event Title', 'Event Date', 'Seat Number', 'Status', 'Payment Amount', 'Payment Status', 'Booking Date'];
+        
+        const rows = processedTickets.map(t => [
+            t.ticketId || t._id,
+            t.user?.name || 'Guest User',
+            t.user?.email || 'N/A',
+            t.event?.title || 'Unassigned Event',
+            t.event?.date ? new Date(t.event.date).toLocaleDateString() : 'TBD',
+            t.seatNumber || 'N/A',
+            t.status,
+            t.payment?.amount || 0,
+            t.payment?.status || 'N/A',
+            new Date(t.createdAt || t.bookingDate).toLocaleDateString()
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `ticket_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const bulkQRGenerate = async () => {
+        if (!processedTickets || processedTickets.length === 0) {
+            alert("No tickets available for QR generation.");
+            return;
+        }
+
+        const oldLabel = document.getElementById('bulk-btn-label').innerText;
+        document.getElementById('bulk-btn-label').innerText = 'Generating...';
+        
+        try {
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Bulk Ticket QR Codes</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; }
+                        .ticket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+                        .ticket-card { border: 1px dashed #ccc; padding: 20px; border-radius: 12px; text-align: center; page-break-inside: avoid; }
+                        .ticket-card img { max-width: 150px; height: auto; margin-bottom: 10px; }
+                        .ticket-title { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+                        .ticket-info { font-size: 12px; color: #555; margin-bottom: 2px; }
+                        @media print {
+                            body { -webkit-print-color-adjust: exact; padding: 0; }
+                            button { display: none !important; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2>Bulk QR Generation (${processedTickets.length} tickets)</h2>
+                        <button onclick="window.print()" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Print / Save as PDF</button>
+                    </div>
+                    <div class="ticket-grid">
+            `);
+
+            // Generate QR codes for visible tickets
+            for (const ticket of processedTickets) {
+                const payload = JSON.stringify({ id: ticket._id, ticketId: ticket.ticketId });
+                const base64QR = await QRCode.toDataURL(payload, { margin: 1, scale: 4 });
+                
+                printWindow.document.write(`
+                    <div class="ticket-card">
+                        <img src="${base64QR}" alt="QR Code" />
+                        <div class="ticket-title">${ticket.event?.title || 'Unknown Event'}</div>
+                        <div class="ticket-info">Ticket ID: ${ticket.ticketId ? ticket.ticketId.substring(0,8).toUpperCase() : ticket._id.substring(8, 16).toUpperCase()}</div>
+                        <div class="ticket-info">Attendee: ${ticket.user?.name || 'Guest'}</div>
+                        ${ticket.seatNumber ? `<div class="ticket-info">Seat: ${ticket.seatNumber}</div>` : ''}
+                    </div>
+                `);
+            }
+
+            printWindow.document.write(`
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            
+        } catch (e) {
+            console.error('Bulk QR Error:', e);
+            alert("An error occurred while generating bulk QR codes.");
+        } finally {
+            document.getElementById('bulk-btn-label').innerText = oldLabel;
+        }
+    };
+
     const requestSort = (key) => {
         let direction = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
@@ -235,27 +339,27 @@ const TicketManagement = () => {
     };
 
     const GlassCard = ({ children, className = '' }) => (
-        <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden ${className}`}>
+        <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
             {children}
         </div>
     );
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-                        <span className="bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">Ticket Management</span>
+                        <span className="text-gray-900">Ticket Management</span>
                     </h1>
                     <p className="text-gray-500 font-medium mt-1">Manage ticket bookings, generate QR codes, and track attendance</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="outline" className="bg-white/60 backdrop-blur-md border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 shadow-sm rounded-xl">
-                        <Download className="w-4 h-4 mr-2" /> Export Data
+                    <Button variant="outline" onClick={exportAsCSV} className="bg-white/60 backdrop-blur-md border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 shadow-sm rounded-xl transition-all">
+                        <Download className="w-4 h-4 mr-2" /> Export CSV
                     </Button>
-                    <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 rounded-xl">
-                        <QrCode className="w-4 h-4 mr-2" /> Bulk QR Generate
+                    <Button onClick={bulkQRGenerate} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 rounded-xl transition-all duration-300 transform hover:scale-[1.02]">
+                        <QrCode className="w-4 h-4 mr-2" /> <span id="bulk-btn-label">Bulk QR Generate</span>
                     </Button>
                 </div>
             </div>

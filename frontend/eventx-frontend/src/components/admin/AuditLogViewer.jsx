@@ -11,6 +11,7 @@ const resourceIcons = {
     Hall: <Building2 className="h-4 w-4" />,
     HallBooking: <Building2 className="h-4 w-4" />,
     Auth: <Key className="h-4 w-4" />,
+    Analytics: <Shield className="h-4 w-4" />
 };
 
 const actionColors = {
@@ -84,34 +85,39 @@ const AuditLogViewer = () => {
         );
     });
 
+    const WhiteCard = ({ children, className = '' }) => (
+        <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
+            {children}
+        </div>
+    );
+
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Shield className="h-6 w-6 text-blue-600" />
-                        Audit Log
+                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+                        <span className="text-gray-900">Audit Log</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Track all system actions and changes</p>
+                    <p className="text-gray-500 font-medium mt-1">Track all system actions and changes</p>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <WhiteCard className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 lg:p-5 bg-gray-50/50">
+                <div className="relative flex-1 w-full mx-auto max-w-lg md:max-w-none md:w-auto md:mx-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 focus-within:text-blue-500 transition-colors" />
                     <input
                         type="text"
                         placeholder="Search by actor name, action, or IP..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-4 h-12 border border-gray-200 bg-white rounded-xl text-sm md:text-base font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 shadow-sm transition-all"
                     />
                 </div>
                 <select
                     value={resourceFilter}
                     onChange={(e) => { setResourceFilter(e.target.value); setPage(1); }}
-                    className="px-3 py-2 text-sm border border-gray-200 rounded-lg"
+                    className="px-4 h-12 text-sm md:text-base font-bold text-gray-700 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 shadow-sm sm:w-64"
                 >
                     <option value="all">All Resources</option>
                     <option value="User">User</option>
@@ -120,64 +126,75 @@ const AuditLogViewer = () => {
                     <option value="HallBooking">Hall Booking</option>
                     <option value="Ticket">Ticket</option>
                     <option value="Auth">Auth</option>
+                    <option value="Analytics">Analytics</option>
                 </select>
-            </div>
+            </WhiteCard>
 
             {/* Log Table */}
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <WhiteCard>
                 {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    <div className="flex items-center justify-center py-32">
+                        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
                     </div>
                 ) : filteredLogs.length === 0 ? (
-                    <div className="p-12 text-center">
-                        <Shield className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-600">No audit logs found</h3>
+                    <div className="py-24 text-center flex flex-col items-center">
+                        <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                            <Shield className="h-10 w-10 text-gray-300" />
+                        </div>
+                        <h3 className="text-xl font-extrabold text-gray-900 mb-2">No audit logs found</h3>
+                        <p className="text-gray-500 font-medium">Clear your search filters to see more results.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
-                                <tr className="text-xs text-gray-500 uppercase tracking-wider bg-gray-50">
-                                    <th className="text-left px-5 py-3 font-medium">Timestamp</th>
-                                    <th className="text-left px-5 py-3 font-medium">Actor</th>
-                                    <th className="text-left px-5 py-3 font-medium">Action</th>
-                                    <th className="text-left px-5 py-3 font-medium">Resource</th>
-                                    <th className="text-left px-5 py-3 font-medium">IP</th>
-                                    <th className="text-left px-5 py-3 font-medium">Details</th>
+                                <tr className="text-xs font-bold text-gray-500 uppercase tracking-widest bg-gray-50/80 border-b border-gray-100">
+                                    <th className="text-left px-6 py-4">Timestamp</th>
+                                    <th className="text-left px-6 py-4">Actor</th>
+                                    <th className="text-left px-6 py-4">Action</th>
+                                    <th className="text-left px-6 py-4">Resource</th>
+                                    <th className="text-left px-6 py-4">IP</th>
+                                    <th className="text-left px-6 py-4">Details</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
+                            <tbody className="divide-y divide-gray-100">
                                 {filteredLogs.map(log => (
                                     <React.Fragment key={log._id}>
-                                        <tr className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setExpandedLog(expandedLog === log._id ? null : log._id)}>
-                                            <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">{formatDate(log.createdAt)}</td>
-                                            <td className="px-5 py-3">
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-900">{log.actorName || 'System'}</p>
-                                                    <p className="text-xs text-gray-400">{log.actorRole}</p>
+                                        <tr className="hover:bg-blue-50/30 transition-colors cursor-pointer group" onClick={() => setExpandedLog(expandedLog === log._id ? null : log._id)}>
+                                            <td className="px-6 py-4 text-xs font-bold text-gray-500 whitespace-nowrap bg-white mx-0 shadow-none border-0 align-middle">
+                                                <div className="flex flex-col">
+                                                    <span className="text-gray-900 font-semibold">{new Date(log.createdAt).toLocaleDateString()}</span>
+                                                    <span className="text-gray-500 mt-0.5">{new Date(log.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-5 py-3">
-                                                <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${getActionColor(log.action)}`}>
+                                            <td className="px-6 py-4 align-middle">
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900 leading-tight">{log.actorName || 'System'}</p>
+                                                    <p className="text-xs font-bold text-gray-400 mt-0.5 uppercase tracking-wider">{log.actorRole}</p>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 align-middle">
+                                                <span className={`inline-flex items-center px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-md border border-white/20 ${getActionColor(log.action)}`}>
                                                     {log.action}
                                                 </span>
                                             </td>
-                                            <td className="px-5 py-3">
-                                                <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                                                    {resourceIcons[log.resource] || null}
+                                            <td className="px-6 py-4 align-middle">
+                                                <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 bg-gray-50 px-2.5 py-1 rounded-md w-fit border border-gray-100">
+                                                    {resourceIcons[log.resource] || <Shield className="h-4 w-4" />}
                                                     {log.resource}
                                                 </div>
                                             </td>
-                                            <td className="px-5 py-3 text-xs font-mono text-gray-500">{log.ip || '—'}</td>
-                                            <td className="px-5 py-3 text-xs text-blue-600 font-medium">
-                                                {log.details && Object.keys(log.details).length > 0 ? 'View →' : '—'}
+                                            <td className="px-6 py-4 text-xs font-mono font-medium text-gray-500 align-middle">{log.ip || '—'}</td>
+                                            <td className="px-6 py-4 text-xs text-blue-600 font-bold align-middle">
+                                                {log.details && Object.keys(log.details).length > 0 ? (
+                                                    <span className="group-hover:underline flex items-center gap-1.5 cursor-pointer">View {expandedLog === log._id ? 'Less' : 'More'} <ChevronRight className={`w-3 h-3 transition-transform ${expandedLog === log._id ? 'rotate-90' : ''}`} /></span>
+                                                ) : <span className="text-gray-300">No Details</span>}
                                             </td>
                                         </tr>
                                         {expandedLog === log._id && log.details && Object.keys(log.details).length > 0 && (
                                             <tr>
-                                                <td colSpan="6" className="px-5 py-3 bg-gray-50">
-                                                    <pre className="text-xs text-gray-600 overflow-x-auto">
+                                                <td colSpan="6" className="px-6 py-4 bg-gray-900 border-x border-b border-gray-900">
+                                                    <pre className="text-xs text-gray-300 overflow-x-auto font-mono p-2 rounded-lg leading-relaxed">
                                                         {JSON.stringify(log.details, null, 2)}
                                                     </pre>
                                                 </td>
@@ -192,21 +209,21 @@ const AuditLogViewer = () => {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
-                        <p className="text-sm text-gray-500">Page {page} of {totalPages}</p>
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                        <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Page {page} of {totalPages}</p>
                         <div className="flex gap-2">
                             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                                className="p-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50">
-                                <ChevronLeft className="h-4 w-4" />
+                                className="p-2 border border-gray-200 bg-white rounded-xl disabled:opacity-50 hover:bg-gray-50 shadow-sm transition-colors text-gray-700">
+                                <ChevronLeft className="h-5 w-5" />
                             </button>
                             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                                className="p-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50">
-                                <ChevronRight className="h-4 w-4" />
+                                className="p-2 border border-gray-200 bg-white rounded-xl disabled:opacity-50 hover:bg-gray-50 shadow-sm transition-colors text-gray-700">
+                                <ChevronRight className="h-5 w-5" />
                             </button>
                         </div>
                     </div>
                 )}
-            </div>
+            </WhiteCard>
         </div>
     );
 };
