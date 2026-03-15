@@ -1,7 +1,7 @@
 # EventX Studio API Documentation
 
 ## Authentication & Authorization
-The API uses JWT for authentication. Include the token in the `Authorization` header:
+The API use JWT for authentication. Include the token in the `Authorization` header:
 `Authorization: Bearer <token>`
 
 ### Roles
