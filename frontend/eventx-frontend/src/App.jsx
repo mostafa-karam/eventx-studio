@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import { Analytics } from "@vercel/analytics/react"
 import { Toaster } from 'sonner';
 import useUpcomingNotifications from './hooks/useUpcomingNotifications';
 
@@ -258,6 +259,7 @@ function App() {
       <ErrorBoundary>
         <AppContent />
         <Toaster richColors position="top-right" closeButton />
+        <Analytics />
         <SpeedInsights />
       </ErrorBoundary>
     </AuthProvider>
