@@ -9,19 +9,33 @@ exports.getCategories = async (req, res) => {
             .populate('createdBy', 'name email')
             .sort({ name: 1 });
 
+        // Dynamically calculate event counts
+        const Event = require('../models/Event');
+        const eventCounts = await Event.aggregate([
+            { $group: { _id: { $toLower: '$category' }, count: { $sum: 1 } } }
+        ]);
+        
+        const countMap = {};
+        eventCounts.forEach(e => {
+            if (e._id) countMap[e._id.toString().trim().toLowerCase()] = e.count;
+        });
+
         res.json({
             success: true,
-            categories: categories.map(category => ({
-                id: category._id,
-                name: category.name,
-                description: category.description,
-                color: category.color,
-                emoji: category.emoji,
-                eventCount: category.eventCount,
-                isActive: category.isActive,
-                createdAt: category.createdAt,
-                createdBy: category.createdBy
-            }))
+            categories: categories.map(category => {
+                const catName = category.name.toString().trim().toLowerCase();
+                return {
+                    id: category._id,
+                    name: category.name,
+                    description: category.description,
+                    color: category.color,
+                    emoji: category.emoji,
+                    eventCount: countMap[catName] || 0,
+                    isActive: category.isActive,
+                    createdAt: category.createdAt,
+                    createdBy: category.createdBy
+                };
+            })
         });
     } catch (error) {
         logger.error('Error fetching categories:', error);
@@ -213,17 +227,29 @@ exports.getCategoryStats = async (req, res) => {
             .limit(5)
             .select('name eventCount emoji');
 
+        const Event = require('../models/Event');
+        const eventCounts = await Event.aggregate([
+            { $group: { _id: { $toLower: '$category' }, count: { $sum: 1 } } }
+        ]);
+        const countMap = {};
+        eventCounts.forEach(e => { if (e._id) countMap[e._id.toString().trim().toLowerCase()] = e.count; });
+
+        const topCategoriesWithCounts = topCategories.map(cat => {
+            const catName = cat.name.toString().trim().toLowerCase();
+            return {
+                id: cat._id,
+                name: cat.name,
+                eventCount: countMap[catName] || 0,
+                emoji: cat.emoji
+            };
+        });
+
         res.json({
             success: true,
             stats: {
                 totalCategories,
                 recentCategories,
-                topCategories: topCategories.map(cat => ({
-                    id: cat._id,
-                    name: cat.name,
-                    eventCount: cat.eventCount,
-                    emoji: cat.emoji
-                }))
+                topCategories: topCategoriesWithCounts.sort((a,b) => b.eventCount - a.eventCount)
             }
         });
     } catch (error) {

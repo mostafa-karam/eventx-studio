@@ -45,6 +45,7 @@ const ReportsCenter = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/analytics/reports`, {
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -68,6 +69,7 @@ const ReportsCenter = () => {
       const response = await fetch(`${API_BASE_URL}/analytics/reports/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ type: reportType, filters: filters }),
       });
 
@@ -88,7 +90,8 @@ const ReportsCenter = () => {
   const downloadReport = async (reportId) => {
     try {
       const response = await fetch(`${API_BASE_URL}/analytics/reports/${reportId}/download`, {
-        headers: {}
+        headers: {},
+        credentials: 'include'
       });
 
       if (response.ok) {

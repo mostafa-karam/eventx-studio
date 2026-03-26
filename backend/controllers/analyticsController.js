@@ -123,19 +123,12 @@ exports.getDashboard = async (req, res) => {
       success: true,
       data: {
         overview: { ...overview, totalAttendees: overview.totalTicketsSold },
-        revenueData: monthlyRevenue.length > 0
-          ? monthlyRevenue.map((item) => ({
-              month: new Date(item._id.year, item._id.month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-              revenue: item.revenue,
-            }))
-          : [
-              { month: 'Jan 2025', revenue: overview.totalRevenue || 0 },
-              { month: 'Feb 2025', revenue: Math.round((overview.totalRevenue || 0) * 0.8) },
-              { month: 'Mar 2025', revenue: Math.round((overview.totalRevenue || 0) * 1.2) },
-            ],
+        revenueData: monthlyRevenue.map((item) => ({
+            month: new Date(item._id.year, item._id.month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            revenue: item.revenue,
+          })),
         eventCategories: categoryDistribution.map((item) => ({ name: item._id || 'Uncategorized', value: item.count })),
         trends: { monthlyRevenue },
-        distributions: { categories: categoryDistribution },
         distributions: { categories: categoryDistribution },
         topPerformers: { events: topPerformers },
         allEvents: enrichedTopEvents,
@@ -156,7 +149,7 @@ exports.getDashboard = async (req, res) => {
 // @access  Private/Admin
 exports.getAttendees = async (req, res) => {
   try {
-    const attendees = await analyticsService.getAttendeeDemographics(req.user._id);
+    const attendees = await analyticsService.getAttendeeDemographics(req.user);
 
     if (attendees.length === 0) {
       return res.json({
@@ -183,8 +176,12 @@ exports.getAttendees = async (req, res) => {
 exports.getEventAnalytics = async (req, res) => {
   try {
     const eventId = req.params.eventId;
+    const query = { _id: eventId };
+    if (req.user.role !== 'admin') {
+      query.organizer = req.user._id;
+    }
 
-    const event = await Event.findOne({ _id: eventId, organizer: req.user._id });
+    const event = await Event.findOne(query);
     if (!event) {
       return res.status(404).json({ success: false, message: 'Event not found or not authorized' });
     }
@@ -202,19 +199,19 @@ exports.getEventAnalytics = async (req, res) => {
       { $project: { age: '$userData.age', gender: '$userData.gender', city: '$userData.location.city', country: '$userData.location.country' } },
     ]);
 
+    const growthResults = await analyticsService.getAttendeeGrowth(req.user, eventId);
+    const demographics = await analyticsService.getAttendeeDemographics(req.user, eventId);
+    
     res.json({
       success: true,
       data: {
-        event: {
-          title: event.title,
-          date: event.date,
-          venue: event.venue,
-          totalSeats: event.seating.totalSeats,
-          availableSeats: event.seating.availableSeats,
-          views: event.analytics.views,
+        event,
+        growth: growthResults,
+        demographics,
+        tickets: {
+          statistics: ticketStats,
+          bookingTrend: bookingTrend,
         },
-        tickets: { statistics: ticketStats, bookingTrend },
-        attendees: eventAttendees,
       },
     });
   } catch (error) {
@@ -292,7 +289,7 @@ function convertToCSV(data) {
 exports.getAttendeeInsights = async (req, res) => {
   try {
     const { eventId } = req.query;
-    const attendees = await analyticsService.getAttendeeDemographics(req.user._id, eventId);
+    const attendees = await analyticsService.getAttendeeDemographics(req.user, eventId);
 
     if (attendees.length === 0) {
       return res.json({
@@ -346,7 +343,7 @@ exports.getAttendeeInsights = async (req, res) => {
 // @access  Private/Admin
 exports.getAllAttendeeInsights = async (req, res) => {
   try {
-    const attendees = await analyticsService.getAttendeeDemographics(req.user._id);
+    const attendees = await analyticsService.getAttendeeDemographics(req.user);
 
     if (attendees.length === 0) {
       return res.json({
@@ -397,6 +394,8 @@ exports.getAllAttendeeInsights = async (req, res) => {
     const ageCount = demographics.ageGroups.find((a) => a.group === dominantAgeGroup)?.count || 0;
     const genderCount = demographics.genderDistribution.find((g) => g.gender === dominantGender)?.count || 0;
 
+    const growthRate = await analyticsService.getAttendeeGrowth(req.user);
+
     res.json({
       success: true,
       data: {
@@ -408,11 +407,11 @@ exports.getAllAttendeeInsights = async (req, res) => {
           dominantAgeGroup,
           dominantGender,
           topInterest,
-          ageStats: { trend: 0, count: ageCount },
-          genderStats: { trend: 0, count: `${Math.round((genderCount / attendees.length) * 100)}%` },
-          locationStats: { trend: 0, count: locationCount },
-          interestStats: { trend: 0, count: interestCount },
-          socialEngagement: { platform: 'Social Media', trend: 0, count: `${(attendees.length * 0.8 / 1000).toFixed(1)}K` },
+          ageStats: { trend: null, count: ageCount },
+          genderStats: { trend: null, count: genderCount },
+          locationStats: { trend: null, count: locationCount },
+          interestStats: { trend: null, count: interestCount },
+          socialEngagement: { platform: 'Social Media', trend: null, count: `${(attendees.length * 0.8 / 1000).toFixed(1)}K` },
         },
         demographics,
         ageData: demographics.ageGroups
@@ -429,6 +428,15 @@ exports.getAllAttendeeInsights = async (req, res) => {
             .sort(([, a], [, b]) => b - a)
             .map(([category, count]) => ({ category, count })),
         },
+        recentRegistrations: attendees
+          .sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate))
+          .slice(0, 5)
+          .map(a => ({
+            name: a.name,
+            eventTitle: a.eventTitle,
+            date: a.bookingDate,
+            category: a.eventCategory
+          })),
       },
     });
   } catch (error) {

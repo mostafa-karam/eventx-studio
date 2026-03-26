@@ -39,7 +39,7 @@ const TicketManagement = () => {
     useEffect(() => {
         const loadEvents = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/events?limit=50`);
+                const res = await fetch(`${API_BASE_URL}/events?limit=50`, { credentials: 'include' });
                 if (res.ok) {
                     const data = await res.json();
                     setEvents(data.data?.events || []);
@@ -59,7 +59,7 @@ const TicketManagement = () => {
             if (pageParam) params.set('page', String(pageParam));
             if (eventId) params.set('eventId', eventId);
             const url = `${API_BASE_URL}/tickets/admin${params.toString() ? `?${params.toString()}` : ''}`;
-            const res = await fetch(url);
+            const res = await fetch(url, { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
                 setTickets(data.data.tickets || []);
@@ -121,6 +121,7 @@ const TicketManagement = () => {
             const res = await fetch(`${API_BASE_URL}/tickets/admin/orphans/${ticketId}/assign`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ eventId })
             });
             if (res.ok) {
@@ -142,7 +143,8 @@ const TicketManagement = () => {
         if (!confirm('Cancel this orphan ticket?')) return;
         try {
             const res = await fetch(`${API_BASE_URL}/tickets/admin/orphans/${ticketId}/cancel`, {
-                method: 'POST'
+                method: 'POST',
+                credentials: 'include'
             });
             if (res.ok) {
                 await fetchTickets(statusView);
@@ -339,7 +341,7 @@ const TicketManagement = () => {
     };
 
     const GlassCard = ({ children, className = '' }) => (
-        <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
+        <div className={`bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden ${className}`}>
             {children}
         </div>
     );
@@ -367,20 +369,26 @@ const TicketManagement = () => {
             {/* KPI Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                 {[
-                    { label: 'Total Tickets', val: statistics.total || 0, icon: Ticket, color: 'text-blue-600', bg: 'bg-blue-50' },
-                    { label: 'Active Bookings', val: statistics.statusCounts?.booked || 0, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                    { label: 'Used Tickets', val: statistics.statusCounts?.used || 0, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                    { label: 'Orphan Tickets', val: statistics.orphanCount || 0, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' }
+                    { label: 'Total Tickets', val: statistics.total || 0, icon: Ticket, gradient: 'from-blue-500 to-indigo-600', lightBg: 'bg-blue-50 text-blue-600' },
+                    { label: 'Active Bookings', val: statistics.statusCounts?.booked || 0, icon: CheckCircle, gradient: 'from-emerald-500 to-teal-500', lightBg: 'bg-emerald-50 text-emerald-600' },
+                    { label: 'Used Tickets', val: statistics.statusCounts?.used || 0, icon: Users, gradient: 'from-violet-500 to-purple-600', lightBg: 'bg-violet-50 text-violet-600' },
+                    { label: 'Orphan Tickets', val: statistics.orphanCount || 0, icon: AlertCircle, gradient: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50 text-amber-600' }
                 ].map((stat, i) => (
-                    <GlassCard key={i} className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
-                        <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{stat.label}</p>
-                            <p className="text-3xl font-black text-gray-900">{stat.val}</p>
+                    <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
+                        <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
+                        
+                        <div className="relative z-10 flex justify-between items-center">
+                            <div className="flex-1 pr-3">
+                                <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1.5">{stat.label}</p>
+                                <h3 className={`text-[28px] font-black tracking-tight leading-none truncate capitalize text-gray-900`}>{stat.val}</h3>
+                            </div>
+                            <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${stat.lightBg} shadow-inner ring-1 ring-white/50 group-hover:scale-110 transition-transform duration-500 ease-out`}>
+                                <stat.icon className="w-5 h-5" />
+                            </div>
                         </div>
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${stat.bg} shadow-sm border border-white/50`}>
-                            <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                        </div>
-                    </GlassCard>
+                        
+                        <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+                    </div>
                 ))}
             </div>
 
@@ -467,7 +475,7 @@ const TicketManagement = () => {
                         </div>
                     ) : (
                         <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-gray-500 uppercase bg-gray-50/80 border-b border-gray-100 sticky top-0 z-10">
+                            <thead className="text-[11px] text-gray-400 font-bold uppercase tracking-wider bg-gray-50/50 border-b border-gray-100 sticky top-0 z-10">
                                 <tr>
                                     <th scope="col" className="px-6 py-4 font-bold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('ticketId')}>
                                         <div className="flex items-center gap-2">Ticket ID <ArrowUpDown className="w-3 h-3 opacity-50" /></div>
@@ -494,7 +502,7 @@ const TicketManagement = () => {
                                     const isOrphan = !t.event || !t.event?.title;
                                     
                                     return (
-                                        <tr key={t._id} className={`bg-white hover:bg-gray-50/80 transition-colors group ${isOrphan ? 'bg-amber-50/30' : ''}`}>
+                                        <tr key={t._id} className={`bg-white hover:bg-blue-50/30 transition-all duration-200 group border-b border-gray-50 last:border-0 relative ${isOrphan ? 'bg-amber-50/30' : ''}`}>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-sm ${style.color.split(' ')[0]} bg-opacity-30`}>

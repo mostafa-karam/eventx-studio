@@ -2,6 +2,9 @@ const logger = require('../utils/logger');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 
+// Escape special regex characters to prevent ReDoS
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // @desc    Get all users (Admin only)
 // @access  Private/Admin
 exports.getUsers = async (req, res) => {
@@ -15,9 +18,10 @@ exports.getUsers = async (req, res) => {
 
         // Search filter
         if (req.query.search) {
+            const safeSearch = escapeRegex(req.query.search);
             query.$or = [
-                { name: { $regex: req.query.search, $options: 'i' } },
-                { email: { $regex: req.query.search, $options: 'i' } }
+                { name: { $regex: safeSearch, $options: 'i' } },
+                { email: { $regex: safeSearch, $options: 'i' } }
             ];
         }
 

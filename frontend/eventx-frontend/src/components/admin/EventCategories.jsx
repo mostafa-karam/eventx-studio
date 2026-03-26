@@ -154,60 +154,58 @@ const EventCategories = () => {
   }
 
   const WhiteCard = ({ children, className = '' }) => (
-    <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
+    <div className={`bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden ${className}`}>
       {children}
     </div>
   );
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-             <span className="text-gray-900">Event Categories</span>
-          </h1>
-          <p className="text-gray-500 font-medium mt-1">Manage global event classifications & tags</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={() => setShowCreateForm(true)} className="bg-gray-900 hover:bg-black text-white shadow-md rounded-xl">
-             <Plus className="w-4 h-4 mr-2" />
-             Add Category
-          </Button>
+      {/* Welcome Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-blue-900 to-indigo-800 p-8 sm:p-10 shadow-2xl text-white border border-indigo-700/50">
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-blue-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-indigo-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2 text-white">
+              Event Categories
+            </h1>
+            <p className="text-indigo-200 text-lg font-medium max-w-2xl">
+              Manage global event classifications & tags to help attendees find what they love.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button onClick={() => setShowCreateForm(true)} className="bg-white hover:bg-gray-50 text-indigo-900 font-bold rounded-xl px-6 transition-all shadow-lg text-sm h-11">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Category
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-        <WhiteCard className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
-           <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Categories</p>
-              <p className="text-3xl font-black text-gray-900">{categories.length}</p>
-           </div>
-           <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100">
-              <Tag className="w-6 h-6 text-gray-600" />
-           </div>
-        </WhiteCard>
-
-        <WhiteCard className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
-           <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Active Categories</p>
-              <p className="text-3xl font-black text-emerald-600">{activeCategories}</p>
-           </div>
-           <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center border border-emerald-100">
-              <CircleDot className="w-6 h-6 text-emerald-600" />
-           </div>
-        </WhiteCard>
-
-        <WhiteCard className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
-           <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Events Tagged</p>
-              <p className="text-3xl font-black text-blue-600">{totalEvents}</p>
-           </div>
-           <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100">
-              <Tag className="w-6 h-6 text-blue-600" />
-           </div>
-        </WhiteCard>
+        {[
+          { label: 'Total Categories', val: categories.length, icon: Tag, gradient: 'from-blue-500 to-indigo-600', lightColor: 'bg-blue-50 text-blue-600' },
+          { label: 'Active Categories', val: activeCategories, icon: CircleDot, gradient: 'from-emerald-500 to-green-600', lightColor: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Events Tagged', val: totalEvents, icon: Tag, gradient: 'from-violet-500 to-purple-600', lightColor: 'bg-violet-50 text-violet-600' }
+        ].map((stat, i) => (
+          <div key={i} className="group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden">
+            <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
+            
+            <div className="relative z-10 flex justify-between items-center">
+              <div className="flex-1 pr-3">
+                <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1.5">{stat.label}</p>
+                <h3 className="text-[28px] font-black tracking-tight leading-none truncate capitalize text-gray-900">{stat.val}</h3>
+              </div>
+              <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${stat.lightColor} shadow-inner ring-1 ring-white/50 group-hover:scale-110 transition-transform duration-500 ease-out`}>
+                <stat.icon className="w-5 h-5" />
+              </div>
+            </div>
+            
+            <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+          </div>
+        ))}
       </div>
 
       {/* Search and Filters */}
@@ -318,72 +316,81 @@ const EventCategories = () => {
       {/* Categories Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredCategories.map((category) => (
-          <WhiteCard key={category.id} className="hover:shadow-md transition-shadow flex flex-col group">
-            <div className="p-6 flex-1">
+          <WhiteCard key={category.id} className="hover:-translate-y-2 transition-all duration-500 flex flex-col group hover:shadow-2xl">
+            {/* Soft background glow from category color */}
+            <div 
+              className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-700 pointer-events-none z-0"
+              style={{ backgroundColor: category.color }}
+            ></div>
+
+            <div className="p-6 flex-1 relative z-10">
               <div className="flex items-start justify-between mb-5">
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-4">
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm border border-black/5"
-                    style={{ backgroundColor: category.color }}
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-lg transform group-hover:-rotate-3 group-hover:scale-110 transition-all duration-500 ease-out z-10"
+                    style={{ 
+                      backgroundColor: category.color,
+                      boxShadow: `0 10px 25px -5px ${category.color}60`
+                    }}
                   >
                     {category.emoji}
                   </div>
-                  <div>
-                    <h3 className="font-extrabold text-gray-900 group-hover:text-blue-600 transition-colors">{category.name}</h3>
+                  <div className="z-10 relative">
+                    <h3 className="font-black text-lg text-gray-900 tracking-tight group-hover:text-blue-600 transition-colors line-clamp-1">{category.name}</h3>
                     <div className="mt-1 flex items-center gap-2">
-                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${category.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-black tracking-widest uppercase ${category.isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-gray-50 text-gray-400 border border-gray-200'}`}>
                           {category.isActive ? 'Active' : 'Hidden'}
                        </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="relative">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
-                </div>
+                {/* No more triple dots as actions are explicitly shown below */}
               </div>
 
-              <p className="text-sm font-medium text-gray-600 mb-6 line-clamp-2 leading-relaxed">{category.description || 'No description provided.'}</p>
+              <p className="text-sm font-medium text-gray-500 mb-8 line-clamp-2 leading-relaxed relative z-10">{category.description || 'No description provided.'}</p>
 
-              <div className="flex items-center justify-between mt-auto">
-                <div className="bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 flex-1 mr-4">
-                  <p className="text-xl font-black text-gray-900 leading-none">{category.eventCount}</p>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Events</p>
+              <div className="flex items-end justify-between mt-auto relative z-10">
+                <div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-4xl font-black text-gray-900 tracking-tighter leading-none group-hover:text-blue-600 transition-colors">{category.eventCount}</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Events</span>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-widest mb-1">Created</p>
-                  <p className="text-sm font-bold text-gray-800">
-                    {category.createdAt.toLocaleDateString()}
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Created</p>
+                  <p className="text-xs font-semibold text-gray-700 border-b border-dashed border-gray-300 pb-0.5 inline-block">
+                    {category.createdAt ? new Date(category.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A'}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-gray-100 p-3 bg-gray-50/50 flex items-center gap-2">
+            <div className="border-t border-gray-50 p-2 bg-gray-50/30 flex items-center gap-1 group-hover:bg-blue-50/30 transition-colors duration-300 relative z-10">
               <Button
                 size="sm"
-                variant="outline"
+                variant="ghost"
                 onClick={() => handleEdit(category)}
-                className="flex-1 rounded-xl border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-white bg-transparent font-semibold shadow-sm"
+                className="flex-1 rounded-xl text-gray-600 hover:text-blue-700 hover:bg-blue-100/50 font-bold transition-colors shadow-none"
               >
-                <Edit className="w-3.5 h-3.5 mr-1.5" />
+                <Edit className="w-4 h-4 mr-2 text-blue-500 opacity-70 group-hover:opacity-100" />
                 Edit
               </Button>
+              <div className="w-px h-6 bg-gray-200"></div>
               <Button
                 size="sm"
-                variant="outline"
+                variant="ghost"
                 onClick={() => toggleStatus(category.id)}
-                className={`flex-1 rounded-xl shadow-sm font-semibold border-gray-200 bg-transparent ${category.isActive ? 'text-amber-600 hover:text-amber-700 hover:bg-white hover:border-amber-200' : 'text-emerald-600 hover:text-emerald-700 hover:bg-white hover:border-emerald-200'}`}
+                className={`flex-1 rounded-xl font-bold transition-colors shadow-none ${category.isActive ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-100/50' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/50'}`}
               >
                 {category.isActive ? 'Hide' : 'Publish'}
               </Button>
+              <div className="w-px h-6 bg-gray-200"></div>
               <Button
                 size="icon"
-                variant="outline"
+                variant="ghost"
                 onClick={() => handleDelete(category.id)}
-                className="rounded-xl border-gray-200 text-red-500 hover:text-red-700 hover:bg-red-50 hover:border-red-200 bg-transparent shadow-sm shrink-0 w-9"
+                className="rounded-xl text-red-500 hover:text-red-700 hover:bg-red-100/50 transition-colors shrink-0 w-12 mx-1 shadow-none"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>

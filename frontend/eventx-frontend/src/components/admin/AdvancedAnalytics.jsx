@@ -31,8 +31,10 @@ const AdvancedAnalytics = () => {
     setLoading(true);
     setRefreshing(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/analytics/dashboard?timeRange=${timeRange}`, {
+      const months = timeRange === '7d' ? 1 : timeRange === '30d' ? 1 : timeRange === '90d' ? 3 : 12;
+      const response = await fetch(`${API_BASE_URL}/analytics/dashboard?months=${months}`, {
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -84,19 +86,33 @@ const AdvancedAnalytics = () => {
     const style = styleMap[colorClass] || styleMap.blue;
 
     return (
-      <GlassCard className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
-        <div>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{title}</p>
-          <p className="text-3xl font-black text-gray-900">{value}</p>
-          <div className={`flex items-center mt-2 text-xs font-bold ${isUp ? 'text-emerald-600' : 'text-red-500'}`}>
-            {isUp ? <TrendingUp className="h-3.5 w-3.5 mr-1" /> : <TrendingDown className="h-3.5 w-3.5 mr-1" />}
-            {pct}% <span className="text-gray-400 ml-1 font-medium">vs last period</span>
+      <div className={`group bg-white rounded-3xl p-6 flex flex-col justify-between h-full border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
+        {/* Decorative background glow */}
+        <div className={`absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br ${style.grad} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
+        
+        <div className="relative z-10 flex justify-between items-start mb-6">
+          <div className="flex-1 pr-3">
+            <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1">{title}</p>
+            <h3 className="text-[28px] font-black text-gray-900 tracking-tight leading-none truncate capitalize">{value}</h3>
+          </div>
+          <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${style.bg} ${style.text} shadow-inner ring-1 ring-white/50 group-hover:scale-110 transition-transform duration-500 ease-out`}>
+            <Icon className="w-5 h-5" />
           </div>
         </div>
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${style.bg} shadow-sm border border-white/50`}>
-          <Icon className={`w-7 h-7 ${style.text}`} />
+
+        <div className="relative z-10 flex items-end justify-between mt-auto pt-4 border-t border-gray-50/80">
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 ${isUp ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+              {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              {pct}%
+            </span>
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">vs last period</span>
+          </div>
         </div>
-      </GlassCard>
+        
+        {/* Bottom decorative line */}
+        <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${style.grad} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+      </div>
     );
   };
 
@@ -172,7 +188,8 @@ const AdvancedAnalytics = () => {
   const safeRevenueData = analytics?.revenueData ?? [];
   const safeEventCategories = analytics?.eventCategories ?? [];
   const safeAgeGroups = analytics?.attendeeDemographics?.ageGroups ?? [];
-  const safeLocations = analytics?.attendeeDemographics?.locations ?? [];
+  // Backend returns locations as [{ city, count }] inside attendeeDemographics.locations
+  const safeLocations = (analytics?.attendeeDemographics?.locations ?? []).map(l => ({ city: l.city || l.country || l.location, count: l.count }));
   const safeTopEvents = analytics?.topEvents ?? [];
 
   return (
@@ -355,7 +372,7 @@ const AdvancedAnalytics = () => {
                               <span className="font-bold text-gray-800">{category.name}</span>
                             </div>
                             <div className="flex items-center space-x-3">
-                              <span className="text-sm font-bold text-gray-500">{category.count} events</span>
+                              <span className="text-sm font-bold text-gray-500">{category.value} events</span>
                               <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-xs font-bold">{pct}%</span>
                             </div>
                           </div>

@@ -104,6 +104,7 @@ const HallsManagement = () => {
             const res = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(payload)
             });
 
@@ -128,7 +129,8 @@ const HallsManagement = () => {
 
         try {
             const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/halls/${id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                credentials: 'include'
             });
             const data = await res.json();
 

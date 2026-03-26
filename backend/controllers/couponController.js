@@ -38,10 +38,11 @@ exports.validateCoupon = async (req, res) => {
 
         // Calculate discount
         let discountAmount = 0;
+        const purchaseAmount = Number(amount) || 0;
         if (coupon.discountType === 'percentage') {
-            discountAmount = Math.min((amount * coupon.discountValue) / 100, amount);
+            discountAmount = Math.min((purchaseAmount * coupon.discountValue) / 100, purchaseAmount);
         } else {
-            discountAmount = Math.min(coupon.discountValue, amount);
+            discountAmount = Math.min(coupon.discountValue, purchaseAmount);
         }
 
         res.json({
@@ -52,7 +53,7 @@ exports.validateCoupon = async (req, res) => {
                 discountType: coupon.discountType,
                 discountValue: coupon.discountValue,
                 discountAmount: Math.round(discountAmount * 100) / 100,
-                finalAmount: Math.round((amount - discountAmount) * 100) / 100,
+                finalAmount: Math.round((purchaseAmount - discountAmount) * 100) / 100,
             }
         });
     } catch (error) {

@@ -31,7 +31,8 @@ const Marketing = () => {
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
       const response = await fetch(`${API_BASE_URL}/marketing/campaigns`, {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -124,57 +125,31 @@ const Marketing = () => {
 
       {/* Stats Overview (real data) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {/* Total Campaigns */}
-        <WhiteCard className="p-5 flex flex-col justify-center hover:-translate-y-1 transition-transform duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Campaigns</p>
-                <p className="text-3xl font-black text-gray-900">{stats.totalCampaigns || 0}</p>
+        {[
+          { title: 'Total Campaigns', value: stats.totalCampaigns || 0, icon: Target, color: 'from-blue-500 to-indigo-600', lightBg: 'bg-blue-50 text-blue-600' },
+          { title: 'Total Reach', value: stats.totalRecipients?.toLocaleString() || '0', icon: Users, color: 'from-violet-500 to-purple-600', lightBg: 'bg-violet-50 text-violet-600' },
+          { title: 'Avg Open Rate', value: `${stats.avgOpenRate || 0}%`, icon: Eye, color: 'from-teal-400 to-emerald-600', lightBg: 'bg-teal-50 text-teal-600' },
+          { title: 'Revenue Generated', value: `$${stats.revenue?.toLocaleString() || '0'}`, icon: TrendingUp, color: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50 text-amber-600' }
+        ].map((stat, i) => {
+          const Icon = stat.icon;
+          return (
+            <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
+              <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.color} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
+              
+              <div className="relative z-10 flex justify-between items-center">
+                <div className="flex-1 pr-3">
+                  <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1.5">{stat.title}</p>
+                  <h3 className={`text-[28px] font-black tracking-tight leading-none truncate capitalize text-gray-900`}>{stat.value}</h3>
+                </div>
+                <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${stat.lightBg} shadow-inner ring-1 ring-white/50 group-hover:scale-110 transition-transform duration-500 ease-out`}>
+                  <Icon className="w-5 h-5" />
+                </div>
               </div>
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center border border-gray-100 bg-gray-50 text-gray-700">
-                <Target className="w-6 h-6" />
-              </div>
+              
+              <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
             </div>
-        </WhiteCard>
-
-        {/* Total Reach */}
-        <WhiteCard className="p-5 flex flex-col justify-center hover:-translate-y-1 transition-transform duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Reach</p>
-                <p className="text-3xl font-black text-gray-900">{stats.totalRecipients?.toLocaleString() || '0'}</p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center border border-gray-100 bg-gray-50 text-gray-700">
-                <Users className="w-6 h-6" />
-              </div>
-            </div>
-        </WhiteCard>
-
-        {/* Avg Open Rate */}
-        <WhiteCard className="p-5 flex flex-col justify-center hover:-translate-y-1 transition-transform duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Avg Open Rate</p>
-                <p className="text-3xl font-black text-gray-900">{stats.avgOpenRate || 0}%</p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center border border-gray-100 bg-gray-50 text-gray-700">
-                <Eye className="w-6 h-6" />
-              </div>
-            </div>
-        </WhiteCard>
-
-        {/* Revenue Generated */}
-        <WhiteCard className="p-5 flex flex-col justify-center hover:-translate-y-1 transition-transform duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Revenue Generated</p>
-                <p className="text-3xl font-black text-emerald-600">${stats.revenue?.toLocaleString() || '0'}</p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center border border-emerald-100 bg-emerald-50 text-emerald-600">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-            </div>
-        </WhiteCard>
+          );
+        })}
       </div>
 
       {/* Tabs - only Campaigns since analytics/templates have no real data */}

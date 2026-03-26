@@ -15,7 +15,7 @@ router.get('/:id', authenticate, ticketsController.getTicketById);
 router.put('/:id/cancel', authenticate, ticketsController.cancelTicket);
 router.post('/:id/checkin', authenticate, requireAdmin, ticketsController.checkinTicket);
 router.get('/event/:eventId', authenticate, requireAdmin, ticketsController.getEventTickets);
-router.get('/qr/:qrCode', authenticate, ticketsController.handler_12);
-router.put('/:id/refund', authenticate, ticketsController.handler_13);
+router.get('/qr/:qrCode', authenticate, ticketsController.lookupByQR);
+router.put('/:id/refund', authenticate, ticketsController.refundTicket);
 
 module.exports = router;

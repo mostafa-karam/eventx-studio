@@ -712,7 +712,7 @@ exports.getEventTickets = async (req, res) => {
         $group: {
           _id: '$status',
           count: { $sum: 1 },
-          revenue: { $sum: '$payment.amount' }
+          revenue: { $sum: { $ifNull: ['$payment.amount', 0] } }
         }
       }
     ]);
@@ -741,7 +741,7 @@ exports.getEventTickets = async (req, res) => {
 // @route   GET /api/tickets/qr/:qrCode
 // @desc    Look up ticket by QR code content
 // @access  Private (Admin/Organizer)
-exports.handler_12 = async (req, res) => {
+exports.lookupByQR = async (req, res) => {
   try {
     const { qrCode } = req.params;
 
@@ -776,7 +776,7 @@ exports.handler_12 = async (req, res) => {
 // @route   PUT /api/tickets/:id/refund
 // @desc    Refund a ticket (changes status and triggers external refund logic in a real app)
 // @access  Private
-exports.handler_13 = async (req, res) => {
+exports.refundTicket = async (req, res) => {
   try {
     const ticket = await Ticket.findById(req.params.id).populate('event');
 

@@ -74,7 +74,7 @@ export default function AdminCoupons() {
     };
 
     const WhiteCard = ({ children, className = '' }) => (
-        <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
+        <div className={`bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden ${className}`}>
             {children}
         </div>
     );
@@ -110,7 +110,7 @@ export default function AdminCoupons() {
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="text-xs font-bold text-gray-500 uppercase tracking-widest bg-gray-50/80 border-b border-gray-100">
+                            <thead className="text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 border-b border-gray-100">
                                 <tr>
                                     <th className="px-6 py-4">Code</th>
                                     <th className="px-6 py-4">Discount</th>
@@ -123,7 +123,7 @@ export default function AdminCoupons() {
                                 {coupons.map((c) => {
                                     const isValid = c.isActive && (!c.expiresAt || new Date(c.expiresAt) > new Date()) && (c.maxUses === null || c.usedCount < c.maxUses);
                                     return (
-                                        <tr key={c._id} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={c._id} className="bg-white hover:bg-blue-50/30 transition-all duration-200 group border-b border-gray-50 last:border-0 relative">
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="font-mono font-bold text-blue-700 bg-blue-50 px-3 py-1.5 inline-block rounded-lg border border-blue-100">{c.code}</div>
                                                 <div className="text-xs font-semibold text-gray-500 mt-2">{c.description}</div>

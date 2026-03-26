@@ -35,8 +35,8 @@ exports.getCampaigns = async (req, res) => {
             );
         }
 
-        // Estimate revenue (placeholder calculation)
-        stats.revenue = stats.totalConversions * 50; // Assume $50 average per conversion
+        // Revenue tracking requires real payment integration — show 0 until implemented
+        stats.revenue = 0;
 
         res.json({
             success: true,
@@ -253,14 +253,8 @@ exports.launchCampaign = async (req, res) => {
 
         campaign.status = 'active';
         campaign.sentAt = new Date();
-
-        // Simulate sending metrics (in real app, this would integrate with email service)
-        const baseRecipients = Math.floor(Math.random() * 1000) + 100;
-        campaign.metrics.sent = baseRecipients;
-        campaign.metrics.delivered = Math.floor(baseRecipients * 0.95);
-        campaign.metrics.opened = Math.floor(baseRecipients * 0.25);
-        campaign.metrics.clicked = Math.floor(baseRecipients * 0.05);
-        campaign.metrics.conversions = Math.floor(baseRecipients * 0.02);
+        // Note: real email delivery metrics require integration with an email service provider.
+        // Metrics (sent, opened, clicked) will remain at 0 until that integration is built.
 
         await campaign.save();
 

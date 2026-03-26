@@ -92,16 +92,14 @@ exports.getGlobalDemographics = async () => {
 
     const locationCounts = {};
     attendees.forEach((a) => {
-      if (a.city) {
-        const loc = a.country ? `${a.city}, ${a.country}` : a.city;
-        locationCounts[loc] = (locationCounts[loc] || 0) + 1;
-      }
+      const loc = a.country || 'Unknown';
+      locationCounts[loc] = (locationCounts[loc] || 0) + 1;
     });
 
     const locations = Object.entries(locationCounts)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
-      .map(([city, count]) => ({ city, count }));
+      .map(([country, count]) => ({ country, count }));
 
     return {
       ageGroups: Object.entries(ageGroups).map(([age, count]) => ({ age, count })),
@@ -141,13 +139,18 @@ exports.getTopPerformingEvents = async () => {
  * Get dashboard overview numbers.
  */
 exports.getDashboardOverview = async () => {
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
   const [totalEvents, activeEvents, totalTicketsSold, totalUsers] = await Promise.all([
     Event.countDocuments({}),
-    Event.countDocuments({ status: 'published', date: { $gte: new Date() } }),
+    Event.countDocuments({ status: 'published', date: { $gte: now } }),
     Ticket.countDocuments({ status: { $in: ['booked', 'used'] } }),
     User.countDocuments({ role: 'user' }),
   ]);
 
+  // All-time revenue + average ticket price
   const revenueData = await Ticket.aggregate([
     { $match: { status: { $in: ['booked', 'used'] } } },
     {
@@ -159,9 +162,45 @@ exports.getDashboardOverview = async () => {
     },
   ]);
 
+  // Month-over-month growth: revenue
+  const [thisMonthRevData, lastMonthRevData] = await Promise.all([
+    Ticket.aggregate([
+      { $match: { status: { $in: ['booked', 'used'] }, bookingDate: { $gte: thisMonthStart } } },
+      { $group: { _id: null, revenue: { $sum: { $ifNull: ['$payment.amount', 0] } } } },
+    ]),
+    Ticket.aggregate([
+      { $match: { status: { $in: ['booked', 'used'] }, bookingDate: { $gte: lastMonthStart, $lt: thisMonthStart } } },
+      { $group: { _id: null, revenue: { $sum: { $ifNull: ['$payment.amount', 0] } } } },
+    ]),
+  ]);
+
+  const thisMonthRev = thisMonthRevData[0]?.revenue || 0;
+  const lastMonthRev = lastMonthRevData[0]?.revenue || 0;
+  const revenueGrowth = lastMonthRev === 0
+    ? (thisMonthRev > 0 ? 100 : 0)
+    : Math.round(((thisMonthRev - lastMonthRev) / lastMonthRev) * 100);
+
+  // Month-over-month growth: tickets
+  const [thisMonthTickets, lastMonthTickets] = await Promise.all([
+    Ticket.countDocuments({ status: { $in: ['booked', 'used'] }, bookingDate: { $gte: thisMonthStart } }),
+    Ticket.countDocuments({ status: { $in: ['booked', 'used'] }, bookingDate: { $gte: lastMonthStart, $lt: thisMonthStart } }),
+  ]);
+
+  const ticketGrowth = lastMonthTickets === 0
+    ? (thisMonthTickets > 0 ? 100 : 0)
+    : Math.round(((thisMonthTickets - lastMonthTickets) / lastMonthTickets) * 100);
+
   const revenue = revenueData[0] || { totalRevenue: 0, averageTicketPrice: 0 };
 
-  return { totalEvents, activeEvents, totalTicketsSold, totalUsers, totalRevenue: revenue.totalRevenue, averageTicketPrice: revenue.averageTicketPrice };
+  return {
+    totalEvents,
+    activeEvents,
+    totalTicketsSold,
+    totalUsers,
+    totalRevenue: revenue.totalRevenue,
+    averageTicketPrice: revenue.averageTicketPrice,
+    growthRate: { revenue: revenueGrowth, tickets: ticketGrowth },
+  };
 };
 
 /**
@@ -193,11 +232,14 @@ exports.getCategoryDistribution = async () => {
 /**
  * Get attendee demographics filtered by organizer (and optionally by event).
  */
-exports.getAttendeeDemographics = async (organizerId, eventId) => {
+exports.getAttendeeDemographics = async (user, eventId) => {
   const matchCondition = {
-    'eventData.organizer': organizerId,
     status: { $in: ['booked', 'used'] },
   };
+
+  if (user.role !== 'admin') {
+    matchCondition['eventData.organizer'] = user._id;
+  }
   if (eventId) {
     matchCondition['eventData._id'] = new mongoose.Types.ObjectId(eventId);
   }
@@ -213,6 +255,7 @@ exports.getAttendeeDemographics = async (organizerId, eventId) => {
         _id: null,
         attendees: {
           $push: {
+            name: '$userData.name',
             age: '$userData.age',
             gender: '$userData.gender',
             city: '$userData.location.city',
@@ -250,6 +293,52 @@ exports.getEventBookingTrend = async (eventId) => {
     { $group: { _id: { year: { $year: '$bookingDate' }, month: { $month: '$bookingDate' }, day: { $dayOfMonth: '$bookingDate' } }, bookings: { $sum: 1 }, revenue: { $sum: '$payment.amount' } } },
     { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
   ]);
+};
+
+/**
+ * Calculate growth for a metric between two periods.
+ */
+exports.getAttendeeGrowth = async (user) => {
+  const now = new Date();
+  const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 30));
+  const sixtyDaysAgo = new Date(new Date().setDate(now.getDate() - 60));
+
+  const matchCondition = {
+    status: { $in: ['booked', 'used'] },
+  };
+
+  if (user.role !== 'admin') {
+    // We need to join with events to check organizer
+    const tickets = await Ticket.aggregate([
+      { $lookup: { from: 'events', localField: 'event', foreignField: '_id', as: 'eventData' } },
+      { $unwind: '$eventData' },
+      { $match: { 'eventData.organizer': user._id, status: { $in: ['booked', 'used'] } } },
+      {
+        $facet: {
+          currentPeriod: [
+            { $match: { bookingDate: { $gte: thirtyDaysAgo } } },
+            { $count: 'count' }
+          ],
+          previousPeriod: [
+            { $match: { bookingDate: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } } },
+            { $count: 'count' }
+          ]
+        }
+      }
+    ]);
+    const current = tickets[0].currentPeriod[0]?.count || 0;
+    const previous = tickets[0].previousPeriod[0]?.count || 0;
+    const growth = previous === 0 ? (current > 0 ? 100 : 0) : Math.round(((current - previous) / previous) * 100);
+    return growth;
+  } else {
+    // Admin sees everything, simpler query
+    const [current, previous] = await Promise.all([
+      Ticket.countDocuments({ ...matchCondition, bookingDate: { $gte: thirtyDaysAgo } }),
+      Ticket.countDocuments({ ...matchCondition, bookingDate: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } })
+    ]);
+    const growth = previous === 0 ? (current > 0 ? 100 : 0) : Math.round(((current - previous) / previous) * 100);
+    return growth;
+  }
 };
 
 // Re-export helper for use in controller

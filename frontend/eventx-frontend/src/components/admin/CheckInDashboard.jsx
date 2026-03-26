@@ -106,19 +106,25 @@ export default function CheckInDashboard() {
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 {[
-                    { label: 'Total Tickets', value: stats.total || '—', icon: Ticket, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-                    { label: 'Checked In', value: stats.checkedIn || recentCheckins.length, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-                    { label: 'Remaining', value: stats.remaining || '—', icon: Users, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
-                ].map(s => (
-                    <WhiteCard key={s.label} className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
-                        <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{s.label}</p>
-                            <p className="text-3xl font-black text-gray-900">{s.value}</p>
+                    { label: 'Total Tickets', val: stats.total || '—', icon: Ticket, gradient: 'from-blue-500 to-indigo-600', lightBg: 'bg-blue-50 text-blue-600' },
+                    { label: 'Checked In', val: stats.checkedIn || recentCheckins.length, icon: CheckCircle, gradient: 'from-emerald-500 to-teal-500', lightBg: 'bg-emerald-50 text-emerald-600' },
+                    { label: 'Remaining', val: stats.remaining || '—', icon: Users, gradient: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50 text-amber-600' }
+                ].map((stat, i) => (
+                    <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
+                        <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
+                        
+                        <div className="relative z-10 flex justify-between items-center">
+                            <div className="flex-1 pr-3">
+                                <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1.5">{stat.label}</p>
+                                <h3 className={`text-[28px] font-black tracking-tight leading-none truncate capitalize text-gray-900`}>{stat.val}</h3>
+                            </div>
+                            <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${stat.lightBg} shadow-inner ring-1 ring-white/50 group-hover:scale-110 transition-transform duration-500 ease-out`}>
+                                <stat.icon className="w-5 h-5" />
+                            </div>
                         </div>
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${s.bg} ${s.border}`}>
-                            <s.icon className={`w-6 h-6 ${s.color}`} />
-                        </div>
-                    </WhiteCard>
+                        
+                        <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+                    </div>
                 ))}
             </div>
 

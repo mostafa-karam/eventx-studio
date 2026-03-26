@@ -29,7 +29,9 @@ const AttendeeInsights = () => {
   useEffect(() => {
     const loadEvents = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/events/admin/my-events?limit=100`);
+        const res = await fetch(`${API_BASE_URL}/events/admin/my-events?limit=100`, {
+          credentials: 'include',
+        });
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
           setEvents(data.data?.events || []);
@@ -43,7 +45,9 @@ const AttendeeInsights = () => {
     const loadEventMeta = async () => {
       if (viewType === 'single' && selectedEvent) {
         try {
-          const res = await fetch(`${API_BASE_URL}/events/${selectedEvent}`);
+          const res = await fetch(`${API_BASE_URL}/events/${selectedEvent}`, {
+            credentials: 'include',
+          });
           const data = await res.json().catch(() => ({}));
           if (res.ok) setEventMeta(data.data?.event || null);
           else setEventMeta(null);
@@ -60,7 +64,7 @@ const AttendeeInsights = () => {
       setLoading(true);
       const endpoint = viewType === 'single'
         ? selectedEvent
-          ? `/analytics/attendee-insights?eventId=${selectedEvent}`
+          ? `/analytics/events/${selectedEvent}`
           : null
         : '/analytics/all-attendee-insights';
 
@@ -72,6 +76,7 @@ const AttendeeInsights = () => {
 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -125,31 +130,44 @@ const AttendeeInsights = () => {
 
   const { overview: apiOverview, ageData, locationData, interestData, trends } = insightsData || {};
 
+  let dynamicDemographics = insightsData?.demographics;
+  let dynamicTrends = trends || { registrationTrend: [] };
+  let totalCount = insightsData?.totalAttendees || (viewType === 'single' ? insightsData?.tickets?.statistics?.total : 0) || 0;
+  
+  if (viewType === 'single' && insightsData) {
+    dynamicTrends = { 
+      registrationTrend: (insightsData?.tickets?.bookingTrend || []).map(t => ({ date: t.date, registrations: t.count })),
+      categoryPreferences: [] 
+    };
+  }
+
   const computedLocations = (locationData && locationData.length)
-    ? locationData.map(l => ({ city: l.city || l.location, location: l.city || l.location, count: l.count }))
-    : ((insightsData?.demographics?.locationDistribution || []).map(l => ({ city: l.city || l.location, location: l.city || l.location, count: l.count })));
+    ? locationData.map(l => ({ country: l.country || l.location || l.city, count: l.count }))
+    : ((dynamicDemographics?.locationDistribution || []).map(l => ({ country: l.country || l.location || l.city, count: l.count })));
 
   const computedInterests = ((interestData && interestData.length)
     ? interestData.map(i => ({ name: i.name || i.interest, value: i.value !== undefined ? i.value : i.count }))
-    : ((insightsData?.demographics?.interestDistribution || []).map(i => ({ name: i.name || i.interest, value: i.count })))).filter(i => i.value > 0);
+    : ((dynamicDemographics?.interestDistribution || []).map(i => ({ name: i.name || i.interest, value: i.count })))).filter(i => i.value > 0);
 
   const computedAges = ((ageData && ageData.length)
     ? ageData.map(a => ({ name: a.name || a.age || a.group, value: a.value !== undefined ? a.value : a.count }))
-    : ((insightsData?.demographics?.ageGroups || []).map(a => ({ name: a.name || a.group || a.age, value: a.count })))).filter(a => a.value > 0);
+    : ((dynamicDemographics?.ageGroups || []).map(a => ({ name: a.name || a.group || a.age, value: a.count })))).filter(a => a.value > 0);
 
-  // Growth Calculation (comparing last period vs previous period if applicable, else default to fixed +5/etc if 1+ attendee)
-  const growthRate = insightsData?.totalAttendees > 0 ? 12 : 0; // Simulated 12% growth if we have data
+  // Growth Calculation via API
+  const growthRate = viewType === 'all' 
+    ? (apiOverview?.interestStats?.trend || 0)
+    : (insightsData?.growth?.percentage || 0);
 
   const overview = apiOverview || {
-    totalAttendees: insightsData?.totalAttendees || 0,
+    totalAttendees: totalCount,
     dominantAgeGroup: computedAges.sort((a,b)=>b.value-a.value)[0]?.name || '—',
-    dominantGender: (insightsData?.demographics?.genderDistribution || []).sort((a,b)=>b.count-a.count)[0]?.gender || 'N/A',
-    topLocation: computedLocations.sort((a,b)=>b.count-a.count)[0]?.location || 'N/A',
+    dominantGender: (dynamicDemographics?.genderDistribution || []).sort((a,b)=>b.count-a.count)[0]?.gender || 'N/A',
+    topLocation: computedLocations.sort((a,b)=>b.count-a.count)[0]?.country || 'N/A',
     topInterest: computedInterests.sort((a,b)=>b.value-a.value)[0]?.name || 'N/A',
-    ageStats: { count: computedAges.sort((a,b)=>b.value-a.value)[0]?.value || null, trend: growthRate },
-    genderStats: { count: (insightsData?.demographics?.genderDistribution || []).sort((a,b)=>b.count-a.count)[0]?.count || null, trend: Math.floor(growthRate * 0.8) },
-    locationStats: { count: computedLocations.sort((a,b)=>b.count-a.count)[0]?.count || null, trend: Math.floor(growthRate * 1.5) },
-    interestStats: { count: computedInterests.sort((a,b)=>b.value-a.value)[0]?.value || null, trend: growthRate },
+    ageStats: { count: computedAges.sort((a,b)=>b.value-a.value)[0]?.value || null, trend: null },
+    genderStats: { count: (dynamicDemographics?.genderDistribution || []).sort((a,b)=>b.count-a.count)[0]?.count || null, trend: null },
+    locationStats: { count: computedLocations.sort((a,b)=>b.count-a.count)[0]?.count || null, trend: null },
+    interestStats: { count: computedInterests.sort((a,b)=>b.value-a.value)[0]?.value || null, trend: null },
   };
 
   const formatNumber = (n) => (typeof n === 'number' ? n.toLocaleString() : (typeof n === 'string' && n.trim() !== '' ? n : '—'));
@@ -186,37 +204,39 @@ const AttendeeInsights = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 w-full">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-white border border-gray-200 p-8 shadow-sm text-gray-900">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-blue-900 to-indigo-800 p-8 shadow-2xl text-white border border-indigo-700/50">
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-blue-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-indigo-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2 flex items-center gap-3">
-              <span className="bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">Attendee Insights</span>
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2 text-white flex items-center gap-3">
+              Attendee Insights
             </h1>
-            <p className="text-gray-500 text-lg font-medium max-w-2xl">
+            <p className="text-indigo-200 text-lg font-medium max-w-2xl">
               Deep analytics on your audience demographics, locations, and behavioral interests.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-            <div className="bg-gray-50/80 border border-gray-100 px-5 py-2.5 rounded-2xl flex items-center gap-3 w-full sm:w-auto">
-              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+            <div className="bg-white/10 border border-white/20 backdrop-blur-md px-5 py-2.5 rounded-2xl flex items-center gap-3 w-full sm:w-auto shadow-inner">
+              <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-200 flex items-center justify-center border border-blue-400/30">
                 <Users className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 tracking-wider uppercase">Total Base</p>
-                <p className="text-lg font-black text-gray-900 leading-tight">{formatNumber(overview?.totalAttendees)}</p>
+                <p className="text-xs font-bold text-indigo-300 tracking-wider uppercase">Total Base</p>
+                <p className="text-lg font-black text-white leading-tight">{formatNumber(overview?.totalAttendees)}</p>
               </div>
             </div>
 
-            <div className="flex p-1 bg-gray-100/80 rounded-2xl w-full sm:w-auto">
+            <div className="flex p-1 bg-black/20 backdrop-blur-md rounded-2xl w-full sm:w-auto border border-white/10">
               <button
                 onClick={() => setViewType('all')}
-                className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-xl transition-all ${viewType === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-xl transition-all ${viewType === 'all' ? 'bg-white text-indigo-900 shadow-md' : 'text-indigo-200 hover:text-white'}`}
               >
                 Global
               </button>
               <button
                 onClick={() => setViewType('single')}
-                className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-xl transition-all ${viewType === 'single' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-xl transition-all ${viewType === 'single' ? 'bg-white text-indigo-900 shadow-md' : 'text-indigo-200 hover:text-white'}`}
               >
                 Specific Event
               </button>
@@ -259,67 +279,86 @@ const AttendeeInsights = () => {
       )}
 
       {/* Main Stats KPIs */}
+      {/* Main Stats KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { 
             title: 'Dominant Age', 
+            subtitle: 'Largest demographic segment',
             value: overview?.dominantAgeGroup || '—', 
             icon: Calendar, 
             trend: overview?.ageStats?.trend, 
             count: overview?.ageStats?.count, 
-            color: 'from-blue-500 to-indigo-600', 
-            lightBg: 'bg-blue-50 text-blue-600' 
+            gradient: 'from-blue-500 to-indigo-600', 
+            iconBg: 'bg-blue-50',
+            iconColor: 'text-blue-600'
           },
           { 
             title: 'Primary Gender', 
+            subtitle: 'Most frequent representation',
             value: overview?.dominantGender || '—', 
             icon: Users, 
             trend: overview?.genderStats?.trend, 
             count: overview?.genderStats?.count, 
-            color: 'from-violet-500 to-purple-600', 
-            lightBg: 'bg-violet-50 text-violet-600' 
+            gradient: 'from-violet-500 to-purple-600', 
+            iconBg: 'bg-violet-50',
+            iconColor: 'text-violet-600'
           },
           { 
             title: 'Top Location', 
+            subtitle: 'Highest attendee concentration',
             value: overview?.topLocation || '—', 
             icon: Globe, 
             trend: overview?.locationStats?.trend, 
             count: overview?.locationStats?.count, 
-            color: 'from-emerald-500 to-teal-600', 
-            lightBg: 'bg-emerald-50 text-emerald-600' 
+            gradient: 'from-teal-400 to-emerald-600', 
+            iconBg: 'bg-teal-50',
+            iconColor: 'text-teal-600'
           },
           { 
             title: 'Core Interest', 
+            subtitle: 'Top engagement category',
             value: overview?.topInterest || '—', 
             icon: Star, 
             trend: overview?.interestStats?.trend, 
             count: overview?.interestStats?.count, 
-            color: 'from-amber-500 to-orange-600', 
-            lightBg: 'bg-amber-50 text-amber-600' 
+            gradient: 'from-amber-400 to-orange-500', 
+            iconBg: 'bg-amber-50',
+            iconColor: 'text-amber-600'
           }
         ].map((stat, i) => {
           const Icon = stat.icon;
           return (
-            <GlassCard key={i} className="group p-6 flex flex-col justify-between h-full cursor-default">
-              <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 rounded-full opacity-10 blur-2xl transition-all duration-500 group-hover:opacity-20 group-hover:scale-150" style={{ background: `linear-gradient(to bottom right, var(--tw-gradient-stops))` }}></div>
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <p className="text-gray-500 font-bold text-xs uppercase tracking-wider mb-1">{stat.title}</p>
-                  <h3 className="text-2xl font-black text-gray-900 tracking-tight leading-none truncate max-w-[150px]">{stat.value}</h3>
+            <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-between h-full border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
+              {/* Decorative background glow */}
+              <div className={`absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
+              
+              <div className="relative z-10 flex justify-between items-start mb-6">
+                <div className="flex-1 pr-3">
+                  <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1">{stat.title}</p>
+                  <h3 className="text-[28px] font-black text-gray-900 tracking-tight leading-none truncate capitalize">{stat.value}</h3>
+                  <p className="text-[12px] text-gray-400/80 font-medium mt-1.5 line-clamp-1">{stat.subtitle}</p>
                 </div>
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${stat.lightBg} shadow-inner`}>
-                  <Icon className="w-6 h-6" />
+                <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${stat.iconBg} ${stat.iconColor} shadow-inner ring-1 ring-white/50 group-hover:scale-110 transition-transform duration-500 ease-out`}>
+                  <Icon className="w-5 h-5" />
                 </div>
               </div>
-              <div className="flex items-center justify-between mt-auto">
-                <div className="flex items-center gap-2">
-                  {renderTrend(stat.trend)}
+
+              <div className="relative z-10 flex items-end justify-between mt-auto pt-4 border-t border-gray-50/80">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total count</span>
+                  <span className={`text-2xl font-black bg-gradient-to-br ${stat.gradient} text-transparent bg-clip-text leading-none`}>
+                    {stat.count !== null && stat.count !== undefined ? formatNumber(stat.count) : '—'}
+                  </span>
                 </div>
-                <span className="text-lg font-bold text-gray-900 bg-gray-50/80 px-3 py-1 rounded-xl">
-                  {stat.count ? formatNumber(stat.count) : '—'}
-                </span>
+                {stat.trend !== null && stat.trend !== undefined && (
+                  <div className="mb-0.5">{renderTrend(stat.trend)}</div>
+                )}
               </div>
-            </GlassCard>
+              
+              {/* Bottom decorative line */}
+              <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+            </div>
           );
         })}
       </div>
@@ -343,16 +382,16 @@ const AttendeeInsights = () => {
             
             <div className="p-6 h-[400px]">
               {viewType === 'all' ? (
-                /* All Locations Bar Chart */
+                /* All Locations Horizontal Bar Chart */
                 computedLocations && computedLocations.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={computedLocations.slice(0, 10).map(l => ({ city: l.city || l.location, count: l.count }))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="city" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} dx={-10} />
-                      <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                      <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={40}>
-                         {computedLocations.slice(0, 10).map((_, idx) => (
+                    <BarChart layout="vertical" data={computedLocations.slice(0, 7).map(l => ({ city: l.city || l.country || l.location, count: l.count }))} margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                      <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} />
+                      <YAxis type="category" dataKey="city" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 12, fontWeight: 700 }} width={110} />
+                      <RechartsTooltip cursor={{ fill: '#f8fafc' }} content={<CustomTooltip />} />
+                      <Bar dataKey="count" fill="#4f46e5" radius={[0, 8, 8, 0]} barSize={24}>
+                         {computedLocations.slice(0, 7).map((_, idx) => (
                            <Cell key={`cell-${idx}`} fill={idx === 0 ? '#4f46e5' : '#818cf8'} />
                          ))}
                       </Bar>
@@ -366,9 +405,9 @@ const AttendeeInsights = () => {
                 )
               ) : (
                 /* Single Event Registration Trend */
-                Array.isArray(trends?.registrationTrend) && trends.registrationTrend.filter(t => t.registrations > 0).length > 0 ? (
+                Array.isArray(dynamicTrends?.registrationTrend) && dynamicTrends.registrationTrend.filter(t => t.registrations > 0).length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trends.registrationTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <AreaChart data={dynamicTrends.registrationTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorReg" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
@@ -393,75 +432,129 @@ const AttendeeInsights = () => {
           </GlassCard>
 
           {/* Secondary Table underneath the large chart */}
-          {computedLocations && computedLocations.length > 0 && viewType === 'all' && (
-            <GlassCard className="p-0">
-               <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 tracking-tight">Location Breakdown</h3>
+          {computedLocations && computedLocations.length > 0 && (
+            <div className="grid grid-cols-1 gap-6">
+              <GlassCard className="p-0">
+                 <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 tracking-tight">Location Breakdown</h3>
+                  </div>
                 </div>
-              </div>
-              <div className="p-0 overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 text-gray-500 font-medium uppercase tracking-wider text-xs">
-                    <tr>
-                      <th className="px-6 py-4 rounded-tl-xl">Region / City</th>
-                      <th className="px-6 py-4 text-right">Registrations</th>
-                      <th className="px-6 py-4 rounded-tr-xl">Share</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {computedLocations.slice(0, 5).map((row, idx) => {
-                      const total = computedLocations.reduce((s, curr) => s + (curr.count || 0), 0);
-                      const pct = total > 0 ? Math.round(((row.count || 0) / total) * 100) : 0;
-                      return (
-                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-6 py-4 font-semibold text-gray-900">{row.location || row.city}</td>
-                          <td className="px-6 py-4 font-bold text-gray-700 text-right">{formatNumber(row.count)}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${pct}%` }}></div>
+                <div className="p-0 overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-gray-50 text-gray-500 font-medium uppercase tracking-wider text-xs">
+                      <tr>
+                        <th className="px-6 py-4 rounded-tl-xl">Country / Region</th>
+                        <th className="px-6 py-4 text-right">Registrations</th>
+                        <th className="px-6 py-4 rounded-tr-xl">Share</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {computedLocations.slice(0, 10).map((row, idx) => {
+                        const total = computedLocations.reduce((s, curr) => s + (curr.count || 0), 0);
+                        const pct = total > 0 ? Math.round(((row.count || 0) / total) * 100) : 0;
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4 font-semibold text-gray-900">{row.country || row.location || row.city}</td>
+                            <td className="px-6 py-4 font-bold text-gray-700 text-right">{formatNumber(row.count)}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${pct}%` }}></div>
+                                </div>
+                                <span className="text-xs font-bold text-gray-500 w-8">{pct}%</span>
                               </div>
-                              <span className="text-xs font-bold text-gray-500 w-8">{pct}%</span>
-                            </div>
-                          </td>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </GlassCard>
+
+              {/* NEW: Recent Registrations Table */}
+              {insightsData?.recentRegistrations && viewType === 'all' && (
+                <GlassCard className="p-0">
+                  <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <h3 className="text-lg font-bold text-gray-900 tracking-tight">Recent Registrations</h3>
+                  </div>
+                  <div className="p-0 overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-gray-50 text-gray-500 font-medium uppercase tracking-wider text-xs">
+                        <tr>
+                          <th className="px-6 py-4">Attendee</th>
+                          <th className="px-6 py-4">Event</th>
+                          <th className="px-6 py-4">Category</th>
+                          <th className="px-6 py-4 text-right">Date</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </GlassCard>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {insightsData.recentRegistrations.map((reg, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4 font-semibold text-gray-900">{reg.name}</td>
+                            <td className="px-6 py-4 text-gray-600">{reg.eventTitle}</td>
+                            <td className="px-6 py-4 text-gray-600">{reg.category}</td>
+                            <td className="px-6 py-4 text-right font-medium">{new Date(reg.date).toLocaleDateString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </GlassCard>
+              )}
+            </div>
           )}
 
           {viewType === 'single' && overview && (
-             <GlassCard className="p-0">
-               <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/30 pb-4">
-                 <h2 className="text-lg font-bold text-gray-900 tracking-tight">Social Reach & Check-ins</h2>
-               </div>
-               <div className="p-6">
-                 <div className="divide-y divide-gray-100">
-                   {(overview?.socialBreakdown || overview?.engagementBreakdown || [
-                     { label: 'Instagram Mentions', value: overview?.socialEngagement?.instagram, color: 'text-pink-600', bg: 'bg-pink-50' },
-                     { label: 'Facebook Shares', value: overview?.socialEngagement?.facebook, color: 'text-blue-600', bg: 'bg-blue-50' },
-                     { label: 'Twitter Analytics', value: overview?.socialEngagement?.twitter, color: 'text-sky-600', bg: 'bg-sky-50' },
-                     { label: 'Event Check-ins (QR)', value: overview?.checkIns, color: 'text-emerald-600', bg: 'bg-emerald-50' }
-                   ]).filter(Boolean).map((item, idx) => (
-                     <div key={idx} className="py-4 flex items-center justify-between group">
-                       <span className="text-sm font-bold text-gray-700 flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg ${item.bg || 'bg-gray-100'} flex items-center justify-center`}>
-                             <Activity className={`w-4 h-4 ${item.color || 'text-gray-500'}`} />
-                          </div>
-                          {item.label || item.name}
-                       </span>
-                       <span className="text-lg font-black text-gray-900 group-hover:scale-110 transition-transform">
-                         {formatNumber(item.value ?? item.count)}
-                       </span>
-                     </div>
-                   ))}
+             <div className="grid grid-cols-1 gap-6">
+               <GlassCard className="p-0">
+                 <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/30 pb-4">
+                   <h2 className="text-lg font-bold text-gray-900 tracking-tight">Social Reach & Check-ins</h2>
                  </div>
-               </div>
-             </GlassCard>
+                 <div className="p-6">
+                   <div className="divide-y divide-gray-100">
+                     {(overview?.socialBreakdown || overview?.engagementBreakdown || [
+                       { label: 'Instagram Mentions', value: overview?.socialEngagement?.instagram, color: 'text-pink-600', bg: 'bg-pink-50' },
+                       { label: 'Facebook Shares', value: overview?.socialEngagement?.facebook, color: 'text-blue-600', bg: 'bg-blue-50' },
+                       { label: 'Twitter Analytics', value: overview?.socialEngagement?.twitter, color: 'text-sky-600', bg: 'bg-sky-50' },
+                       { label: 'Event Check-ins (QR)', value: insightsData?.tickets?.statistics?.checkedIn || 0, color: 'text-emerald-600', bg: 'bg-emerald-50' }
+                     ]).filter(Boolean).map((item, idx) => (
+                       <div key={idx} className="py-4 flex items-center justify-between group">
+                         <span className="text-sm font-bold text-gray-700 flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg ${item.bg || 'bg-gray-100'} flex items-center justify-center`}>
+                               <Activity className={`w-4 h-4 ${item.color || 'text-gray-500'}`} />
+                            </div>
+                            {item.label || item.name}
+                         </span>
+                         <span className="text-lg font-black text-gray-900 group-hover:scale-110 transition-transform">
+                           {formatNumber(item.value ?? item.count)}
+                         </span>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               </GlassCard>
+
+               {/* NEW: Occupancy Insights for single event */}
+               {viewType === 'single' && eventMeta && (
+                  <GlassCard className="p-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Occupancy Insights</h3>
+                    <div className="flex items-center justify-between mb-2">
+                       <span className="text-sm font-medium text-gray-500">Filled Seats</span>
+                       <span className="text-sm font-bold text-gray-900">
+                         {(eventMeta.seating?.totalSeats || 0) - (eventMeta.seating?.availableSeats || 0)} / {eventMeta.seating?.totalSeats || 0}
+                       </span>
+                    </div>
+                    <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden">
+                       <div 
+                         className="h-full bg-blue-600 rounded-full" 
+                         style={{ width: `${(eventMeta.seating?.totalSeats || 0) > 0 ? Math.round(((eventMeta.seating.totalSeats - (eventMeta.seating.availableSeats || 0)) / eventMeta.seating.totalSeats) * 100) : 0}%` }}
+                       ></div>
+                    </div>
+                  </GlassCard>
+               )}
+             </div>
           )}
 
         </div>
@@ -499,7 +592,7 @@ const AttendeeInsights = () => {
                     {/* Ring Label */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tags</p>
-                       <p className="text-2xl font-black text-gray-900 leading-none">{computedInterests.length}</p>
+                       <p className="text-xl font-black text-gray-900 leading-none">{overview?.dominantAgeGroup && overview.dominantAgeGroup !== '—' ? overview.dominantAgeGroup : 'N/A'}</p>
                     </div>
                   </div>
                   <div className="mt-6 flex flex-col gap-3">
@@ -522,6 +615,38 @@ const AttendeeInsights = () => {
               )}
             </div>
           </GlassCard>
+
+          {/* NEW: Top Categories Component */}
+          {trends?.categoryPreferences && viewType === 'all' && (
+            <GlassCard className="p-0">
+              <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+                <h3 className="text-lg font-bold text-gray-900 tracking-tight">Category Preference</h3>
+                <p className="text-sm text-gray-500 font-medium">Registration by event type</p>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  {trends.categoryPreferences.slice(0, 4).map((cat, idx) => {
+                     const total = trends.categoryPreferences.reduce((s, c) => s + c.count, 0);
+                     const pct = Math.round((cat.count / total) * 100);
+                     return (
+                      <div key={idx} className="space-y-1.5">
+                        <div className="flex justify-between text-sm font-bold">
+                          <span className="text-gray-700">{cat.category}</span>
+                          <span className="text-gray-900">{pct}%</span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full ${['bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-pink-500'][idx % 4]}`}
+                            style={{ width: `${pct}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                     );
+                  })}
+                </div>
+              </div>
+            </GlassCard>
+          )}
 
           <GlassCard className="p-0">
             <div className="p-6 border-b border-gray-100 bg-gray-50/50">

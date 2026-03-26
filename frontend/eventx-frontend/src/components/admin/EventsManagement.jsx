@@ -55,7 +55,7 @@ const EventsManagement = () => {
   }, [specificDate]);
 
   const GlassCard = ({ children, className = '' }) => (
-    <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-0.5 ${className}`}>
+    <div className={`bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden ${className}`}>
       {children}
     </div>
   );
@@ -277,20 +277,26 @@ const EventsManagement = () => {
       {/* KPI Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
         {[
-          { label: 'Total Events', val: events.length, icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50 pt-2 shadow-inner' },
-          { label: 'Published', val: events.filter(e => e.status === 'published').length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Drafts', val: events.filter(e => e.status !== 'published').length, icon: Edit, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Total Tickets', val: events.reduce((s, e) => s + (e.seating?.totalSeats || 0), 0), icon: Ticket, color: 'text-purple-600', bg: 'bg-purple-50' }
+          { label: 'Total Events', val: events.length, icon: Calendar, gradient: 'from-blue-500 to-indigo-600', lightBg: 'bg-blue-50 text-blue-600' },
+          { label: 'Published', val: events.filter(e => e.status === 'published').length, icon: CheckCircle2, gradient: 'from-emerald-500 to-teal-500', lightBg: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Drafts', val: events.filter(e => e.status !== 'published').length, icon: Edit, gradient: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50 text-amber-600' },
+          { label: 'Total Capacity', val: events.reduce((s, e) => s + (e.seating?.totalSeats || 0), 0), icon: Ticket, gradient: 'from-purple-500 to-fuchsia-600', lightBg: 'bg-purple-50 text-purple-600' }
         ].map((stat, i) => (
-          <GlassCard key={i} className="p-5 flex items-center justify-between hover:-translate-y-1 transition-transform duration-300">
-            <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{stat.label}</p>
-              <p className="text-3xl font-black text-gray-900">{stat.val}</p>
+          <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
+            <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
+            
+            <div className="relative z-10 flex justify-between items-center">
+              <div className="flex-1 pr-3">
+                <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1.5">{stat.label}</p>
+                <h3 className={`text-[28px] font-black tracking-tight leading-none truncate capitalize text-gray-900`}>{stat.val}</h3>
+              </div>
+              <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${stat.lightBg} shadow-inner ring-1 ring-white/50 group-hover:scale-110 transition-transform duration-500 ease-out`}>
+                <stat.icon className="w-5 h-5" />
+              </div>
             </div>
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${stat.bg} shadow-sm border border-white/50`}>
-              <stat.icon className={`w-6 h-6 ${stat.color}`} />
-            </div>
-          </GlassCard>
+            
+            <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+          </div>
         ))}
       </div>
 
@@ -376,7 +382,7 @@ const EventsManagement = () => {
             </div>
           ) : (
             <table className="w-full text-sm text-left whitespace-nowrap">
-              <thead className="text-xs text-gray-500 uppercase bg-gray-50/80 border-b border-gray-100 sticky top-0 z-10">
+              <thead className="text-[11px] text-gray-400 font-bold uppercase tracking-wider bg-gray-50/50 border-b border-gray-100 sticky top-0 z-10">
                 <tr>
                   <th scope="col" className="px-6 py-4 font-bold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('title')}>
                     <div className="flex items-center gap-2">Event <ArrowUpDown className="w-3 h-3 opacity-50" /></div>
@@ -406,8 +412,8 @@ const EventsManagement = () => {
                   const progress = totalSeats > 0 ? (soldSeats / totalSeats) * 100 : 0;
                   
                   return (
-                    <tr key={event._id} className="bg-white hover:bg-gray-50/80 transition-colors group">
-                      <td className="px-6 py-4">
+                    <tr key={event._id} className="bg-white hover:bg-blue-50/30 transition-all duration-200 group border-b border-gray-50 last:border-0 relative">
+                      <td className="px-6 py-4 cursor-pointer" onClick={() => navigate(`${basePath}/events/${event._id}`)}>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-lg shadow-sm">
                             {getCategoryEmoji(event.category)}

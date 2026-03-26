@@ -261,15 +261,7 @@ app.use('*', (_req, res) => res.status(404).json({ success: false, message: 'Rou
 const startServer = async () => {
   await connectDB();
 
-  if (process.env.NODE_ENV !== 'production') {
-    try {
-      const seedUsers = require('./utils/seed');
-      await seedUsers();
-      logger.info('Demo users seeded automatically for development');
-    } catch (err) {
-      logger.error('Failed to seed demo users:', err);
-    }
-  }
+
 
   const server = app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
   server.timeout = 30000; // 30 second request timeout

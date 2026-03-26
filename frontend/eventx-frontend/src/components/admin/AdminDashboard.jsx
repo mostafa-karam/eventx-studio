@@ -31,6 +31,7 @@ const AdminDashboard = () => {
       const months = revenueFilter === 'This Year' ? 12 : 6;
       const response = await fetch(`${API_BASE_URL}/analytics/dashboard?months=${months}`, {
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -48,7 +49,7 @@ const AdminDashboard = () => {
   };
 
   const GlassCard = ({ children, className = '' }) => (
-    <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-0.5 ${className}`}>
+    <div className={`bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden relative ${className}`}>
       {children}
     </div>
   );
@@ -88,6 +89,7 @@ const AdminDashboard = () => {
   const revenueData = Array.isArray(dashboardData?.revenueData) && dashboardData.revenueData.length > 0
     ? dashboardData.revenueData
     : null;
+  // revenueData is null when there are no bookings yet → shows empty state instead of blank chart
   const eventCategories = Array.isArray(dashboardData?.eventCategories) && dashboardData.eventCategories.length > 0
     ? dashboardData.eventCategories
     : null;
@@ -192,18 +194,20 @@ const AdminDashboard = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 w-full">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-white border border-gray-200 p-8 sm:p-10 shadow-sm text-gray-900">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-blue-900 to-indigo-800 p-8 sm:p-10 shadow-2xl text-white border border-indigo-700/50">
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-blue-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-indigo-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2 text-white">
               Welcome back, {user?.name?.split(' ')[0] || 'Admin'}
             </h1>
-            <p className="text-gray-500 text-lg font-medium max-w-2xl">
-              Here's what's happening with your events today. You have {overview?.activeEvents || 0} active events running.
+            <p className="text-indigo-200 text-lg font-medium max-w-2xl">
+              Here's what's happening with your events today. You have <span className="text-white font-bold">{overview?.activeEvents || 0}</span> active events running.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button className="bg-gray-900 hover:bg-black text-white rounded-full px-6 transition-all shadow-md" onClick={() => navigate('/admin/events')}>
+            <Button className="bg-white hover:bg-gray-50 text-indigo-900 font-bold rounded-xl px-6 transition-all shadow-lg text-sm h-11" onClick={() => navigate('/admin/events')}>
               <Calendar className="w-4 h-4 mr-2" />
               Manage Events
             </Button>
@@ -216,24 +220,33 @@ const AdminDashboard = () => {
         {stats.map((stat, i) => {
           const Icon = stat.icon;
           return (
-            <GlassCard key={i} className="group cursor-default p-6 flex flex-col justify-between h-full relative overflow-hidden">
-              <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 rounded-full opacity-10 blur-2xl transition-all duration-500 group-hover:opacity-20 group-hover:scale-150" style={{ background: `linear-gradient(to bottom right, var(--tw-gradient-stops))` }} ></div>
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <p className="text-gray-500 font-medium text-sm mb-1">{stat.title}</p>
-                  <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{stat.value}</h3>
+            <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-between h-full border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
+              {/* Decorative background glow */}
+              <div className={`absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br ${stat.color} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
+              
+              <div className="relative z-10 flex justify-between items-start mb-6">
+                <div className="flex-1 pr-3">
+                  <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1">{stat.title}</p>
+                  <h3 className="text-[28px] font-black text-gray-900 tracking-tight leading-none truncate capitalize">{stat.value}</h3>
                 </div>
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${stat.lightColor} shadow-inner`}>
-                  <Icon className="w-6 h-6" />
+                <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${stat.lightColor} shadow-inner ring-1 ring-white/50 group-hover:scale-110 transition-transform duration-500 ease-out`}>
+                  <Icon className="w-5 h-5" />
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-2">
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${stat.isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                  {stat.trend}
-                </span>
-                <span className="text-xs text-gray-400 font-medium">vs last month</span>
+
+              <div className="relative z-10 flex items-end justify-between mt-auto pt-4 border-t border-gray-50/80">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 ${stat.isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                    {stat.isPositive ? <TrendingUp className="w-3 h-3" /> : (stat.title !== 'Avg Ticket Price' && <TrendingDown className="w-3 h-3" />)}
+                    {stat.trend}
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{stat.title === 'Avg Ticket Price' ? 'vs free events' : 'vs last month'}</span>
+                </div>
               </div>
-            </GlassCard>
+              
+              {/* Bottom decorative line */}
+              <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+            </div>
           );
         })}
       </div>

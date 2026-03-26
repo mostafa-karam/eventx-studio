@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 
 
 import { Button } from '../ui/button';
@@ -18,7 +19,20 @@ import {
   Download
 } from 'lucide-react';
 
-const EventDetails = ({ eventId, onBack, onEdit }) => {
+const EventDetails = ({ eventId: propEventId, onBack, onEdit }) => {
+  const params = useParams();
+  const navigate = useNavigate();
+  const eventId = propEventId || params.eventId;
+
+  const handleBack = () => {
+    if (onBack) return onBack();
+    navigate(-1);
+  };
+
+  const handleEdit = (evt) => {
+    if (onEdit) return onEdit(evt);
+    navigate(`/admin/events/edit/${eventId}`);
+  };
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -40,7 +54,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setEvent(data.data);
+        setEvent(data.data?.event || data.data);
       } else {
         setError('Failed to load event details');
       }
@@ -159,7 +173,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
         <div className="text-center py-12">
           <h3 className="text-lg font-medium text-gray-900 mb-2">Event not found</h3>
           <p className="text-gray-500 mb-4">The requested event could not be found.</p>
-          <Button onClick={onBack}>Go Back</Button>
+          <Button onClick={handleBack}>Go Back</Button>
         </div>
       </div>
     );
@@ -173,7 +187,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
     <div className="p-6">
       {/* Header */}
       <div className="flex items-center space-x-4 mb-6">
-        <Button variant="ghost" size="sm" onClick={onBack}>
+        <Button variant="ghost" size="sm" onClick={handleBack}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <h1 className="text-2xl font-bold">Event Details</h1>
@@ -196,7 +210,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                       readOnly
                       className="flex-1"
                     />
-                    <Button variant="ghost" size="sm" onClick={() => onEdit(event)}>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(event)}>
                       <Edit className="w-4 h-4" />
                     </Button>
                   </div>
@@ -354,7 +368,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                     <Badge variant="secondary" className="bg-gray-100">
                       {event.category ? event.category.charAt(0).toUpperCase() + event.category.slice(1) : 'Other'}
                     </Badge>
-                    <Button variant="ghost" size="sm" onClick={() => onEdit(event)}>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(event)}>
                       <Edit className="w-4 h-4" />
                     </Button>
                   </div>
@@ -373,7 +387,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
                           </Badge>
                         ))}
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => onEdit(event)}>
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(event)}>
                         <Edit className="w-4 h-4" />
                       </Button>
                     </div>
@@ -434,7 +448,7 @@ const EventDetails = ({ eventId, onBack, onEdit }) => {
           <div className="space-y-3">
             <Button
               className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-              onClick={() => onEdit(event)}
+              onClick={() => handleEdit(event)}
             >
               EDIT
             </Button>

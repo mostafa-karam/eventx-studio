@@ -55,12 +55,12 @@ Instead, we use:
 
 ## 🛡️ CSRF Protection (Cross-Site Request Forgery)
 
-We use the `csurf` library to implement a "Synchronizer Token Pattern":
+We use the `csrf-csrf` library with a double-submit cookie pattern:
 
-1. **Retreival**: The client first calls `GET /api/auth/csrf-token`.
-2. **Double check**: The server sets an encrypted `_csrf` cookie and returns a token in the JSON body.
-3. **Requirement**: Every POST, PUT, or DELETE request must include the `x-csrf-token` header.
-4. **Validation**: The server compares the header token with the cookie token. If they don't match, the request is rejected with an `EBADCSRFTOKEN` error.
+1. **Retrieval**: The client first calls `GET /api/auth/csrf-token`.
+2. **Cookie + token**: The server sets the `__csrf` cookie and returns a CSRF token in the JSON body.
+3. **Requirement**: Every POST, PUT, DELETE, or PATCH request must include the `x-csrf-token` header.
+4. **Validation**: The server validates the header token against the cookie-backed CSRF mechanism. If validation fails, the request is rejected with an invalid CSRF token error.
 
 ---
 

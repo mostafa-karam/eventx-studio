@@ -8,8 +8,7 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import { TiptapEditor } from '../ui/TiptapEditor';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -52,6 +51,8 @@ const EventForm = ({ event, onSave, onCancel }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { eventId } = useParams();
+  const [isFetchingEvent, setIsFetchingEvent] = useState(!!eventId);
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
     title: event?.title || '',
@@ -85,7 +86,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
   const [error, setError] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  const draftKey = event ? `eventx_draft_${event._id}` : 'eventx_new_draft';
+  const draftKey = event ? `eventx_draft_${event._id}` : (eventId ? `eventx_draft_${eventId}` : 'eventx_new_draft');
 
   const draftRestored = React.useRef(false);
 
@@ -112,6 +113,58 @@ const EventForm = ({ event, onSave, onCancel }) => {
   }, [formData, currentStep, draftKey]);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+  // Fetch event details if editing via route
+  useEffect(() => {
+    if (eventId && !event) {
+      const fetchEvent = async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+             headers: { 'Content-Type': 'application/json' },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const fetchedEvent = data.data?.event || data.data;
+            setFormData({
+              title: fetchedEvent?.title || '',
+              description: fetchedEvent?.description || '',
+              category: fetchedEvent?.category || '',
+              date: fetchedEvent?.date ? new Date(fetchedEvent.date).toISOString().slice(0, 16) : '',
+              status: validStatuses.includes(fetchedEvent?.status) ? fetchedEvent.status : 'draft',
+              venue: {
+                name: fetchedEvent?.venue?.name || '',
+                address: fetchedEvent?.venue?.address || '',
+                city: fetchedEvent?.venue?.city || '',
+                country: fetchedEvent?.venue?.country || '',
+                capacity: fetchedEvent?.venue?.capacity || fetchedEvent?.seating?.totalSeats || 100
+              },
+              seating: {
+                totalSeats: fetchedEvent?.seating?.totalSeats || 100,
+                availableSeats: fetchedEvent?.seating?.availableSeats || 100
+              },
+              pricing: {
+                type: fetchedEvent?.pricing?.type || 'paid',
+                amount: fetchedEvent?.pricing?.amount || 0
+              },
+              images: fetchedEvent?.images || [],
+              hall: fetchedEvent?.hall?._id || fetchedEvent?.hall || null
+            });
+          } else {
+             toast.error('Failed to fetch event details.');
+          }
+        } catch (err) {
+          console.error('Error fetching event:', err);
+          toast.error('Network error fetching event details.');
+        } finally {
+          setIsFetchingEvent(false);
+        }
+      };
+      fetchEvent();
+    } else {
+      setIsFetchingEvent(false);
+    }
+  }, [eventId, event, API_BASE_URL]);
+
 
   // Fetch organizer's approved hall bookings
   useEffect(() => {
@@ -418,7 +471,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              {event ? 'Edit Event' : 'Create New Event'}
+              {(event || eventId) ? 'Edit Event' : 'Create New Event'}
             </h1>
             <p className="text-gray-600">
               Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].label}
@@ -426,7 +479,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {localStorage.getItem(draftKey) && (
+          {!event && !eventId && localStorage.getItem(draftKey) && (
             <Button variant="outline" size="sm" onClick={() => {
               if (window.confirm('Delete this draft and start over?')) {
                 localStorage.removeItem(draftKey);
@@ -467,15 +520,10 @@ const EventForm = ({ event, onSave, onCancel }) => {
 
             <div className="space-y-2">
               <Label htmlFor="description" className="text-sm font-medium text-gray-700">Event Description *</Label>
-              <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
-                <ReactQuill
-                  theme="snow"
-                  value={formData.description}
-                  onChange={(val) => setFormData({ ...formData, description: val })}
-                  placeholder="Provide a detailed description of your event, including what attendees can expect..."
-                  className="h-64 mb-12"
-                />
-              </div>
+              <TiptapEditor
+                value={formData.description}
+                onChange={(val) => setFormData({ ...formData, description: val })}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

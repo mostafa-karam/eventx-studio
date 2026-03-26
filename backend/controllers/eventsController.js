@@ -23,7 +23,7 @@ exports.getEvents = async (req, res) => {
 exports.getMyEvents = async (req, res) => {
     try {
         const eventsService = require('../services/eventsService');
-        const result = await eventsService.getMyEvents(req.user._id, req.query, req.query.page, req.query.limit);
+        const result = await eventsService.getMyEvents(req.user, req.query, req.query.page, req.query.limit);
         res.json({ success: true, data: result });
     } catch (error) {
         logger.error('Get my events error:', error);

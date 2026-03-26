@@ -79,12 +79,12 @@ class EventsService {
         };
     }
 
-    async getMyEvents(organizerId, queryParams, page = 1, limit = 10) {
+    async getMyEvents(user, queryParams, page = 1, limit = 10) {
         page = parseInt(page);
         limit = Math.min(parseInt(limit), 100);
         const skip = (page - 1) * limit;
 
-        const query = { organizer: organizerId };
+        const query = user.role === 'admin' ? {} : { organizer: user._id };
         if (queryParams.search) {
             const safeSearch = escapeRegex(queryParams.search);
             query.$or = [
