@@ -43,8 +43,8 @@ exports.registerUser = async (userData, deviceInfo) => {
     throw err;
   }
 
-  // 4 — Only allow safe roles during self-registration
-  const allowedRoles = ['user', 'organizer'];
+  // 4 — Only allow user role during self-registration; organizer access requires separate approval
+  const allowedRoles = ['user'];
   const safeRole = allowedRoles.includes(role) ? role : 'user';
 
   // 5 — Create user

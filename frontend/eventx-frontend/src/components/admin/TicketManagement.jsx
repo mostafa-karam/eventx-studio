@@ -18,7 +18,7 @@ const TicketManagement = () => {
     const [pages, setPages] = useState(1);
     const [eventFilter, setEventFilter] = useState('');
     const [events, setEvents] = useState([]);
-    
+
     // Modals
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [ticketToAssign, setTicketToAssign] = useState(null);
@@ -26,7 +26,7 @@ const TicketManagement = () => {
     const [showQrModal, setShowQrModal] = useState(false);
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
-    
+
     // UI state
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
@@ -176,7 +176,7 @@ const TicketManagement = () => {
         }
 
         const headers = ['Ticket ID', 'Attendee Name', 'Attendee Email', 'Event Title', 'Event Date', 'Seat Number', 'Status', 'Payment Amount', 'Payment Status', 'Booking Date'];
-        
+
         const rows = processedTickets.map(t => [
             t.ticketId || t._id,
             t.user?.name || 'Guest User',
@@ -214,8 +214,16 @@ const TicketManagement = () => {
 
         const oldLabel = document.getElementById('bulk-btn-label').innerText;
         document.getElementById('bulk-btn-label').innerText = 'Generating...';
-        
+
         try {
+            // Helper function to safely escape HTML and prevent XSS
+            const escapeHtml = (text) => {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            };
+
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
                 <html>
@@ -226,8 +234,8 @@ const TicketManagement = () => {
                         .ticket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
                         .ticket-card { border: 1px dashed #ccc; padding: 20px; border-radius: 12px; text-align: center; page-break-inside: avoid; }
                         .ticket-card img { max-width: 150px; height: auto; margin-bottom: 10px; }
-                        .ticket-title { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-                        .ticket-info { font-size: 12px; color: #555; margin-bottom: 2px; }
+                        .ticket-title { font-weight: bold; margin-bottom: 5px; font-size: 14px; word-break: break-word; }
+                        .ticket-info { font-size: 12px; color: #555; margin-bottom: 2px; word-break: break-all; }
                         @media print {
                             body { -webkit-print-color-adjust: exact; padding: 0; }
                             button { display: none !important; }
@@ -242,18 +250,28 @@ const TicketManagement = () => {
                     <div class="ticket-grid">
             `);
 
-            // Generate QR codes for visible tickets
+            // Generate QR codes for visible tickets with SAFE HTML escaping
             for (const ticket of processedTickets) {
                 const payload = JSON.stringify({ id: ticket._id, ticketId: ticket.ticketId });
                 const base64QR = await QRCode.toDataURL(payload, { margin: 1, scale: 4 });
-                
+                // Escape all dynamic content to prevent XSS via event/user data injection
+                const eventTitle = escapeHtml(ticket.event?.title || 'Unknown Event');
+                const ticketIdDisplay = escapeHtml(ticket.ticketId ? ticket.ticketId.substring(0, 8).toUpperCase() : ticket._id.substring(8, 16).toUpperCase());
+                const attendeeName = escapeHtml(ticket.user?.name || 'Guest');
+                const seatNumber = ticket.seatNumber ? escapeHtml(ticket.seatNumber) : null;
+
+                let seatHtml = '';
+                if (seatNumber) {
+                    seatHtml = `<div class="ticket-info">Seat: ${seatNumber}</div>`;
+                }
+
                 printWindow.document.write(`
                     <div class="ticket-card">
                         <img src="${base64QR}" alt="QR Code" />
-                        <div class="ticket-title">${ticket.event?.title || 'Unknown Event'}</div>
-                        <div class="ticket-info">Ticket ID: ${ticket.ticketId ? ticket.ticketId.substring(0,8).toUpperCase() : ticket._id.substring(8, 16).toUpperCase()}</div>
-                        <div class="ticket-info">Attendee: ${ticket.user?.name || 'Guest'}</div>
-                        ${ticket.seatNumber ? `<div class="ticket-info">Seat: ${ticket.seatNumber}</div>` : ''}
+                        <div class="ticket-title">${eventTitle}</div>
+                        <div class="ticket-info">Ticket ID: ${ticketIdDisplay}</div>
+                        <div class="ticket-info">Attendee: ${attendeeName}</div>
+                        ${seatHtml}
                     </div>
                 `);
             }
@@ -264,7 +282,7 @@ const TicketManagement = () => {
                 </html>
             `);
             printWindow.document.close();
-            
+
         } catch (e) {
             console.error('Bulk QR Error:', e);
             alert("An error occurred while generating bulk QR codes.");
@@ -282,11 +300,11 @@ const TicketManagement = () => {
     // Process data for table filtering (local search on fetched page)
     const processedTickets = useMemo(() => {
         let result = [...tickets];
-        
+
         if (searchTerm) {
             const lowerSearch = searchTerm.toLowerCase();
-            result = result.filter(t => 
-                t.ticketId?.toLowerCase().includes(lowerSearch) || 
+            result = result.filter(t =>
+                t.ticketId?.toLowerCase().includes(lowerSearch) ||
                 t.user?.name?.toLowerCase().includes(lowerSearch) ||
                 t.user?.email?.toLowerCase().includes(lowerSearch) ||
                 t._id.toLowerCase().includes(lowerSearch)
@@ -297,7 +315,7 @@ const TicketManagement = () => {
             result.sort((a, b) => {
                 let aVal = a[sortConfig.key];
                 let bVal = b[sortConfig.key];
-                
+
                 if (sortConfig.key === 'user') {
                     aVal = a.user?.name || '';
                     bVal = b.user?.name || '';
@@ -376,7 +394,7 @@ const TicketManagement = () => {
                 ].map((stat, i) => (
                     <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
                         <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
-                        
+
                         <div className="relative z-10 flex justify-between items-center">
                             <div className="flex-1 pr-3">
                                 <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1.5">{stat.label}</p>
@@ -386,7 +404,7 @@ const TicketManagement = () => {
                                 <stat.icon className="w-5 h-5" />
                             </div>
                         </div>
-                        
+
                         <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
                     </div>
                 ))}
@@ -408,11 +426,10 @@ const TicketManagement = () => {
                             <button
                                 key={tab.id}
                                 onClick={() => { setStatusView(tab.id); setPage(1); }}
-                                className={`pb-3 px-1 border-b-2 transition-colors whitespace-nowrap ${
-                                    statusView === tab.id
+                                className={`pb-3 px-1 border-b-2 transition-colors whitespace-nowrap ${statusView === tab.id
                                         ? 'border-blue-600 text-blue-600'
                                         : 'border-transparent hover:text-gray-900 hover:border-gray-200'
-                                }`}
+                                    }`}
                             >
                                 {tab.label}
                                 {tab.id === 'orphan' && <span className="ml-2 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full text-xs">{statistics.orphanCount}</span>}
@@ -420,7 +437,7 @@ const TicketManagement = () => {
                         ))}
                     </div>
                 </div>
-                
+
                 {/* Toolbar */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="relative flex-1 lg:max-w-md group">
@@ -500,7 +517,7 @@ const TicketManagement = () => {
                                     const style = getStatusStyles(t.status);
                                     const StatusIcon = style.icon;
                                     const isOrphan = !t.event || !t.event?.title;
-                                    
+
                                     return (
                                         <tr key={t._id} className={`bg-white hover:bg-blue-50/30 transition-all duration-200 group border-b border-gray-50 last:border-0 relative ${isOrphan ? 'bg-amber-50/30' : ''}`}>
                                             <td className="px-6 py-4 whitespace-nowrap">
@@ -509,7 +526,7 @@ const TicketManagement = () => {
                                                         <StatusIcon className={`w-4 h-4 ${style.color.split(' ')[1]}`} />
                                                     </div>
                                                     <div>
-                                                        <div className="font-mono text-sm font-bold text-gray-900">{t.ticketId ? t.ticketId.substring(0,8).toUpperCase() : t._id.substring(8, 16).toUpperCase()}</div>
+                                                        <div className="font-mono text-sm font-bold text-gray-900">{t.ticketId ? t.ticketId.substring(0, 8).toUpperCase() : t._id.substring(8, 16).toUpperCase()}</div>
                                                         <div className="text-[10px] text-gray-500 font-mono tracking-wider">{t.ticketId || t._id}</div>
                                                     </div>
                                                 </div>
@@ -559,13 +576,13 @@ const TicketManagement = () => {
                                             </td>
                                             <td className="px-6 py-4 text-right whitespace-nowrap">
                                                 <div className="relative inline-block text-left action-dropdown-container">
-                                                    <button 
+                                                    <button
                                                         onClick={() => setActiveDropdown(activeDropdown === t._id ? null : t._id)}
                                                         className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-100"
                                                     >
                                                         <MoreHorizontal className="w-5 h-5" />
                                                     </button>
-                                                    
+
                                                     {activeDropdown === t._id && (
                                                         <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                                                             <button onClick={() => generateQrForTicket(t)} disabled={generating === t._id} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center font-medium">
@@ -574,7 +591,7 @@ const TicketManagement = () => {
                                                             <button onClick={() => { setActiveDropdown(null); navigator.clipboard.writeText(t.ticketId || t._id); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center font-medium">
                                                                 <Search className="w-4 h-4 mr-2" /> Copy Ticket ID
                                                             </button>
-                                                            
+
                                                             {isOrphan && (
                                                                 <>
                                                                     <div className="h-px bg-gray-100 my-1"></div>
@@ -652,14 +669,14 @@ const TicketManagement = () => {
                                     {selectedTicket?.ticketId || selectedTicket?._id}
                                 </p>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="text-left bg-gray-50 p-3 rounded-xl border border-gray-100">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date & Time</p>
                                     <p className="text-xs font-semibold text-gray-800 mt-1">
                                         {selectedTicket?.event?.date ? new Date(selectedTicket.event.date).toLocaleDateString() : 'TBD'}
-                                        <br/>
-                                        {selectedTicket?.event?.date ? new Date(selectedTicket.event.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                                        <br />
+                                        {selectedTicket?.event?.date ? new Date(selectedTicket.event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                                     </p>
                                 </div>
                                 <div className="text-left bg-gray-50 p-3 rounded-xl border border-gray-100">
@@ -692,16 +709,16 @@ const TicketManagement = () => {
                     <DialogHeader className="mb-6">
                         <DialogTitle className="text-xl font-extrabold text-gray-900 tracking-tight">Assign Orphan Ticket</DialogTitle>
                         <DialogDescription className="text-gray-500 font-medium">
-                            Choose an event to assign ticket <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-800">{ticketToAssign?.ticketId?.substring(0,8) || ticketToAssign?._id?.substring(0,8)}</span> to.
+                            Choose an event to assign ticket <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-800">{ticketToAssign?.ticketId?.substring(0, 8) || ticketToAssign?._id?.substring(0, 8)}</span> to.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="mb-6">
                         <label className="block text-sm font-bold text-gray-700 mb-2">Select Active Event</label>
                         <div className="relative">
-                            <select 
-                                value={selectedEventForAssign} 
-                                onChange={(e) => setSelectedEventForAssign(e.target.value)} 
+                            <select
+                                value={selectedEventForAssign}
+                                onChange={(e) => setSelectedEventForAssign(e.target.value)}
                                 className="w-full appearance-none pl-4 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all text-gray-700 font-medium cursor-pointer"
                             >
                                 <option value="">-- Click to choose event --</option>

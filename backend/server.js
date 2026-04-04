@@ -7,7 +7,6 @@ const cookieParser = require('cookie-parser');
 const { doubleCsrf } = require('csrf-csrf');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
-const xss = require('xss-clean');
 const compression = require('compression');
 const crypto = require('crypto');
 const path = require('path');
@@ -17,7 +16,7 @@ const AppError = require('./utils/AppError');
 dotenv.config();
 
 // ─── Startup Environment Validation ────────────────────────────────
-const REQUIRED_ENV = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'MONGODB_URI'];
+const REQUIRED_ENV = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'MONGODB_URI', 'CSRF_SECRET'];
 const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]);
 if (missingEnv.length > 0) {
   console.error(`[FATAL] Missing required environment variables: ${missingEnv.join(', ')}`);
@@ -108,8 +107,6 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
-// Data sanitization against XSS (Cross-Site Scripting)
-app.use(xss());
 app.use(compression());
 
 // ─── CSRF Protection (csrf-csrf double-submit cookie) ───────────────
@@ -134,6 +131,8 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
 // Apply CSRF protection to all /api routes (except in test mode)
 if (process.env.NODE_ENV !== 'test') {
   app.use('/api', doubleCsrfProtection);
+} else {
+  logger.warn('⚠️  CSRF protection is DISABLED (test mode)');
 }
 
 // CSRF Token Provider Endpoint
@@ -197,9 +196,6 @@ const couponRoutes = require('./routes/coupons');
 const reviewsRoutes = require('./routes/reviews');
 
 app.use('/api/auth', authLimiter, authRoutes);
-// Apply password-reset limiter specifically
-app.use('/api/auth/forgot-password', passwordResetLimiter);
-app.use('/api/auth/reset-password', passwordResetLimiter);
 app.use('/api/events', eventRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/analytics', analyticsRoutes);
@@ -231,7 +227,10 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// ─── Error Handling ──────────────────────────────────────────────────
+// ─── 404 Catch-All ───────────────────────────────────────────────────
+app.use('*', (_req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
+
+// ─── Error Handling (must be LAST — 4-arg signature) ─────────────────
 app.use((err, req, res, _next) => {
   // CSRF token errors from csrf-csrf
   if (err.message === 'invalid csrf token' || err.code === 'EBADCSRFTOKEN') {
@@ -255,8 +254,6 @@ app.use((err, req, res, _next) => {
     message: process.env.NODE_ENV === 'production' ? 'Something went wrong!' : err.message,
   });
 });
-
-app.use('*', (_req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
 
 const startServer = async () => {
   await connectDB();

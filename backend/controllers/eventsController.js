@@ -2,8 +2,7 @@ const logger = require('../utils/logger');
 const Event = require('../models/Event');
 const Waitlist = require('../models/Waitlist');
 const Ticket = require('../models/Ticket');
-
-const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const { escapeRegex } = require('../utils/helpers');
 
 // @desc    Get all events (public with optional auth)
 // @access  Public

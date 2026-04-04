@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const User = require('../models/User');
+const authService = require('../services/authService');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/emailService');
 const logger = require('../utils/logger');
 const {
@@ -18,7 +19,7 @@ const {
 // POST /api/auth/register
 exports.register = async (req, res) => {
   try {
-    const authService = require('../services/authService');
+    // Removed dynamic require
     const result = await authService.registerUser(req.body, getDeviceInfo(req));
 
     createAuditLog(req, result.user, 'user.create', 'User', result.user._id, { role: result.role });
@@ -49,7 +50,7 @@ exports.login = async (req, res) => {
     const { email, password, twoFactorCode } = req.body;
     if (!email || !password) return res.status(400).json({ success: false, message: 'Please provide email and password' });
 
-    const authService = require('../services/authService');
+    // Removed dynamic require
     const result = await authService.loginUser(email, password, twoFactorCode, getDeviceInfo(req));
 
     if (result.twoFactorRequired) {
@@ -87,7 +88,7 @@ exports.refreshToken = async (req, res) => {
     const incomingRefresh = req.body.refreshToken || req.cookies?.refreshToken;
     if (!incomingRefresh) return res.status(400).json({ success: false, message: 'Refresh token required' });
 
-    const authService = require('../services/authService');
+    // Removed dynamic require
     const result = await authService.processRefreshToken(incomingRefresh, getDeviceInfo(req));
 
     if (result.newAccessToken) {
@@ -121,9 +122,9 @@ exports.logout = async (req, res) => {
       await user.save();
     }
 
-    // Clear cookies
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
+    // Clear cookies with the same options used to set them
+    res.clearCookie('accessToken', COOKIE_OPTIONS);
+    res.clearCookie('refreshToken', COOKIE_OPTIONS);
 
     res.json({ success: true, message: 'Logged out' });
   } catch (error) {
@@ -295,7 +296,8 @@ exports.setup2FA = async (req, res) => {
     // Store secret temporarily (not enabled yet until verified)
     await User.findByIdAndUpdate(req.user._id, { twoFactorSecret: secret });
 
-    res.json({ success: true, data: { secret, qrCodeDataUrl } });
+    // Only return the QR code — never expose the raw TOTP secret in API responses
+    res.json({ success: true, data: { qrCodeDataUrl } });
   } catch (error) {
     logger.error('2FA setup error: ' + error.message);
     res.status(500).json({ success: false, message: 'Failed to set up 2FA' });
@@ -366,6 +368,13 @@ exports.getSessions = async (req, res) => {
 exports.deleteSession = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    const sessionExists = user.activeSessions?.some(s => s.sessionId === req.params.sessionId);
+    if (!sessionExists) {
+      return res.status(404).json({ success: false, message: 'Session not found' });
+    }
+    if (req.params.sessionId === req.sessionId) {
+      return res.status(400).json({ success: false, message: 'Cannot delete current session. Use logout instead.' });
+    }
     user.removeSession(req.params.sessionId);
     await user.save();
     res.json({ success: true, message: 'Session removed successfully' });
@@ -389,7 +398,7 @@ exports.deleteOtherSessions = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 100);
     const users = await User.find().select('-password').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit);
     const total = await User.countDocuments();
     res.json({ success: true, data: { users, pagination: { current: page, pages: Math.ceil(total / limit), total } } });
@@ -423,7 +432,8 @@ exports.getRoleUpgradeRequests = async (req, res) => {
   try {
     const users = await User.find({ 'roleUpgradeRequest.status': 'pending' }).select('name email roleUpgradeRequest createdAt');
     res.json({ success: true, data: { requests: users } });
-  } catch {
+  } catch (error) {
+    logger.error('Get role upgrade requests error: ' + error.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -431,7 +441,10 @@ exports.getRoleUpgradeRequests = async (req, res) => {
 // PUT /api/auth/role-upgrade-requests/:userId (Admin approve/deny)
 exports.updateRoleUpgradeRequest = async (req, res) => {
   try {
-    const { action } = req.body; // 'approve' | 'deny'
+    const { action } = req.body;
+    if (!['approve', 'deny'].includes(action)) {
+      return res.status(400).json({ success: false, message: 'Action must be "approve" or "deny"' });
+    }
     const user = await User.findById(req.params.userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     if (action === 'approve') {
@@ -443,7 +456,8 @@ exports.updateRoleUpgradeRequest = async (req, res) => {
     }
     await user.save();
     res.json({ success: true, message: `Request ${action}d successfully` });
-  } catch {
+  } catch (error) {
+    logger.error('Update role upgrade request error: ' + error.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -472,7 +486,7 @@ exports.deleteAccount = async (req, res) => {
     user.avatar = '';
     user.isActive = false;
     user.refreshToken = undefined;
-    user.sessions = [];
+    user.activeSessions = [];
     user.twoFactorSecret = undefined;
     user.twoFactorEnabled = false;
     user.deletedAt = new Date();

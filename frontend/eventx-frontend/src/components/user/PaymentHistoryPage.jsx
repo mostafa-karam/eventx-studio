@@ -15,7 +15,7 @@ const PaymentHistoryPage = () => {
             setLoading(true);
             // Since there's no dedicated GET /api/payments/history endpoint, 
             // we'll fetch tickets and extract payments from them
-            const res = await fetch('/api/tickets');
+            const res = await fetch('/api/tickets/my-tickets');
             const data = await res.json();
 
             if (data.success) {
@@ -80,8 +80,8 @@ const PaymentHistoryPage = () => {
                                             {ticket.payment?.transactionId || 'N/A'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 capitalize">
-                                            {ticket.payment?.method || 'Card'}
-                                            {ticket.payment?.method === 'credit_card' && ticket.payment?.amount > 0 && ' (****)'}
+                                            {ticket.payment?.paymentMethod || 'Card'}
+                                            {ticket.payment?.paymentMethod === 'credit_card' && ticket.payment?.amount > 0 && ' (****)'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 flex justify-end">
                                             ${ticket.payment?.amount?.toFixed(2)}

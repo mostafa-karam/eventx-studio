@@ -1,8 +1,6 @@
 const Event = require('../models/Event');
 const Hall = require('../models/Hall');
-
-// Escape special regex characters to prevent ReDoS
-const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const { escapeRegex } = require('../utils/helpers');
 
 // @desc    Get published events with filters
 // @access  Public

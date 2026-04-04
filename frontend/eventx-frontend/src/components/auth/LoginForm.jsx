@@ -142,77 +142,79 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
             </Alert>
           )}
 
-          {/* Demo Credentials */}
-          <div className="bg-blue-50 rounded-lg p-4 border">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm font-medium text-blue-900">Quick Demo Access</span>
+          {/* Demo Credentials — development only */}
+          {import.meta.env.DEV && (
+            <div className="bg-blue-50 rounded-lg p-4 border">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm font-medium text-blue-900">Quick Demo Access (Dev Only)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleDemoLogin('admin')}
+                  disabled={loading}
+                  className="text-left p-2 h-auto"
+                >
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <Shield className="h-4 w-4 text-red-600" />
+                      <span className="text-xs font-bold">Admin</span>
+                    </div>
+                    <div className="text-[10px] text-gray-500 line-clamp-1">Full access control</div>
+                  </div>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleDemoLogin('venue_admin')}
+                  disabled={loading}
+                  className="text-left p-2 h-auto"
+                >
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <Shield className="h-4 w-4 text-purple-600" />
+                      <span className="text-xs font-bold">Venue Admin</span>
+                    </div>
+                    <div className="text-[10px] text-gray-500 line-clamp-1">Manage halls & bookings</div>
+                  </div>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleDemoLogin('organizer')}
+                  disabled={loading}
+                  className="text-left p-2 h-auto"
+                >
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <User className="h-4 w-4 text-green-600" />
+                      <span className="text-xs font-bold">Organizer</span>
+                    </div>
+                    <div className="text-[10px] text-gray-500 line-clamp-1">Create & manage events</div>
+                  </div>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleDemoLogin('user')}
+                  disabled={loading}
+                  className="text-left p-2 h-auto"
+                >
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <User className="h-4 w-4 text-blue-600" />
+                      <span className="text-xs font-bold">User</span>
+                    </div>
+                    <div className="text-[10px] text-gray-500 line-clamp-1">Browse & book tickets</div>
+                  </div>
+                </Button>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleDemoLogin('admin')}
-                disabled={loading}
-                className="text-left p-2 h-auto"
-              >
-                <div>
-                  <div className="flex items-center gap-1 mb-1">
-                    <Shield className="h-4 w-4 text-red-600" />
-                    <span className="text-xs font-bold">Admin</span>
-                  </div>
-                  <div className="text-[10px] text-gray-500 line-clamp-1">Full access control</div>
-                </div>
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleDemoLogin('venue_admin')}
-                disabled={loading}
-                className="text-left p-2 h-auto"
-              >
-                <div>
-                  <div className="flex items-center gap-1 mb-1">
-                    <Shield className="h-4 w-4 text-purple-600" />
-                    <span className="text-xs font-bold">Venue Admin</span>
-                  </div>
-                  <div className="text-[10px] text-gray-500 line-clamp-1">Manage halls & bookings</div>
-                </div>
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleDemoLogin('organizer')}
-                disabled={loading}
-                className="text-left p-2 h-auto"
-              >
-                <div>
-                  <div className="flex items-center gap-1 mb-1">
-                    <User className="h-4 w-4 text-green-600" />
-                    <span className="text-xs font-bold">Organizer</span>
-                  </div>
-                  <div className="text-[10px] text-gray-500 line-clamp-1">Create & manage events</div>
-                </div>
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleDemoLogin('user')}
-                disabled={loading}
-                className="text-left p-2 h-auto"
-              >
-                <div>
-                  <div className="flex items-center gap-1 mb-1">
-                    <User className="h-4 w-4 text-blue-600" />
-                    <span className="text-xs font-bold">User</span>
-                  </div>
-                  <div className="text-[10px] text-gray-500 line-clamp-1">Browse & book tickets</div>
-                </div>
-              </Button>
-            </div>
-          </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4" role="form" aria-label="Login form">
             {error && (

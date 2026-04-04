@@ -104,7 +104,34 @@ exports.bookTicket = async (req, res) => {
       }
     }
 
-    // Book the seat atomically to prevent race conditions
+    // Verify payment token BEFORE mutating seat state (critical for payment integrity)
+    if (transactionId) {
+      const paymentToken = req.body.paymentToken;
+      if (paymentToken === 'undefined' || paymentToken === 'null' || !paymentToken) {
+        return res.status(400).json({ success: false, message: 'Invalid or missing payment token' });
+      }
+      try {
+        const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
+        const payload = jwt.verify(paymentToken, secret);
+        
+        // TODO (LOGIC-04): Coupon Usage Not Validated During Ticket Booking
+        // The token payload amount is checked strictly against the original event price.
+        // It currently doesn't allow for discounted amounts if a coupon was used.
+        // Needs integration with the Coupon model to recalculate the expected amount.
+        // Ensure token matches txId, user, event, and amount
+        if (payload.txId !== transactionId ||
+          payload.userId.toString() !== req.user._id.toString() ||
+          (payload.eventId && payload.eventId !== eventId) ||
+          payload.amount !== (event.pricing?.amount || 0)) {
+          return res.status(400).json({ success: false, message: 'Invalid payment token - amount or user mismatch' });
+        }
+      } catch (err) {
+        logger.warn('Payment token verification failed: ' + err.message);
+        return res.status(400).json({ success: false, message: 'Invalid or expired payment token' });
+      }
+    }
+
+    // Book the seat atomically to prevent race conditions (verification happened before this)
     const updatedEvent = await Event.findOneAndUpdate(
       {
         _id: eventId,
@@ -130,24 +157,6 @@ exports.bookTicket = async (req, res) => {
         success: false,
         message: 'The requested seat is either unavailable or does not exist.'
       });
-    }
-
-    if (transactionId) {
-      const paymentToken = req.body.paymentToken;
-      if (paymentToken === 'undefined' || paymentToken === 'null' || !paymentToken) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing payment token' });
-      }
-      try {
-        const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
-        const payload = jwt.verify(paymentToken, secret);
-        // Ensure the token matches the provided transactionId, user, and event
-        if (payload.txId !== transactionId || payload.userId.toString() !== req.user._id.toString() || (payload.eventId && payload.eventId !== eventId)) {
-          return res.status(400).json({ success: false, message: 'Invalid payment token' });
-        }
-      } catch (err) {
-        logger.warn('Payment token verification failed: ' + err.message);
-        return res.status(400).json({ success: false, message: 'Invalid or expired payment token' });
-      }
     }
 
     // Create ticket
@@ -376,7 +385,7 @@ exports.bookMultiTickets = async (req, res) => {
 exports.getMyTickets = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 100);
     const skip = (page - 1) * limit;
 
     const query = { user: req.user._id };
@@ -394,36 +403,10 @@ exports.getMyTickets = async (req, res) => {
 
     const total = await Ticket.countDocuments(query);
 
-    // Generate QR codes for tickets
-    const ticketsWithQR = await Promise.all(
-      tickets.map(async (ticket) => {
-        // Do not generate QR for cancelled tickets
-        let qrCodeImage = null;
-        if (ticket.status !== 'cancelled') {
-          try {
-            qrCodeImage = await QRCode.toDataURL(ticket.qrCode, {
-              errorCorrectionLevel: 'M',
-              type: 'image/png',
-              quality: 0.92,
-              margin: 1
-            });
-          } catch (e) {
-            logger.warn('Failed to generate QR for ticket ' + ticket._id + ': ' + e.message);
-            qrCodeImage = null;
-          }
-        }
-
-        return {
-          ...ticket.toObject(),
-          qrCodeImage
-        };
-      })
-    );
-
     res.json({
       success: true,
       data: {
-        tickets: ticketsWithQR,
+        tickets,
         pagination: {
           current: page,
           pages: Math.ceil(total / limit),

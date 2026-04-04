@@ -59,7 +59,7 @@ const HallBookingForm = () => {
 
         try {
             setSubmitting(true);
-            const res = await fetch('/api/hall-bookings/request', {
+            const res = await fetch('/api/hall-bookings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

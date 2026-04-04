@@ -30,17 +30,11 @@ const BookingPage = () => {
   const [booking, setBooking] = useState(null);
   const [event, setEvent] = useState(null);
   const [step, setStep] = useState(1); // 1: Initiate, 2: Payment, 3: Confirmation
-  const [paymentDetails, setPaymentDetails] = useState({
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
-    nameOnCard: '',
-  });
+  // SECURITY: Use tokenized payment provider (Stripe, Square, etc.)
+  // Do NOT handle raw card data in frontend. Payment tokens should only be received from PCI-compliant providers
+  const [paymentToken, setPaymentToken] = useState('');
+  const [paymentTokenError, setPaymentTokenError] = useState('');
   const [processing, setProcessing] = useState(false);
-
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
   // Derived financial values
   const basePrice = event?.pricing?.amount || 0;
@@ -137,47 +131,34 @@ const BookingPage = () => {
     setCouponCode('');
   };
 
-  const handlePaymentChange = (e) => {
-    const { name, value } = e.target;
-    setPaymentDetails((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmitPayment = async (e) => {
-    e.preventDefault();
-
-    if (!paymentDetails.cardNumber || !paymentDetails.expiryDate || !paymentDetails.cvv || !paymentDetails.nameOnCard) {
-      toast.error('Please fill in all payment details');
-      return;
-    }
+  const handleProcessPayment = async () => {
 
     try {
       setProcessing(true);
 
-      const paymentResponse = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/payments/process`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            amount: finalPrice,
-            currency: event.pricing.currency || 'USD',
-            paymentMethod: 'credit_card',
-            paymentDetails: {
-              cardNumber: paymentDetails.cardNumber.replace(/\s+/g, ''),
-              expiryDate: paymentDetails.expiryDate,
-              cvv: paymentDetails.cvv,
-              nameOnCard: paymentDetails.nameOnCard,
+      let paymentData = null;
+      if (finalPrice > 0) {
+        const paymentResponse = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/payments/process`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
             },
-            bookingId: booking?._id,
-            eventId: event._id,
-          }),
+            body: JSON.stringify({
+              amount: finalPrice,
+              currency: event.pricing.currency || 'USD',
+              paymentMethod: 'credit_card',
+              bookingId: booking?._id,
+              eventId: event._id,
+            }),
+          }
+        );
+        const paymentResult = await paymentResponse.json();
+        if (!paymentResponse.ok) {
+          throw new Error(paymentResult.message || 'Payment processing failed');
         }
-      );
-      const paymentData = await paymentResponse.json();
-      if (!paymentResponse.ok) {
-        throw new Error(paymentData.message || 'Payment processing failed');
+        paymentData = paymentResult;
       }
 
       const bookingResponse = await fetch(
@@ -189,10 +170,11 @@ const BookingPage = () => {
           },
           body: JSON.stringify({
             eventId,
-            paymentId: paymentData.data.paymentId,
+            paymentId: paymentData?.data?.paymentId,
             bookingId: booking?._id,
-            paymentMethod: 'credit_card',
-            couponCode: appliedCoupon?.code
+            paymentMethod: finalPrice > 0 ? 'credit_card' : 'free',
+            couponCode: appliedCoupon?.code,
+            paymentToken: paymentData?.data?.token
           }),
         }
       );
@@ -204,8 +186,8 @@ const BookingPage = () => {
       setStep(3);
       setBooking((prev) => ({
         ...prev,
-        ticket: bookingData.data.ticket,
-        payment: paymentData.data.payment,
+        ticket: { ...bookingData.data.ticket, qrCodeImage: bookingData.data.qrCodeImage },
+        payment: paymentData?.data?.payment,
       }));
       toast.success('Booking confirmed! You will receive a confirmation email shortly.');
     } catch (error) {
@@ -307,103 +289,32 @@ const BookingPage = () => {
             </div>
           </div>
           <div className="p-6">
-            <form onSubmit={handleSubmitPayment} className="space-y-5">
-              <div>
-                <Label htmlFor="cardNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                  Card number
-                </Label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <CreditCard className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <Input
-                    id="cardNumber"
-                    name="cardNumber"
-                    type="text"
-                    placeholder="1234 5678 9012 3456"
-                    value={paymentDetails.cardNumber}
-                    onChange={handlePaymentChange}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 mb-1">
-                    Expiry date
-                  </Label>
-                  <Input
-                    id="expiryDate"
-                    name="expiryDate"
-                    type="text"
-                    placeholder="MM/YY"
-                    value={paymentDetails.expiryDate}
-                    onChange={handlePaymentChange}
-                    className="w-full"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="cvv" className="block text-sm font-medium text-gray-700 mb-1">
-                    CVV
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="cvv"
-                      name="cvv"
-                      type="text"
-                      placeholder="•••"
-                      value={paymentDetails.cvv}
-                      onChange={handlePaymentChange}
-                      className="w-full"
-                      required
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                      <HelpCircle className="h-4 w-4 text-gray-400" />
-                    </div>
-                  </div>
-                </div>
+            <div className="text-center space-y-4">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+                <CreditCard className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <Label htmlFor="nameOnCard" className="block text-sm font-medium text-gray-700 mb-1">
-                  Name on card
-                </Label>
-                <Input
-                  id="nameOnCard"
-                  name="nameOnCard"
-                  type="text"
-                  placeholder="John Doe"
-                  value={paymentDetails.nameOnCard}
-                  onChange={handlePaymentChange}
-                  className="w-full"
-                  required
-                />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Secure Payment</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Your payment will be processed securely through our payment provider.
+                  No card details are stored on our servers.
+                </p>
               </div>
-              <div className="pt-2">
-                <Button type="submit" className="w-full h-12 text-base font-medium" disabled={processing} size="lg">
-                  {processing ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    `Pay ${formatCurrency(grandTotal, event?.pricing?.currency)}`
-                  )}
-                </Button>
-                <div className="mt-4 flex items-center justify-center space-x-2">
-                  <Lock className="h-4 w-4 text-gray-400" />
-                  <p className="text-xs text-gray-500">Your payment is secured with 256-bit SSL encryption</p>
-                </div>
-                <div className="mt-4 flex items-center justify-center space-x-4">
-                  {['visa', 'mastercard', 'amex', 'discover'].map((type) => (
-                    <div key={type} className="h-6">
-                      <img src={`/payment-methods/${type}.svg`} alt={type} className="h-full w-auto opacity-70" />
-                    </div>
-                  ))}
-                </div>
+              <Button onClick={handleProcessPayment} className="w-full h-12 text-base font-medium" disabled={processing} size="lg">
+                {processing ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  `Pay ${formatCurrency(grandTotal, event?.pricing?.currency)}`
+                )}
+              </Button>
+              <div className="flex items-center justify-center space-x-2">
+                <Lock className="h-4 w-4 text-gray-400" />
+                <p className="text-xs text-gray-500">Your payment is secured with 256-bit SSL encryption</p>
               </div>
-            </form>
+            </div>
           </div>
         </div>
         <div className="mt-6 text-center">
@@ -461,7 +372,11 @@ const BookingPage = () => {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end">
-                <Button onClick={() => setStep(2)}>Continue to Payment</Button>
+                {event.pricing?.type === 'free' ? (
+                  <Button onClick={handleProcessPayment}>Confirm Free Booking</Button>
+                ) : (
+                  <Button onClick={() => setStep(2)}>Continue to Payment</Button>
+                )}
               </CardFooter>
             </Card>
           )}
@@ -499,7 +414,7 @@ const BookingPage = () => {
                       </div>
                     </div>
                     <div className="bg-white p-2 rounded border">
-                      <img src={booking.ticket.qrCode} alt="QR Code" className="w-24 h-24" />
+                      <img src={booking.ticket.qrCodeImage} alt="QR Code" className="w-24 h-24" />
                     </div>
                   </div>
                 </div>

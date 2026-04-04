@@ -45,7 +45,7 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode }) 
     throw err;
   }
 
-  // Apply coupon if provided
+  // Apply coupon if provided (for usage tracking, discount already applied in payment)
   let discount = 0;
   let appliedCoupon = null;
   if (couponCode) {
@@ -56,32 +56,23 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode }) 
     });
 
     if (appliedCoupon && appliedCoupon.isValid) {
-      if (appliedCoupon.discountType === 'percentage') {
-        discount = (payment?.amount || 0) * (appliedCoupon.discountValue / 100);
-      } else {
-        discount = appliedCoupon.discountValue;
-      }
-
       // Increment coupon usage
       appliedCoupon.usedCount = (appliedCoupon.usedCount || 0) + 1;
       await appliedCoupon.save();
     }
   }
 
-  // Calculate final payment
-  const finalAmount = Math.max(0, (payment?.amount || 0) - discount);
+  // Payment amount is already final (discounted), so no further discount
+  const finalAmount = payment?.amount || 0;
 
   // Book the seat on the Event model
+  // NOTE: analytics are updated atomically in ticketsController via findOneAndUpdate
+  // to prevent double-counting. Keep seat mutations only here.
   if (seatNumber && event.seating?.seatMap) {
     event.bookSeat(seatNumber, userId);
   } else if (event.seating) {
     event.seating.availableSeats = Math.max(0, event.seating.availableSeats - 1);
   }
-
-  // Update event analytics
-  if (!event.analytics) event.analytics = {};
-  event.analytics.bookings = (event.analytics.bookings || 0) + 1;
-  event.analytics.revenue = (event.analytics.revenue || 0) + finalAmount;
 
   await event.save();
 
@@ -147,7 +138,7 @@ exports.cancelBooking = async (ticketId, userId) => {
   // Cancel the seat on the Event model
   if (event) {
     if (ticket.seatNumber && event.seating?.seatMap) {
-      try { event.cancelSeat(ticket.seatNumber); } catch { /* seat may not exist in map */ }
+      try { event.cancelSeat(ticket.seatNumber); } catch (err) { logger.warn(`cancelSeat failed for ${ticket.seatNumber}: ${err.message}`); }
     } else if (event.seating) {
       event.seating.availableSeats = (event.seating.availableSeats || 0) + 1;
     }

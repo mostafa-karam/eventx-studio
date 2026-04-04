@@ -1,9 +1,7 @@
 const logger = require('../utils/logger');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
-
-// Escape special regex characters to prevent ReDoS
-const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const { escapeRegex } = require('../utils/helpers');
 
 // @desc    Get all users (Admin only)
 // @access  Private/Admin

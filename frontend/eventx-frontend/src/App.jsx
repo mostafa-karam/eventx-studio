@@ -148,6 +148,7 @@ const AppContent = () => {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/faq" element={<FAQPage />} />
         <Route path="/search" element={<SearchResultsPage />} />
+        <Route path="/events/:eventId" element={<UserEventDetails />} />
         <Route path="/events/:eventId/reviews" element={<EventReviewsPage />} />
 
         {/* ── Admin routes ── */}
@@ -177,7 +178,7 @@ const AppContent = () => {
 
         {/* ── Venue Admin routes ── */}
         <Route element={<RequireAuth role="venue_admin" />}>
-          <Route path="/venue" element={<VenueAdminLayout />}>
+          <Route path="/venue-admin" element={<VenueAdminLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<VenueAdminDashboard />} />
             <Route path="halls" element={<HallManagement />} />
@@ -249,7 +250,7 @@ const RoleDashboardRedirect = () => {
   if (!isAuthenticated) return <Navigate to="/auth" replace />;
   if (isAdmin) return <Navigate to="/admin/dashboard" replace />;
   if (isOrganizer) return <Navigate to="/organizer/dashboard" replace />;
-  if (isVenueAdmin) return <Navigate to="/venue/dashboard" replace />;
+  if (isVenueAdmin) return <Navigate to="/venue-admin/dashboard" replace />;
   return <Navigate to="/user/events" replace />;
 };
 

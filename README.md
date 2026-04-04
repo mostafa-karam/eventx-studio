@@ -52,11 +52,11 @@ A comprehensive, secure, and scalable full-stack event management solution built
 
 ### 🖥️ Frontend
 
-- **React 19.1.0** · **Tailwind CSS** · **shadcn/ui** · **Recharts** · **Lucide Icons** · **Vite** · **Radix UI** · **React Hook Form** · **Zod**
+- **React 18.3.1** · **Tailwind CSS 4.1** · **shadcn/ui** · **Recharts** · **Lucide Icons** · **Vite 6.3** · **Radix UI** · **React Hook Form** · **Zod**
 
 ### ⚙️ Backend
 
-- **Node.js 18+** · **Express.js** · **MongoDB 6.0+** · **Mongoose** · **JWT** · **bcryptjs** · **Nodemailer** · **Winston** · **ua-parser-js** · **Jest & Supertest**
+- **Node.js 18+** · **Express.js 4.21** · **MongoDB 6.0+** · **Mongoose 8.17** · **JWT** · **bcryptjs 3.0** · **Nodemailer 8.0** · **Winston 3.17** · **file-type 18.7**
 
 ---
 
@@ -108,7 +108,7 @@ cd eventx-studio
 
 ```bash
 cd backend
-npm install  
+npm install
 npm run dev
 ```
 
@@ -136,12 +136,14 @@ Access: [Frontend](http://localhost:5173) · [Backend API](http://localhost:5000
 
 ## 🌐 API Documentation
 
-OpenAPI (Swagger) available. Example endpoints:
+OpenAPI (Swagger) available at `/api-docs`. Core endpoints:
 
-- `POST /api/v1/auth/register` - User registration
-- `GET /api/v1/events` - Fetch events
-- `POST /api/v1/tickets` - Purchase tickets
-- `GET /api/v1/analytics/dashboard` - Dashboard metrics
+- `POST /api/auth/register` - User registration
+- `GET /api/events` - Fetch events
+- `POST /api/tickets/book` - Purchase tickets
+- `GET /api/analytics/dashboard` - Dashboard metrics
+- `POST /api/payments/process` - Process payment
+- `POST /api/booking/confirm` - Confirm booking
 
 ---
 

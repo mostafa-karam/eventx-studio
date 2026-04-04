@@ -24,8 +24,8 @@ exports.getNotifications = async (req, res) => {
             ? await User.find({ role: 'user' }).sort({ createdAt: -1 }).limit(5).select('name createdAt')
             : [];
 
-        // Get recent events (admin sees all; others see their own)
-        const eventFilter = isAdmin ? {} : {};
+        // Get recent events (admin sees all; others see only their own published events)
+        const eventFilter = isAdmin ? {} : { organizer: req.user._id, status: 'published' };
         const recentEvents = await Event.find(eventFilter)
             .sort({ createdAt: -1 })
             .limit(5)
@@ -117,11 +117,10 @@ exports.getNotifications = async (req, res) => {
 // @access  Private
 exports.markAsRead = async (req, res) => {
     try {
-        // Since we're generating notifications dynamically, we'll just return success
-        // In a real implementation, you'd store read status in a database
-        res.json({
-            success: true,
-            message: 'Notification marked as read'
+        // TODO: In a real implementation, you'd store read status in a database
+        res.status(501).json({
+            success: false,
+            message: 'Not Implemented: Notification endpoints are currently stubs'
         });
     } catch (error) {
         logger.error('Error marking notification as read:', error);
@@ -136,9 +135,9 @@ exports.markAsRead = async (req, res) => {
 // @access  Private
 exports.markAllAsRead = async (req, res) => {
     try {
-        res.json({
-            success: true,
-            message: 'All notifications marked as read'
+        res.status(501).json({
+            success: false,
+            message: 'Not Implemented: Notification endpoints are currently stubs'
         });
     } catch (error) {
         logger.error('Error marking all notifications as read:', error);
@@ -153,9 +152,9 @@ exports.markAllAsRead = async (req, res) => {
 // @access  Private
 exports.deleteNotification = async (req, res) => {
     try {
-        res.json({
-            success: true,
-            message: 'Notification deleted successfully'
+        res.status(501).json({
+            success: false,
+            message: 'Not Implemented: Notification endpoints are currently stubs'
         });
     } catch (error) {
         logger.error('Error deleting notification:', error);

@@ -20,7 +20,7 @@ const TicketDetailPage = () => {
             const res = await fetch(`/api/tickets/${ticketId}`);
             const data = await res.json();
             if (data.success) {
-                setTicket(data.data.ticket);
+                setTicket({ ...data.data.ticket, qrCodeImage: data.data.qrCodeImage });
             } else {
                 toast.error(data.message || 'Failed to load ticket');
                 navigate('/user/tickets');
@@ -170,8 +170,8 @@ const TicketDetailPage = () => {
                             <span className="uppercase tracking-[0.2em] text-xs font-bold text-gray-400 mb-6 block">Entry Pass</span>
 
                             <div className="bg-white p-4 rounded-3xl shadow-xl border border-gray-100 mb-6 mx-auto w-max transform hover:scale-105 transition-transform duration-300">
-                                {ticket.qrCode ? (
-                                    <img src={ticket.qrCode} alt="Ticket QR Code" className="w-48 h-48 filter contrast-125 rounded-xl object-contain" />
+                                {ticket.qrCodeImage ? (
+                                    <img src={ticket.qrCodeImage} alt="Ticket QR Code" className="w-48 h-48 filter contrast-125 rounded-xl object-contain" />
                                 ) : (
                                     <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 flex-col gap-2">
                                         <svg className="w-10 h-10 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>

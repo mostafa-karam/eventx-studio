@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
 // @desc    Upload files
 // @access  Private
@@ -12,29 +13,36 @@ exports.uploadFiles = async (req, res) => {
             return res.status(400).json({ success: false, message: 'No files uploaded' });
         }
 
-        // Server-side MIME validation via file-type (byte-level, not extension-based)
-        let fileTypeModule;
-        try {
-            fileTypeModule = await import('file-type');
-        } catch {
-            // file-type not installed — skip byte-level check but log warning
-            logger.warn('file-type package not installed. Skipping MIME byte-level validation.');
-            fileTypeModule = null;
-        }
+        // Dynamically import file-type for ESM compatibility
+        const { fileTypeFromBuffer } = await import('file-type');
 
+        // Server-side MIME validation via file-type (byte-level, mandatory)
         const validatedFiles = [];
         const rejectedFiles = [];
 
         for (const file of req.files) {
-            if (fileTypeModule) {
+            // Check file extension first (blocklist approach)
+            const ext = path.extname(file.originalname).toLowerCase();
+            if (!ALLOWED_EXTENSIONS.has(ext)) {
+                fs.unlink(file.path, () => { });
+                rejectedFiles.push(`${file.originalname} (invalid extension)`);
+                continue;
+            }
+
+            // Mandatory byte-level MIME type detection
+            try {
                 const buffer = fs.readFileSync(file.path);
-                const detected = await fileTypeModule.fileTypeFromBuffer(buffer);
+                const detected = await fileTypeFromBuffer(buffer);
                 if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
-                    // Remove invalid file from disk
                     fs.unlink(file.path, () => { });
-                    rejectedFiles.push(file.originalname);
+                    rejectedFiles.push(`${file.originalname} (detected: ${detected?.mime || 'unknown'})`);
                     continue;
                 }
+            } catch (err) {
+                logger.warn(`MIME detection error for ${file.originalname}: ${err.message}`);
+                fs.unlink(file.path, () => { });
+                rejectedFiles.push(`${file.originalname} (detection failed)`);
+                continue;
             }
             validatedFiles.push(file);
         }
@@ -42,7 +50,7 @@ exports.uploadFiles = async (req, res) => {
         if (rejectedFiles.length > 0 && validatedFiles.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: `File type not allowed. Only JPEG, PNG, GIF, and WebP images are accepted. Rejected: ${rejectedFiles.join(', ')}`
+                message: `File type validation failed. Only JPEG, PNG, GIF, and WebP images are accepted. Rejected: ${rejectedFiles.join(', ')}`
             });
         }
 
@@ -57,7 +65,7 @@ exports.uploadFiles = async (req, res) => {
 
         const response = { success: true, message: 'File(s) uploaded successfully', data: { images: urls } };
         if (rejectedFiles.length > 0) {
-            response.warnings = `${rejectedFiles.length} file(s) were rejected due to invalid type: ${rejectedFiles.join(', ')}`;
+            response.warnings = `${rejectedFiles.length} file(s) were rejected: ${rejectedFiles.join(', ')}`;
         }
         res.json(response);
     } catch (error) {

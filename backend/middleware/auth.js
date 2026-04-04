@@ -51,11 +51,19 @@ const authenticate = async (req, res, next) => {
     if (decoded.sessionId) {
       req.sessionId = decoded.sessionId;
 
-      // Debounced session activity update: only save if last activity > 60s ago
+      // Check if the session still exists in user's active sessions
       const session = user.activeSessions?.find(s => s.sessionId === decoded.sessionId);
+      if (!session) {
+        return res.status(401).json({
+          success: false,
+          message: 'Session has been revoked. Please log in again.'
+        });
+      }
+
+      // Debounced session activity update: only save if last activity > 60s ago
       const now = Date.now();
       const DEBOUNCE_MS = 60 * 1000;
-      if (!session || !session.lastActivity || (now - new Date(session.lastActivity).getTime()) > DEBOUNCE_MS) {
+      if (!session.lastActivity || (now - new Date(session.lastActivity).getTime()) > DEBOUNCE_MS) {
         // Run updateOne asynchronously to avoid blocking the API request and bypassing heavy pre-save hooks
         User.updateOne(
           { _id: user._id, 'activeSessions.sessionId': decoded.sessionId },

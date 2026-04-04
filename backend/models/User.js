@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const CONSTANTS = require('../config/constants');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -90,7 +91,10 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  twoFactorSecret: String,
+  twoFactorSecret: {
+    type: String,
+    select: false
+  },
   // Session management
   activeSessions: [{
     sessionId: String,
@@ -145,14 +149,14 @@ userSchema.pre('save', async function (next) {
           password: currentPassword.password,
           createdAt: new Date()
         });
-        // Keep only last 5 passwords
-        if (this.passwordHistory.length > 5) {
-          this.passwordHistory = this.passwordHistory.slice(-5);
+        // Keep only configured number of last passwords
+        if (this.passwordHistory.length > CONSTANTS.PASSWORD_HISTORY_SIZE) {
+          this.passwordHistory = this.passwordHistory.slice(-CONSTANTS.PASSWORD_HISTORY_SIZE);
         }
       }
     }
 
-    const salt = await bcrypt.genSalt(12);
+    const salt = await bcrypt.genSalt(CONSTANTS.BCRYPT_SALT_ROUNDS);
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (error) {
@@ -182,9 +186,9 @@ userSchema.methods.incLoginAttempts = function () {
 
   const updates = { $inc: { loginAttempts: 1 } };
 
-  // Lock account after 5 failed attempts for 2 hours
-  if (this.loginAttempts + 1 >= 5 && !this.isLocked) {
-    updates.$set = { lockUntil: Date.now() + 2 * 60 * 60 * 1000 }; // 2 hours
+  // Lock account after configured number of failed attempts
+  if (this.loginAttempts + 1 >= CONSTANTS.MAX_LOGIN_ATTEMPTS && !this.isLocked) {
+    updates.$set = { lockUntil: Date.now() + CONSTANTS.LOCK_DURATION_MS };
   }
 
   return this.updateOne(updates);
@@ -239,9 +243,9 @@ userSchema.methods.addSession = function (sessionId, deviceInfo) {
     createdAt: new Date()
   });
 
-  // Keep only last 10 sessions
-  if (this.activeSessions.length > 10) {
-    this.activeSessions = this.activeSessions.slice(-10);
+  // Keep only configured maximum sessions
+  if (this.activeSessions.length > CONSTANTS.MAX_ACTIVE_SESSIONS) {
+    this.activeSessions = this.activeSessions.slice(-CONSTANTS.MAX_ACTIVE_SESSIONS);
   }
 };
 

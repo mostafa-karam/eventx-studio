@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 const ticketSchema = new mongoose.Schema({
   ticketId: {
@@ -88,7 +89,7 @@ const ticketSchema = new mongoose.Schema({
 // Ensure qrCode exists before validation (required field)
 ticketSchema.pre('validate', function(next) {
   if (this.isNew) {
-    // QR code will contain ticket verification data
+    // QR code will contain signed ticket verification data
     const qrData = {
       ticketId: this.ticketId,
       eventId: this.event,
@@ -96,7 +97,13 @@ ticketSchema.pre('validate', function(next) {
       seatNumber: this.seatNumber,
       timestamp: Date.now()
     };
-    this.qrCode = JSON.stringify(qrData);
+    const payload = JSON.stringify(qrData);
+    // Sign the QR payload with HMAC to prevent forgery
+    const signature = crypto
+      .createHmac('sha256', process.env.JWT_SECRET || 'qr-fallback-secret')
+      .update(payload)
+      .digest('hex');
+    this.qrCode = JSON.stringify({ ...qrData, sig: signature });
   }
   next();
 });

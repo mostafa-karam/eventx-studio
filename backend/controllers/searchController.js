@@ -1,9 +1,7 @@
 const Event = require('../models/Event');
 const Hall = require('../models/Hall');
 const logger = require('../utils/logger');
-
-// Escape special regex chars to prevent ReDoS
-const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const { escapeRegex } = require('../utils/helpers');
 
 // @desc    Global Search across Events and Halls
 // @access  Public

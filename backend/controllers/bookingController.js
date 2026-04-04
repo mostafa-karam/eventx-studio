@@ -5,6 +5,7 @@
  */
 
 const logger = require('../utils/logger');
+const jwt = require('jsonwebtoken');
 const Event = require('../models/Event');
 const bookingService = require('../services/bookingService');
 const { validationResult } = require('express-validator');
@@ -43,17 +44,55 @@ exports.confirmBooking = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
-    const { eventId, paymentId, bookingId, paymentMethod = 'credit_card', couponCode } = req.body || {};
+    const { eventId, paymentId, bookingId, paymentMethod = 'credit_card', couponCode, paymentToken } = req.body || {};
 
     try {
         const event = await Event.findById(eventId);
         if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
 
+        // Calculate expected payment amount considering coupon
+        let expectedAmount = event.pricing?.amount || 0;
+        if (couponCode && event.pricing?.type === 'paid') {
+            const Coupon = require('../models/Coupon');
+            const coupon = await Coupon.findOne({
+                code: couponCode.toUpperCase(),
+                isActive: true,
+                expiresAt: { $gt: new Date() },
+            });
+            if (coupon && coupon.isValid) {
+                if (coupon.discountType === 'percentage') {
+                    expectedAmount = expectedAmount - (expectedAmount * (coupon.discountValue / 100));
+                } else {
+                    expectedAmount = Math.max(0, expectedAmount - coupon.discountValue);
+                }
+            }
+        }
+
+        // Verify payment token BEFORE proceeding with booking
+        if (event.pricing?.type === 'paid') {
+            if (!paymentToken) {
+                return res.status(400).json({ success: false, message: 'Payment token is required for paid events' });
+            }
+            try {
+                const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
+                const verifiedPayment = jwt.verify(paymentToken, secret);
+                // Ensure token matches user, event, and amount
+                if (verifiedPayment.userId.toString() !== req.user._id.toString() ||
+                    verifiedPayment.eventId !== eventId ||
+                    verifiedPayment.amount !== expectedAmount) {
+                    return res.status(400).json({ success: false, message: 'Invalid payment token - amount or event mismatch' });
+                }
+            } catch (err) {
+                logger.warn('Payment token verification failed: ' + err.message);
+                return res.status(400).json({ success: false, message: 'Invalid or expired payment token' });
+            }
+        }
+
         const { ticket } = await bookingService.bookSeat({
             eventId,
             userId: req.user._id,
             payment: {
-                amount: event.pricing?.amount || 0,
+                amount: expectedAmount,
                 method: paymentMethod,
                 transactionId: paymentId,
             },
@@ -65,12 +104,26 @@ exports.confirmBooking = async (req, res) => {
             .populate('event', 'title date venue pricing')
             .populate('user', 'name email');
 
+        // Generate QR code image
+        const QRCode = require('qrcode');
+        const qrCodeImage = await QRCode.toDataURL(result.qrCode, {
+            errorCorrectionLevel: 'M',
+            type: 'image/png',
+            quality: 0.92,
+            margin: 1,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        });
+
         return res.json({
             success: true,
             message: 'Booking confirmed',
             data: {
                 booking: { _id: bookingId },
                 ticket: result,
+                qrCodeImage,
                 payment: { id: paymentId },
             },
         });

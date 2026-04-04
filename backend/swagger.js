@@ -41,6 +41,10 @@ const options = {
 const swaggerSpec = swaggerJSDoc(options);
 
 const setupSwagger = (app) => {
+    // Only enable Swagger API docs in non-production environments
+    if (process.env.NODE_ENV === 'production') {
+        return;
+    }
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 };
 

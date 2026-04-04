@@ -185,7 +185,7 @@ const MyTickets = () => {
       filtered = filtered.filter(ticket =>
         ticket.event?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         ticket.event?.venue?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ticket.ticketNumber?.toLowerCase().includes(searchQuery.toLowerCase())
+        ticket.ticketId?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -322,7 +322,7 @@ const MyTickets = () => {
       doc.text("SCAN FOR ENTRY", 30, 55, { align: "center" });
 
       doc.setFontSize(8);
-      doc.text(ticket.ticketNumber || ticket._id.slice(-8), 30, 65, { align: "center" });
+      doc.text(ticket.ticketId || ticket._id.slice(-8), 30, 65, { align: "center" });
 
       // Right Panel text
       doc.setTextColor(31, 41, 55); // gray-800
@@ -357,7 +357,7 @@ const MyTickets = () => {
       const price = ticket.payment?.amount === 0 || !ticket.payment?.amount ? 'Free' : `$${ticket.payment.amount}`;
       doc.text(price, 150, 82);
 
-      doc.save(`Event-Ticket-${ticket.ticketNumber || ticket._id.slice(-8)}.pdf`);
+      doc.save(`Event-Ticket-${ticket.ticketId || ticket._id.slice(-8)}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
       alert("Failed to generate PDF ticket.");
@@ -427,7 +427,7 @@ const MyTickets = () => {
   // Export functionality
   const handleExportTickets = () => {
     const exportData = filteredAndSortedTickets.map(ticket => ({
-      'Ticket Number': ticket.ticketNumber || ticket._id.slice(-8),
+      'Ticket Number': ticket.ticketId || ticket._id.slice(-8),
       'Event Title': ticket.event?.title || 'Unknown Event',
       'Event Date': formatDate(ticket.event?.date),
       'Venue': ticket.event?.venue ? `${ticket.event.venue.name}, ${ticket.event.venue.city}` : 'TBA',

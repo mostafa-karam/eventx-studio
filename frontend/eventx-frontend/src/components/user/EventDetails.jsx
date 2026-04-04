@@ -453,7 +453,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
 
         {/* Image Gallery Controls */}
         {event.images && event.images.length > 1 && (
-          <div className="absolute bottom-8 right-8 z-30 flex gap-2 hidden md:flex">
+          <div className="absolute bottom-8 right-8 z-30 hidden md:flex gap-2">
             <button
               onClick={() => setActiveImageIndex((prev) => (prev - 1 + event.images.length) % event.images.length)}
               className="p-3 bg-black/40 backdrop-blur-md text-white border border-white/10 rounded-full hover:bg-black/60 hover:border-white/30 transition-all shadow-lg"
@@ -663,7 +663,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
         <div className="space-y-6 lg:ml-4">
           <div ref={bookStickyRef}>
             {/* Main Booking Widget */}
-            <Card className="sticky top-6 border-0 shadow-xl shadow-indigo-100/50 rounded-2xl overflow-hidden ring-1 ring-gray-100 relative">
+            <Card className="sticky top-6 border-0 shadow-xl shadow-indigo-100/50 rounded-2xl overflow-hidden ring-1 ring-gray-100">
               <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
               <CardHeader className="pb-4 pt-6 bg-gray-50/50">
                 <CardTitle className="flex items-center text-xl font-bold">

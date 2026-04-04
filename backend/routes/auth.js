@@ -1,9 +1,19 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { registerValidator, loginValidator, updateProfileValidator, changePasswordValidator } = require('../middleware/validators');
 const authController = require('../controllers/authController');
 
 const router = express.Router();
+
+// Stricter rate limiter for password reset — 5 requests per 15 minutes
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, message: 'Too many password reset attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @swagger
@@ -72,8 +82,8 @@ router.put('/profile', authenticate, updateProfileValidator, authController.upda
 router.put('/change-password', authenticate, changePasswordValidator, authController.changePassword);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/resend-verification', authController.resendVerification);
-router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
+router.post('/forgot-password', passwordResetLimiter, authController.forgotPassword);
+router.post('/reset-password', passwordResetLimiter, authController.resetPassword);
 router.post('/2fa/setup', authenticate, authController.setup2FA);
 router.post('/2fa/enable', authenticate, authController.enable2FA);
 router.delete('/2fa', authenticate, authController.disable2FA);
