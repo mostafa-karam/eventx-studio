@@ -7,6 +7,8 @@ const router = express.Router();
 router.post('/book', authenticate, ticketsController.bookTicket);
 router.post('/book-multi', authenticate, ticketsController.bookMultiTickets);
 router.get('/my-tickets', authenticate, ticketsController.getMyTickets);
+const { requireOrganizer } = require('../middleware/auth');
+router.get('/organizer', authenticate, requireOrganizer, ticketsController.getOrganizerTickets);
 router.get('/admin', authenticate, requireAdmin, ticketsController.getTicketsAdmin);
 router.get('/admin/orphans', authenticate, requireAdmin, ticketsController.getOrphanTickets);
 router.post('/admin/orphans/:id/assign', authenticate, requireAdmin, ticketsController.assignOrphanTicket);
@@ -15,7 +17,7 @@ router.get('/:id', authenticate, ticketsController.getTicketById);
 router.put('/:id/cancel', authenticate, ticketsController.cancelTicket);
 router.post('/:id/checkin', authenticate, requireAdmin, ticketsController.checkinTicket);
 router.get('/event/:eventId', authenticate, requireAdmin, ticketsController.getEventTickets);
-router.get('/qr/:qrCode', authenticate, ticketsController.lookupByQR);
+router.post('/lookup-qr', authenticate, ticketsController.checkinByQR);
 router.put('/:id/refund', authenticate, ticketsController.refundTicket);
 
 module.exports = router;

@@ -1,5 +1,5 @@
 const express = require('express');
-const { getPublicEvents, getPublicEventById, getPublicHalls } = require('../controllers/publicController');
+const { getPublicEvents, getPublicEventById, getPublicHalls, getPublicHallById } = require('../controllers/publicController');
 
 const router = express.Router();
 
@@ -11,5 +11,8 @@ router.get('/events/:id', getPublicEventById);
 
 // GET /api/public/halls — no auth required, active halls
 router.get('/halls', getPublicHalls);
+
+// GET /api/public/halls/:id — single hall detail (public)
+router.get('/halls/:id', getPublicHallById);
 
 module.exports = router;

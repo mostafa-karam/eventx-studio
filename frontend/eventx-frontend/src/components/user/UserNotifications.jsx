@@ -52,7 +52,7 @@ const UserNotifications = () => {
     const markAsRead = async (id) => {
         try {
             await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
-                method: 'PUT',
+                method: 'PATCH',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
             });
@@ -67,7 +67,7 @@ const UserNotifications = () => {
     const markAllAsRead = async () => {
         try {
             await fetch(`${API_BASE_URL}/notifications/mark-all-read`, {
-                method: 'PUT',
+                method: 'PATCH',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
             });

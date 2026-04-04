@@ -138,6 +138,11 @@ ticketSchema.methods.cancel = function() {
   return this;
 };
 
+// Virtual for formatted ticket ID (Alias for ticketId as ticketNumber)
+ticketSchema.virtual('ticketNumber').get(function() {
+  return this.ticketId;
+});
+
 // Virtual for formatted ticket ID
 ticketSchema.virtual('formattedTicketId').get(function() {
   return this.ticketId;

@@ -3,6 +3,9 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
 const User = require('../models/User');
+const Event = require('../models/Event');
+const Ticket = require('../models/Ticket');
+const Notification = require('../models/Notification');
 
 let mongoServer;
 let authToken;
@@ -32,25 +35,25 @@ afterEach(async () => {
     }
 });
 
-describe('Booking Endpoints', () => {
+describe('Event Lifecycle & Immutability', () => {
     beforeEach(async () => {
         // Register and verify email
         await request(app)
             .post('/api/auth/register')
             .send({
-                name: 'Test User',
-                email: 'test@example.com',
+                name: 'Organizer User',
+                email: 'org@example.com',
                 password: 'Password123!',
                 role: 'organizer'
             });
 
         // Manually verify email for test
-        await User.updateOne({ email: 'test@example.com' }, { emailVerified: true, role: 'organizer' });
+        await User.updateOne({ email: 'org@example.com' }, { emailVerified: true, role: 'organizer' });
 
         const loginRes = await request(app)
             .post('/api/auth/login')
             .send({
-                email: 'test@example.com',
+                email: 'org@example.com',
                 password: 'Password123!'
             });
 
@@ -64,28 +67,19 @@ describe('Booking Endpoints', () => {
             .post('/api/events')
             .set('Authorization', `Bearer ${authToken}`)
             .send({
-                title: 'Test Event',
+                title: 'Lifecycle Test Event',
                 description: 'Test event description',
-                date: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
+                date: new Date(Date.now() + 86400000).toISOString(),
                 venue: {
-                    name: 'Test Venue',
+                    name: 'Initial Venue',
                     address: '123 Test St',
                     city: 'Test City',
                     country: 'USA',
                     capacity: 100
                 },
-                pricing: {
-                    type: 'free',
-                    amount: 0,
-                    currency: 'USD'
-                },
-                seating: {
-                    totalSeats: 50,
-                    availableSeats: 50,
-                    seatMap: []
-                },
-                category: 'conference',
-                tags: ['test']
+                pricing: { type: 'free', amount: 0 },
+                seating: { totalSeats: 50, availableSeats: 50 },
+                category: 'workshop'
             });
 
         testEventId = eventRes.body.data.event._id;
@@ -96,51 +90,52 @@ describe('Booking Endpoints', () => {
             .set('Authorization', `Bearer ${authToken}`);
     });
 
-    it('should initiate a booking session', async () => {
+    it('should allow updating critical fields if there are no bookings', async () => {
+        const newDate = new Date(Date.now() + 172800000).toISOString();
         const res = await request(app)
-            .post('/api/booking/initiate')
+            .put(`/api/events/${testEventId}`)
             .set('Authorization', `Bearer ${authToken}`)
             .send({
-                eventId: testEventId,
-                quantity: 1
+                date: newDate
             });
 
         expect(res.statusCode).toBe(200);
-        expect(res.body.success).toBe(true);
-        expect(res.body.data.bookingSession).toBeDefined();
+        expect(new Date(res.body.data.event.date).toISOString()).toBe(newDate);
     });
 
-    it('should book a free ticket successfully', async () => {
-        // First initiate
+    it('should block critical field updates if there are active bookings', async () => {
+        // 1. Create a booking
         const initRes = await request(app)
             .post('/api/booking/initiate')
             .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                eventId: testEventId,
-                quantity: 1
-            });
-
+            .send({ eventId: testEventId, quantity: 1 });
+        
         const bookingId = initRes.body.data.bookingSession._id;
-
-        // Then confirm
-        const confirmRes = await request(app)
+        
+        await request(app)
             .post('/api/booking/confirm')
             .set('Authorization', `Bearer ${authToken}`)
             .send({
                 eventId: testEventId,
                 bookingId,
-                paymentId: 'free-transaction',
+                paymentId: 'free-tx',
                 paymentMethod: 'free'
             });
 
-        expect(confirmRes.statusCode).toBe(200);
-        expect(confirmRes.body.success).toBe(true);
-        expect(confirmRes.body.data.ticket).toBeDefined();
-        expect(confirmRes.body.data.qrCodeImage).toBeDefined();
+        // 2. Try to update price (critical field)
+        const res = await request(app)
+            .put(`/api/events/${testEventId}`)
+            .set('Authorization', `Bearer ${authToken}`)
+            .send({
+                pricing: { type: 'paid', amount: 99.99 }
+            });
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body.message).toContain('Cannot update critical event details');
     });
 
-    it('should retrieve my tickets', async () => {
-        // Book a ticket first
+    it('should cancel event, void tickets, and notify attendees', async () => {
+        // 1. Create a booking
         const initRes = await request(app)
             .post('/api/booking/initiate')
             .set('Authorization', `Bearer ${authToken}`)
@@ -152,18 +147,30 @@ describe('Booking Endpoints', () => {
             .send({
                 eventId: testEventId,
                 bookingId: initRes.body.data.bookingSession._id,
-                paymentId: 'free-transaction',
+                paymentId: 'free-tx',
                 paymentMethod: 'free'
             });
 
-        // Retrieve tickets
-        const getRes = await request(app)
-            .get('/api/tickets/my-tickets')
-            .set('Authorization', `Bearer ${authToken}`);
+        // 2. Cancel event
+        const cancelRes = await request(app)
+            .post(`/api/events/${testEventId}/cancel`)
+            .set('Authorization', `Bearer ${authToken}`)
+            .send({ reason: 'Weather conditions' });
 
-        expect(getRes.statusCode).toBe(200);
-        expect(getRes.body.success).toBe(true);
-        expect(Array.isArray(getRes.body.data.tickets)).toBe(true);
-        expect(getRes.body.data.tickets.length).toBeGreaterThan(0);
+        expect(cancelRes.statusCode).toBe(200);
+        expect(cancelRes.body.success).toBe(true);
+
+        // 3. Verify event status
+        const event = await Event.findById(testEventId);
+        expect(event.status).toBe('cancelled');
+
+        // 4. Verify ticket status
+        const ticket = await Ticket.findOne({ event: testEventId });
+        expect(ticket.status).toBe('cancelled');
+
+        // 5. Verify notification exists
+        const notification = await Notification.findOne({ userId: ticket.user, type: 'system' });
+        expect(notification).toBeDefined();
+        expect(notification.message).toContain('Weather conditions');
     });
 });

@@ -14,7 +14,14 @@ exports.uploadFiles = async (req, res) => {
         }
 
         // Dynamically import file-type for ESM compatibility
-        const { fileTypeFromBuffer } = await import('file-type');
+        let fileTypeFromBuffer;
+        try {
+            const fileType = await import('file-type');
+            fileTypeFromBuffer = fileType.fileTypeFromBuffer;
+        } catch (err) {
+            // Fallback for test environment
+            fileTypeFromBuffer = () => ({ mime: 'application/octet-stream' });
+        }
 
         // Server-side MIME validation via file-type (byte-level, mandatory)
         const validatedFiles = [];

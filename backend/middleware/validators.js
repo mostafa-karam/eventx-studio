@@ -91,9 +91,15 @@ const updateHallValidator = [
 // ─── Booking Validators ────────────────────────────────────────────────
 const createBookingValidator = [
     body('hall').trim().notEmpty().withMessage('Hall ID is required'),
-    body('date').isISO8601().toDate().withMessage('Valid date is required'),
-    body('startTime').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid start time is required (HH:mm)'),
-    body('endTime').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid end time is required (HH:mm)'),
+    body('startDate').isISO8601().toDate().withMessage('Valid start date is required'),
+    body('endDate').isISO8601().toDate().withMessage('Valid end date is required').custom((value, { req }) => {
+        if (value && req.body.startDate && new Date(value) <= new Date(req.body.startDate)) {
+            throw new Error('End date must be after start date');
+        }
+        return true;
+    }),
+    body('notes').optional().isString().trim(),
+    body('event').optional().isMongoId().withMessage('Event must be a valid ID'),
     validate
 ];
 

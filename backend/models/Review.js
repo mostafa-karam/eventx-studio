@@ -42,8 +42,8 @@ const reviewSchema = new mongoose.Schema({
     timestamps: true,
 });
 
-// One review per user per event
-reviewSchema.index({ event: 1, user: 1 }, { unique: true });
+// One review per user per event — Partial index allows re-submission after soft-delete
+reviewSchema.index({ event: 1, user: 1 }, { unique: true, partialFilterExpression: { deletedAt: null } });
 reviewSchema.index({ event: 1, rating: -1 });
 
 module.exports = mongoose.model('Review', reviewSchema);

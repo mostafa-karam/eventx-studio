@@ -13,14 +13,14 @@ exports.getReviews = async (req, res) => {
         const skip = (page - 1) * limit;
 
         const [reviews, total, stats] = await Promise.all([
-            Review.find({ event: eventId })
+            Review.find({ event: eventId, deletedAt: null })
                 .populate('user', 'name avatar')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
-            Review.countDocuments({ event: eventId }),
+            Review.countDocuments({ event: eventId, deletedAt: null }),
             Review.aggregate([
-                { $match: { event: require('mongoose').Types.ObjectId ? new (require('mongoose').Types.ObjectId)(eventId) : eventId } },
+                { $match: { event: require('mongoose').Types.ObjectId ? new (require('mongoose').Types.ObjectId)(eventId) : eventId, deletedAt: null } },
                 {
                     $group: {
                         _id: null,
@@ -41,7 +41,7 @@ exports.getReviews = async (req, res) => {
         // Mark if current user has already reviewed
         let userReviewId = null;
         if (req.user) {
-            const userReview = await Review.findOne({ event: eventId, user: req.user._id }).select('_id');
+            const userReview = await Review.findOne({ event: eventId, user: req.user._id, deletedAt: null }).select('_id');
             userReviewId = userReview?._id;
         }
 
@@ -124,7 +124,7 @@ exports.updateReview = async (req, res) => {
         const { eventId, reviewId } = req.params;
         const { rating, title, body } = req.body;
 
-        const review = await Review.findOne({ _id: reviewId, event: eventId });
+        const review = await Review.findOne({ _id: reviewId, event: eventId, deletedAt: null });
         if (!review) return res.status(404).json({ success: false, message: 'Review not found' });
 
         if (review.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
@@ -178,7 +178,7 @@ exports.replyToReview = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Reply body is required' });
         }
 
-        const review = await Review.findOne({ _id: reviewId, event: eventId })
+        const review = await Review.findOne({ _id: reviewId, event: eventId, deletedAt: null })
             .populate('event', 'organizer');
         if (!review) return res.status(404).json({ success: false, message: 'Review not found' });
 

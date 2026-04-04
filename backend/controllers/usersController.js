@@ -2,6 +2,7 @@ const logger = require('../utils/logger');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const { escapeRegex } = require('../utils/helpers');
+const { ACTIONS, RESOURCES } = require('../utils/auditConstants');
 
 // @desc    Get all users (Admin only)
 // @access  Private/Admin
@@ -30,7 +31,7 @@ exports.getUsers = async (req, res) => {
 
         // Status filter
         if (req.query.status) {
-            query.status = req.query.status;
+            query.isActive = req.query.status === 'active';
         }
 
         const users = await User.find(query)
@@ -139,8 +140,8 @@ exports.updateUser = async (req, res) => {
         if (sensitiveChanged) {
             await AuditLog.create({
                 actor: req.user._id,
-                action: 'admin.update_user',
-                resource: 'User',
+                action: ACTIONS.USER_UPDATE,
+                resource: RESOURCES.USER,
                 resourceId: user._id,
                 details: { changedFields: Object.keys(req.body).filter(f => ['role', 'isActive', 'email', 'name'].includes(f)) },
             }).catch(e => logger.warn('AuditLog write failed: ' + e.message));
@@ -203,7 +204,7 @@ exports.updateUserStatus = async (req, res) => {
             });
         }
 
-        user.status = status;
+        user.isActive = status === 'active';
         await user.save();
 
         const updatedUser = await User.findById(user._id).select('-password');

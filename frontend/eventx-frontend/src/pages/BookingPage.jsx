@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BookingPageSkeleton } from '../components/ui/Skeletons';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const BookingPage = () => {
   const { eventId } = useParams();
@@ -35,6 +36,9 @@ const BookingPage = () => {
   const [paymentToken, setPaymentToken] = useState('');
   const [paymentTokenError, setPaymentTokenError] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
   // Derived financial values
   const basePrice = event?.pricing?.amount || 0;
@@ -381,7 +385,11 @@ const BookingPage = () => {
             </Card>
           )}
 
-          {step === 2 && renderPaymentStep()}
+          {step === 2 && (
+            <ErrorBoundary>
+              {renderPaymentStep()}
+            </ErrorBoundary>
+          )}
 
           {step === 3 && booking.ticket && (
             <Card>

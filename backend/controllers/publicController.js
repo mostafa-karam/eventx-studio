@@ -95,3 +95,17 @@ exports.getPublicHalls = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
+
+// @desc    Get single hall detail (public)
+// @access  Public
+exports.getPublicHallById = async (req, res) => {
+    try {
+        const hall = await Hall.findOne({ _id: req.params.id, status: 'active' });
+
+        if (!hall) return res.status(404).json({ success: false, message: 'Hall not found' });
+
+        res.json({ success: true, data: { hall } });
+    } catch {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};

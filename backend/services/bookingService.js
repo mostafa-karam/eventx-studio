@@ -46,7 +46,6 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode }) 
   }
 
   // Apply coupon if provided (for usage tracking, discount already applied in payment)
-  let discount = 0;
   let appliedCoupon = null;
   if (couponCode) {
     appliedCoupon = await Coupon.findOne({
@@ -134,38 +133,49 @@ exports.cancelBooking = async (ticketId, userId) => {
   }
 
   const event = await Event.findById(ticket.event);
+  if (!event) {
+    const err = new Error('Associated event not found');
+    err.status = 404;
+    throw err;
+  }
 
-  // Cancel the seat on the Event model
-  if (event) {
-    if (ticket.seatNumber && event.seating?.seatMap) {
-      try { event.cancelSeat(ticket.seatNumber); } catch (err) { logger.warn(`cancelSeat failed for ${ticket.seatNumber}: ${err.message}`); }
-    } else if (event.seating) {
-      event.seating.availableSeats = (event.seating.availableSeats || 0) + 1;
+  // Update event analytically and unlock seat atomically
+  const updateQuery = { _id: ticket.event };
+  const updatePayload = {
+    $inc: { 
+      'analytics.bookings': -1 
     }
+  };
 
-    // Update analytics
-    if (event.analytics) {
-      event.analytics.bookings = Math.max(0, (event.analytics.bookings || 0) - 1);
+  if (ticket.seatNumber && event.seating?.seatMap) {
+    updateQuery['seating.seatMap.seatNumber'] = ticket.seatNumber;
+    updatePayload.$set = { 'seating.seatMap.$.isBooked': false, 'seating.seatMap.$.bookedBy': null };
+    updatePayload.$inc['seating.availableSeats'] = 1;
+
+    if (event.pricing?.type === 'paid') {
+      updatePayload.$inc['analytics.revenue'] = -(ticket.payment?.amount || 0);
     }
+  } else if (event.seating) {
+    updatePayload.$inc['seating.availableSeats'] = 1;
+  }
 
-    await event.save();
+  await Event.findOneAndUpdate(updateQuery, updatePayload);
 
-    // Check waitlist — notify next person
-    const nextWaitlist = await Waitlist.findOne({ event: event._id, status: 'pending' }).sort({ createdAt: 1 });
-    if (nextWaitlist) {
-      nextWaitlist.status = 'notified';
-      nextWaitlist.notifiedAt = new Date();
-      nextWaitlist.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      await nextWaitlist.save();
+  // Check waitlist — notify next person
+  const nextWaitlist = await Waitlist.findOne({ event: ticket.event, status: 'pending' }).sort({ createdAt: 1 });
+  if (nextWaitlist) {
+    nextWaitlist.status = 'notified';
+    nextWaitlist.notifiedAt = new Date();
+    nextWaitlist.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await nextWaitlist.save();
 
-      notificationService.notify(nextWaitlist.user, {
-        title: 'A spot opened up!',
-        message: `A seat is now available for "${event.title}". You have 24 hours to book.`,
-        type: 'event',
-        priority: 'high',
-        actionUrl: `/user/events/${event._id}`,
-      });
-    }
+    notificationService.notify(nextWaitlist.user, {
+      title: 'A spot opened up!',
+      message: `A seat is now available for "${event.title}". You have 24 hours to book.`,
+      type: 'event',
+      priority: 'high',
+      actionUrl: `/user/events/${event._id}`,
+    });
   }
 
   // Update ticket status
@@ -176,7 +186,7 @@ exports.cancelBooking = async (ticketId, userId) => {
   // Notify user
   notificationService.notify(userId, {
     title: 'Booking Cancelled',
-    message: `Your ticket for "${event?.title || 'the event'}" has been cancelled.`,
+    message: `Your ticket for "${event.title}" has been cancelled.`,
     type: 'booking',
     priority: 'medium',
     actionUrl: `/user/tickets`,

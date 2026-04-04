@@ -17,13 +17,14 @@ const auditLogSchema = new mongoose.Schema({
             'hall.create', 'hall.update', 'hall.delete',
             'hall_booking.create', 'hall_booking.approve', 'hall_booking.reject', 'hall_booking.cancel',
             'ticket.purchase', 'ticket.cancel', 'ticket.refund',
+            'coupon.create', 'coupon.update', 'coupon.delete',
             'auth.login', 'auth.logout', 'auth.password_reset', 'auth.role_upgrade_approve', 'auth.account_deleted',
         ],
     },
     resource: {
         type: String,
         required: true,
-        enum: ['User', 'Event', 'Hall', 'HallBooking', 'Ticket', 'Auth'],
+        enum: ['User', 'Event', 'Hall', 'HallBooking', 'Ticket', 'Coupon', 'Auth'],
     },
     resourceId: {
         type: mongoose.Schema.Types.ObjectId,

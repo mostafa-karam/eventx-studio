@@ -65,12 +65,10 @@ const HallBookingForm = () => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    hallId,
+                    hall: hallId,
                     startDate: formData.startDate,
                     endDate: formData.endDate,
-                    purpose: formData.purpose,
-                    expectedAttendees: Number(formData.expectedAttendees) || hall.capacity,
-                    specialRequirements: formData.specialRequirements
+                    notes: `Purpose: ${formData.purpose}\nAttendees: ${Number(formData.expectedAttendees) || hall.capacity}\nRequirements: ${formData.specialRequirements}`
                 })
             });
             const data = await res.json();

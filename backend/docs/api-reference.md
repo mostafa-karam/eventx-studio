@@ -107,8 +107,17 @@ sequenceDiagram
   {
     "success": true,
     "message": "Ticket booked successfully",
-    "data": { "ticket": { ... }, "qrCodeImage": "base64..." }
+    "data": { "ticket": { "ticketId": "...", "ticketNumber": "...", ... }, "qrCodeImage": "base64..." }
   }
+  ```
+
+### Cancel a Ticket
+`PUT /api/tickets/:id/cancel`
+- **Access**: User (owner) or Admin.
+- **Description**: Atomic cancellation of a ticket. Refunds payment (simulated) and updates event analytics.
+- **Response (200)**:
+  ```json
+  { "success": true, "message": "Ticket cancelled successfully", "data": { "ticket": { ... } } }
   ```
 
 ### Multi-Ticket Atomic Booking
@@ -149,6 +158,15 @@ sequenceDiagram
     "seating": { "totalSeats": 500 },
     "pricing": { "type": "paid", "amount": 99.99, "currency": "USD" }
   }
+  ```
+
+### Cancel an Event (Atomic)
+`PUT /api/events/:id/cancel`
+- **Access**: Organizer (owner) or Admin.
+- **Description**: Atomically cancels an event, voids all tickets, refunds payments, and notifies attendees.
+- **Response (200)**:
+  ```json
+  { "success": true, "message": "Event has been cancelled and attendees notified." }
   ```
 
 ---

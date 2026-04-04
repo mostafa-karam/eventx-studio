@@ -49,7 +49,7 @@ const OrganizerTickets = () => {
     const fetchTickets = async () => {
         try {
             setLoading(true);
-            let url = `${API_BASE_URL}/tickets?page=${page}&limit=20`;
+            let url = `${API_BASE_URL}/tickets/organizer?page=${page}&limit=20`;
             if (selectedEvent !== 'all') url += `&eventId=${selectedEvent}`;
             if (statusFilter !== 'all') url += `&status=${statusFilter}`;
 

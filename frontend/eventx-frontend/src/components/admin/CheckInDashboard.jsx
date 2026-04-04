@@ -40,14 +40,13 @@ export default function CheckInDashboard() {
         setResult(null);
         try {
             // Try to find ticket by QR code string first, then by ticket number
-            const endpoint = eventFilter 
-                ? `${API_BASE_URL}/tickets/${encodeURIComponent(code.trim())}/checkin?eventId=${eventFilter}`
-                : `${API_BASE_URL}/tickets/${encodeURIComponent(code.trim())}/checkin`;
+            const endpoint = `${API_BASE_URL}/tickets/lookup-qr`;
                 
             const res = await fetch(endpoint, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ qrCode: code.trim(), eventId: eventFilter === 'all_events' ? '' : eventFilter })
             });
             const data = await res.json();
             const newResult = { success: res.ok, message: data.message || (res.ok ? 'Check-in successful!' : 'Check-in failed'), ticket: data.data?.ticket };

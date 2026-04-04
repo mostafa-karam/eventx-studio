@@ -295,3 +295,22 @@ exports.getMyWaitlists = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error while fetching waitlists' });
     }
 };
+// @desc    Cancel an event
+// @access  Private (organizer, admin)
+exports.cancelEvent = async (req, res) => {
+    try {
+        const eventLifecycleService = require('../services/eventLifecycleService');
+        const { reason } = req.body;
+        const result = await eventLifecycleService.cancelEvent(req.params.id, req.user, reason);
+        
+        res.json({ 
+            success: true, 
+            message: 'Event cancelled successfully. Attendees have been notified.', 
+            data: result 
+        });
+    } catch (error) {
+        logger.error('Cancel event error:', error);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: 'Server error while cancelling event' });
+    }
+};

@@ -1,6 +1,7 @@
 const Coupon = require('../models/Coupon');
 const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
+const { ACTIONS, RESOURCES } = require('../utils/auditConstants');
 
 // @desc    List all coupons (admin)
 // @access  Private/Admin
@@ -83,7 +84,13 @@ exports.createCoupon = async (req, res) => {
             createdBy: req.user._id,
         });
 
-        await AuditLog.create({ actor: req.user._id, action: 'create', resource: 'coupon', resourceId: coupon._id, details: { code: coupon.code } });
+        await AuditLog.create({ 
+            actor: req.user._id, 
+            action: ACTIONS.COUPON_CREATE, 
+            resource: RESOURCES.COUPON, 
+            resourceId: coupon._id, 
+            details: { code: coupon.code } 
+        });
 
         res.status(201).json({ success: true, message: 'Coupon created', data: { coupon } });
     } catch (error) {

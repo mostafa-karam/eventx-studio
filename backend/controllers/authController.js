@@ -115,10 +115,16 @@ exports.getCurrentUser = async (req, res) => {
 exports.logout = async (req, res) => {
   try {
     // Clear refresh token server-side
-    const user = await User.findById(req.user._id).select('+refreshToken');
+    const user = await User.findById(req.user._id).select('+refreshToken activeSessions');
     if (user) {
       user.refreshToken = undefined;
       user.refreshTokenExpires = undefined;
+      
+      // Revoke the current session ID actively so the token is invalidated
+      if (req.sessionId) {
+          user.activeSessions = user.activeSessions.filter(s => s.sessionId !== req.sessionId);
+      }
+      
       await user.save();
     }
 

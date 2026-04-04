@@ -15,6 +15,7 @@ const {
   approveWaitlist,
   exportAttendees,
   publishEvent,
+  cancelEvent,
   getMyWaitlists
 } = require('../controllers/eventsController');
 
@@ -88,6 +89,9 @@ router.post('/:id/waitlist/:waitlistId/approve', authenticate, approveWaitlist);
 router.get('/:id/attendees/export', authenticate, exportAttendees);
 
 // POST /api/events/:id/publish
-router.post('/:id/publish', authenticate, publishEvent);
+router.post('/:id/publish', authenticate, requireOrganizer, publishEvent);
+
+// POST /api/events/:id/cancel
+router.post('/:id/cancel', authenticate, requireOrganizer, cancelEvent);
 
 module.exports = router;

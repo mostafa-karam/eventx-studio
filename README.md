@@ -30,12 +30,12 @@ A comprehensive, secure, and scalable full-stack event management solution built
 ### 👨‍💼 Admin Features
 
 - **Dashboard**: Real-time analytics with KPIs, recent activities, and quick actions
-- **Event Management**: Full CRUD operations with rich text editing and media uploads
-- **Marketing Center**: Create and manage email campaigns with performance tracking
-- **User Management**: Role-based access control with advanced options
-- **Notifications System**: Centralized, filterable notification center
-- **QR Code System**: Secure QR generation and validation for tickets
-- **Support Center**: Ticketing system with FAQs and contact options
+- **Event Management**: Advanced lifecycle control with atomic cancellations and field locking for published events.
+- **Marketing Center**: Create and manage email campaigns with performance tracking.
+- **User Management**: Role-based access control with standardized status handling.
+- **Notifications System**: Global event notifications for cancellations and updates.
+- **QR Code System**: Secure QR generation and atomic check-in validation.
+- **Support Center**: Ticketing system with FAQs and contact options.
 
 ### 👥 User Features
 
@@ -109,6 +109,7 @@ cd eventx-studio
 ```bash
 cd backend
 npm install
+# Ensure .env is configured (see .env.example)
 npm run dev
 ```
 
@@ -117,6 +118,7 @@ npm run dev
 ```bash
 cd frontend/eventx-frontend
 npm install
+# Ensure .env is configured (see .env.example)
 npm run dev
 ```
 

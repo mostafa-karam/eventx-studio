@@ -123,7 +123,12 @@ class EventsService {
         }
 
         await Event.findByIdAndUpdate(eventId, { $inc: { 'analytics.views': 1 } });
-        return event;
+        
+        const ticketCount = await Ticket.countDocuments({ event: eventId, status: { $in: ['booked', 'used'] } });
+        const eventObj = event.toObject();
+        eventObj.ticketCount = ticketCount;
+        
+        return eventObj;
     }
 
     async createEvent(eventData, organizerId) {
@@ -177,6 +182,19 @@ class EventsService {
 
         if (event.organizer.toString() !== user._id.toString() && user.role !== 'admin') {
             throw Object.assign(new Error('Not authorized to update this event'), { status: 403 });
+        }
+
+        // Check for critical changes in published events with bookings
+        if (event.status === 'published') {
+            const CRITICAL_FIELDS = ['date', 'venue', 'pricing', 'hall'];
+            const hasCriticalUpdate = CRITICAL_FIELDS.some(key => updateData[key] !== undefined);
+
+            if (hasCriticalUpdate) {
+                const ticketCount = await Ticket.countDocuments({ event: eventId, status: { $in: ['booked', 'used'] } });
+                if (ticketCount > 0) {
+                    throw Object.assign(new Error('Cannot update critical event details (date, venue, pricing, hall) once tickets have been booked. Please cancel and create a new event if necessary.'), { status: 400 });
+                }
+            }
         }
 
         const ALLOWED_UPDATE_FIELDS = [

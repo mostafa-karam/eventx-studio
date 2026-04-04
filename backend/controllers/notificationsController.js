@@ -117,11 +117,19 @@ exports.getNotifications = async (req, res) => {
 // @access  Private
 exports.markAsRead = async (req, res) => {
     try {
-        // TODO: In a real implementation, you'd store read status in a database
-        res.status(501).json({
-            success: false,
-            message: 'Not Implemented: Notification endpoints are currently stubs'
-        });
+        const { id } = req.params;
+        const mongoose = require('mongoose');
+        if (mongoose.Types.ObjectId.isValid(id)) {
+            const notification = await Notification.findOneAndUpdate(
+                { _id: id, userId: req.user._id },
+                { read: true },
+                { new: true }
+            );
+            if (notification) {
+                return res.json({ success: true, notification });
+            }
+        }
+        return res.json({ success: true, message: 'Marked read' });
     } catch (error) {
         logger.error('Error marking notification as read:', error);
         res.status(500).json({
@@ -135,10 +143,8 @@ exports.markAsRead = async (req, res) => {
 // @access  Private
 exports.markAllAsRead = async (req, res) => {
     try {
-        res.status(501).json({
-            success: false,
-            message: 'Not Implemented: Notification endpoints are currently stubs'
-        });
+        await Notification.updateMany({ userId: req.user._id }, { read: true });
+        return res.json({ success: true, message: 'All marked as read' });
     } catch (error) {
         logger.error('Error marking all notifications as read:', error);
         res.status(500).json({

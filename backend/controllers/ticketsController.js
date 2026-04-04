@@ -427,6 +427,48 @@ exports.getMyTickets = async (req, res) => {
 // @desc    Get single ticket by ID
 // @access  Private
 // NOTE: place admin listing route BEFORE the wildcard '/:id' route so 'admin' isn't treated as an id
+// @route   GET /api/tickets/organizer
+// @desc    Get all tickets for events managed by the organizer
+// @access  Private/Organizer
+exports.getOrganizerTickets = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const skip = (page - 1) * limit;
+
+    const events = await Event.find({ organizer: req.user._id }).select('_id');
+    const eventIds = events.map(e => e._id);
+
+    const query = { event: { $in: eventIds } };
+    if (req.query.eventId) query.event = req.query.eventId;
+    if (req.query.status) query.status = req.query.status;
+
+    const tickets = await Ticket.find(query)
+      .populate('event', 'title date venue')
+      .populate('user', 'name email')
+      .sort({ bookingDate: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Ticket.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: {
+        tickets,
+        pagination: {
+          current: page,
+          pages: Math.max(1, Math.ceil(total / limit)),
+          total
+        }
+      }
+    });
+  } catch (error) {
+    logger.error('Organizer tickets fetch error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching tickets' });
+  }
+};
+
 // @route   GET /api/tickets/admin
 // @desc    Get all tickets (admin view) - paginated
 // @access  Private/Admin
@@ -721,15 +763,14 @@ exports.getEventTickets = async (req, res) => {
   }
 };
 
-// @route   GET /api/tickets/qr/:qrCode
-// @desc    Look up ticket by QR code content
+// @route   POST /api/tickets/lookup-qr
+// @desc    Look up and check in ticket by QR code content
 // @access  Private (Admin/Organizer)
-exports.lookupByQR = async (req, res) => {
+exports.checkinByQR = async (req, res) => {
   try {
-    const { qrCode } = req.params;
+    const { qrCode, eventId } = req.body;
+    if (!qrCode) return res.status(400).json({ success: false, message: 'QR code is required' });
 
-    // Attempt to parse the QR Code content if it's JSON (the frontend eventx-rn might use different formats)
-    // If it's a direct ticket ID string or JSON like { ticketId: 'xxx' }
     let ticketId = qrCode;
     try {
       const parsed = JSON.parse(qrCode);
@@ -737,9 +778,13 @@ exports.lookupByQR = async (req, res) => {
     } catch (e) { /* ignore JSON parse error */ }
 
     // Find ticket by ID or unique identifier if that exists
-    const ticket = await Ticket.findById(ticketId).populate('event user', 'title name email');
+    const ticket = await Ticket.findById(ticketId).populate('event user', 'title name email organizer');
     if (!ticket) {
       return res.status(404).json({ success: false, message: 'Ticket not found from QR' });
+    }
+
+    if (eventId && ticket.event && ticket.event._id.toString() !== eventId) {
+      return res.status(400).json({ success: false, message: 'Ticket does not belong to the selected event' });
     }
 
     // Role check: admin, or organizer of the specific event
@@ -749,9 +794,16 @@ exports.lookupByQR = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to scan tickets for this event' });
     }
 
-    res.json({ success: true, data: { ticket } });
+    try {
+      ticket.performCheckIn(req.user._id);
+      await ticket.save();
+    } catch (checkInError) {
+      return res.status(400).json({ success: false, message: checkInError.message });
+    }
+
+    res.json({ success: true, message: 'Ticket checked in successfully', data: { ticket } });
   } catch (error) {
-    logger.error('QR Lookup error:', error);
+    logger.error('QR Checkin error:', error);
     res.status(500).json({ success: false, message: 'Server error looking up QR code' });
   }
 };
