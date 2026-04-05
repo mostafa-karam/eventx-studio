@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
@@ -29,7 +30,8 @@ export default function AdminCoupons() {
             const data = await res.json();
             if (res.ok) setCoupons(data.data?.coupons || []);
             else setError(data.message);
-        } catch {
+        } catch (err) {
+            console.error('Fetch coupons error:', err);
             setError('Network error loading coupons');
         } finally {
             setLoading(false);
@@ -56,10 +58,11 @@ export default function AdminCoupons() {
                 fetchCoupons();
             } else {
                 const d = await res.json();
-                alert(d.message);
+                toast.error(d.message || "Failed to save coupon");
             }
-        } catch {
-            alert('Failed to save coupon');
+        } catch (err) {
+            console.error('Save coupon error:', err);
+            toast.error('Failed to save coupon');
         }
     };
 
@@ -68,8 +71,10 @@ export default function AdminCoupons() {
             await fetch(`${API_BASE_URL}/coupons/${id}`, { method: 'DELETE', credentials: 'include' });
             setDeleteId(null);
             fetchCoupons();
-        } catch {
-            alert('Failed to delete');
+            toast.success('Coupon deleted');
+        } catch (err) {
+            console.error('Delete coupon error:', err);
+            toast.error('Failed to delete coupon');
         }
     };
 

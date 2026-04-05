@@ -27,7 +27,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'event-form': ['./src/components/events/EventForm.jsx']
+          'event-form': ['./src/components/admin/EventForm.jsx']
         }
       }
     }

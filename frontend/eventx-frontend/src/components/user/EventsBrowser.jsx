@@ -58,7 +58,8 @@ const EventsBrowser = ({ onEventSelect }) => {
 
   // Load favorites from localStorage on component mount
   useEffect(() => {
-    const savedFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]');
+    let savedFavorites = [];
+    try { savedFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]'); } catch { /* corrupted */ }
     setFavorites(new Set(savedFavorites));
   }, []);
 

@@ -71,6 +71,7 @@ const EventsManagement = () => {
 
       const response = await fetch(`${API_BASE_URL}/events/admin/my-events?${params}`, {
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -94,6 +95,7 @@ const EventsManagement = () => {
       const res = await fetch(`${API_BASE_URL}/events/${evt._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ status: nextStatus })
       });
       if (!res.ok) {
@@ -120,6 +122,7 @@ const EventsManagement = () => {
       const response = await fetch(`${API_BASE_URL}/events/${itemToDelete}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -145,6 +148,7 @@ const EventsManagement = () => {
       const response = await fetch(`${API_BASE_URL}/events/${eventId}/clone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
       if (response.ok) {

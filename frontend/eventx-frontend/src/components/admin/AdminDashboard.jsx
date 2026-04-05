@@ -6,7 +6,7 @@ import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import {
-  Calendar, Users, DollarSign, Ticket, Bell, ArrowRight, TrendingUp, MapPin, Activity
+  Calendar, Users, DollarSign, Ticket, Bell, ArrowRight, TrendingUp, TrendingDown, MapPin, Activity
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 

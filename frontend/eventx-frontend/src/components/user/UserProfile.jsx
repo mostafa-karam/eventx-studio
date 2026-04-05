@@ -105,8 +105,10 @@ const UserProfile = () => {
         }
 
         // Get recent favorites from localStorage with better data
-        const eventFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]');
-        const ticketFavorites = JSON.parse(localStorage.getItem('eventx_ticket_favorites') || '[]');
+        let eventFavorites = [];
+        let ticketFavorites = [];
+        try { eventFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]'); } catch { /* corrupted */ }
+        try { ticketFavorites = JSON.parse(localStorage.getItem('eventx_ticket_favorites') || '[]'); } catch { /* corrupted */ }
 
         // Add favorite activities if user has favorites
         if (eventFavorites.length > 0 || ticketFavorites.length > 0) {
@@ -156,15 +158,15 @@ const UserProfile = () => {
         const loadAccountStats = async () => {
             try {
                 // Load favorites count
-                const eventFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]');
-                const ticketFavorites = JSON.parse(localStorage.getItem('eventx_ticket_favorites') || '[]');
+                const eventFavorites = (() => { try { return JSON.parse(localStorage.getItem('eventx_favorites') || '[]'); } catch { return []; } })();
+                const ticketFavorites = (() => { try { return JSON.parse(localStorage.getItem('eventx_ticket_favorites') || '[]'); } catch { return []; } })();
                 const totalFavorites = new Set([...eventFavorites, ...ticketFavorites]).size;
 
                 // Try to load tickets count from API, fallback to localStorage if API fails
                 let totalTickets = 0;
                 try {
                     const ticketsResponse = await fetch(`${API_BASE_URL}/tickets/my-tickets`, {
-                        headers: {}
+                        credentials: 'include'
                     });
 
                     if (ticketsResponse.ok) {
@@ -174,14 +176,14 @@ const UserProfile = () => {
                         // Fallback: try to get from localStorage or use a default
                         const savedTickets = localStorage.getItem('user_tickets');
                         if (savedTickets) {
-                            totalTickets = JSON.parse(savedTickets).length;
+                            try { totalTickets = JSON.parse(savedTickets).length; } catch { /* corrupted */ }
                         }
                     }
                 } catch (apiError) {
                     // Fallback: try to get from localStorage
                     const savedTickets = localStorage.getItem('user_tickets');
                     if (savedTickets) {
-                        totalTickets = JSON.parse(savedTickets).length;
+                        try { totalTickets = JSON.parse(savedTickets).length; } catch { /* corrupted */ }
                     }
                 }
 
@@ -332,7 +334,7 @@ const UserProfile = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/2fa/setup`, {
                 method: 'POST',
-                headers: {}
+                credentials: 'include'
             });
             const data = await res.json();
             if (res.ok && data.success) {
@@ -355,6 +357,7 @@ const UserProfile = () => {
             const res = await fetch(`${API_BASE_URL}/auth/2fa/enable`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ code: twoFactorCode })
             });
             const data = await res.json();
@@ -381,7 +384,7 @@ const UserProfile = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/2fa`, {
                 method: 'DELETE',
-                headers: {}
+                credentials: 'include'
             });
             const data = await res.json();
             if (res.ok && data.success) {
@@ -403,7 +406,7 @@ const UserProfile = () => {
         setLoadingSessions(true);
         try {
             const res = await fetch(`${API_BASE_URL}/auth/sessions`, {
-                headers: {}
+                credentials: 'include'
             });
             const data = await res.json();
             if (data.success) {
@@ -424,7 +427,7 @@ const UserProfile = () => {
         try {
             await fetch(`${API_BASE_URL}/auth/sessions/${sessionId}`, {
                 method: 'DELETE',
-                headers: {}
+                credentials: 'include'
             });
             setSessions(sessions.filter(s => s.sessionId !== sessionId));
         } catch (err) {
@@ -436,7 +439,7 @@ const UserProfile = () => {
         try {
             await fetch(`${API_BASE_URL}/auth/sessions`, {
                 method: 'DELETE',
-                headers: {}
+                credentials: 'include'
             });
             loadSessions();
         } catch (err) {
@@ -453,9 +456,6 @@ const UserProfile = () => {
     };
 
     const handleDeleteAccount = async () => {
-        if (!window.confirm("Are you absolutely sure you want to delete your account? This action cannot be undone and your data will be permanently deleted or anonymized.")) {
-            return;
-        }
 
         setDeleteLoading(true);
         try {
@@ -469,11 +469,11 @@ const UserProfile = () => {
                 await logout();
                 navigate('/auth');
             } else {
-                alert(data.message || 'Failed to delete account');
+                toast.error(data.message || 'Failed to delete account');
             }
         } catch (err) {
             console.error('Delete account error:', err);
-            alert('An error occurred while deleting your account.');
+            toast.error('An error occurred while deleting your account.');
         } finally {
             setDeleteLoading(false);
             setShowDeleteConfirm(false);

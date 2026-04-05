@@ -4,9 +4,9 @@ import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '../ui/dialog';
 import { Ticket, Users, Calendar, QrCode, Search, Filter, Download, CheckCircle, XCircle, Clock, AlertCircle, DollarSign, CreditCard, ChevronLeft, ChevronRight, MoreHorizontal, ArrowUpDown, ChevronDown } from 'lucide-react';
 import QRCode from 'qrcode';
+import { toast } from 'sonner';
 
 const TicketManagement = () => {
-    const { } = useAuth();
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
     const [tickets, setTickets] = useState([]);
@@ -31,6 +31,7 @@ const TicketManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
     const [activeDropdown, setActiveDropdown] = useState(null);
+    const [bulkBtnLabel, setBulkBtnLabel] = useState('Bulk Generate QR');
 
     useEffect(() => {
         fetchTickets(statusView, page, eventFilter);
@@ -150,11 +151,11 @@ const TicketManagement = () => {
                 await fetchTickets(statusView);
             } else {
                 const err = await res.json();
-                alert(err.message || 'Failed to cancel ticket');
+                toast.error(err.message || 'Failed to cancel ticket');
             }
         } catch (e) {
             console.error('Cancel orphan error', e);
-            alert('Network error while cancelling ticket');
+            toast.error('Network error while cancelling ticket');
         }
     };
 
@@ -171,7 +172,7 @@ const TicketManagement = () => {
 
     const exportAsCSV = () => {
         if (!processedTickets || processedTickets.length === 0) {
-            alert("No tickets to export with current filters.");
+            toast.warning("No tickets to export with current filters.");
             return;
         }
 
@@ -204,16 +205,17 @@ const TicketManagement = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
     const bulkQRGenerate = async () => {
         if (!processedTickets || processedTickets.length === 0) {
-            alert("No tickets available for QR generation.");
+            toast.warning("No tickets available for QR generation.");
             return;
         }
 
-        const oldLabel = document.getElementById('bulk-btn-label').innerText;
-        document.getElementById('bulk-btn-label').innerText = 'Generating...';
+        const oldLabel = bulkBtnLabel;
+        setBulkBtnLabel('Generating...');
 
         try {
             // Helper function to safely escape HTML and prevent XSS
@@ -225,6 +227,10 @@ const TicketManagement = () => {
             };
 
             const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                toast.error('Please allow popups to generate bulk QR codes.');
+                return;
+            }
             printWindow.document.write(`
                 <html>
                 <head>
@@ -285,9 +291,9 @@ const TicketManagement = () => {
 
         } catch (e) {
             console.error('Bulk QR Error:', e);
-            alert("An error occurred while generating bulk QR codes.");
+            toast.error("An error occurred while generating bulk QR codes.");
         } finally {
-            document.getElementById('bulk-btn-label').innerText = oldLabel;
+            setBulkBtnLabel(oldLabel);
         }
     };
 
@@ -379,7 +385,7 @@ const TicketManagement = () => {
                         <Download className="w-4 h-4 mr-2" /> Export CSV
                     </Button>
                     <Button onClick={bulkQRGenerate} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 rounded-xl transition-all duration-300 transform hover:scale-[1.02]">
-                        <QrCode className="w-4 h-4 mr-2" /> <span id="bulk-btn-label">Bulk QR Generate</span>
+                        <QrCode className="w-4 h-4 mr-2" /> <span>{bulkBtnLabel}</span>
                     </Button>
                 </div>
             </div>

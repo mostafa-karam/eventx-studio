@@ -36,7 +36,7 @@ const AttendeeInsights = () => {
         if (res.ok) {
           setEvents(data.data?.events || []);
         }
-      } catch { /* empty */ }
+      } catch (err) { console.error('Load events error:', err); }
     };
     loadEvents();
   }, [API_BASE_URL]);
@@ -51,7 +51,7 @@ const AttendeeInsights = () => {
           const data = await res.json().catch(() => ({}));
           if (res.ok) setEventMeta(data.data?.event || null);
           else setEventMeta(null);
-        } catch { setEventMeta(null); }
+        } catch (err) { console.error('Load event meta error:', err); setEventMeta(null); }
       } else {
         setEventMeta(null);
       }

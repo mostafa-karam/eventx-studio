@@ -22,8 +22,10 @@ const Favorites = ({ onEventSelect }) => {
     try {
       setLoading(true);
       // Get favorites from localStorage - check both possible keys
-      const eventFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]');
-      const ticketFavorites = JSON.parse(localStorage.getItem('eventx_ticket_favorites') || '[]');
+      let eventFavorites = [];
+      let ticketFavorites = [];
+      try { eventFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]'); } catch { /* corrupted */ }
+      try { ticketFavorites = JSON.parse(localStorage.getItem('eventx_ticket_favorites') || '[]'); } catch { /* corrupted */ }
 
       // Combine both types of favorites
       const allFavorites = [...new Set([...eventFavorites, ...ticketFavorites])];
@@ -62,8 +64,10 @@ const Favorites = ({ onEventSelect }) => {
 
   const removeFavorite = (eventId) => {
     // Remove from both localStorage keys
-    const eventFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]');
-    const ticketFavorites = JSON.parse(localStorage.getItem('eventx_ticket_favorites') || '[]');
+    let eventFavorites = [];
+    let ticketFavorites = [];
+    try { eventFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]'); } catch { /* corrupted */ }
+    try { ticketFavorites = JSON.parse(localStorage.getItem('eventx_ticket_favorites') || '[]'); } catch { /* corrupted */ }
 
     const updatedEventFavorites = eventFavorites.filter(id => id !== eventId);
     const updatedTicketFavorites = ticketFavorites.filter(id => id !== eventId);
@@ -75,7 +79,8 @@ const Favorites = ({ onEventSelect }) => {
   };
 
   const toggleFavorite = (eventId) => {
-    const savedFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]');
+    let savedFavorites = [];
+    try { savedFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]'); } catch { /* corrupted */ }
     const isFavorited = savedFavorites.includes(eventId);
 
     if (isFavorited) {

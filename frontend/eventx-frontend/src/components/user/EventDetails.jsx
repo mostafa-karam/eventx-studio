@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -101,7 +101,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
       setSeatMapError('');
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-        const res = await fetch(`${API_BASE_URL}/events/${event._id}/seats`);
+        const res = await fetch(`${API_BASE_URL}/events/${event._id}/seats`, { credentials: 'include' });
         if (!res.ok) {
           const d = await res.json().catch(() => ({}));
           throw new Error(d.message || 'Failed to fetch seats');
@@ -169,6 +169,16 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
     return () => { aborted = true; };
   }, [event?._id, user, myTicketsReloadKey]);
 
+  // Compute event status early so hooks below can depend on it
+  const computedEventStatus = useMemo(() => {
+    const now = new Date();
+    const eventDate = new Date(event?.date || Date.now());
+    if (eventDate < now) return { status: 'past', label: 'Past Event', color: 'bg-gray-100 text-gray-600' };
+    if ((event?.seating?.availableSeats ?? 0) === 0) return { status: 'sold-out', label: 'Sold Out', color: 'bg-red-100 text-red-600' };
+    if ((event?.seating?.availableSeats ?? 0) < ((event?.seating?.totalSeats ?? 0) * 0.1)) return { status: 'limited', label: 'Limited Seats', color: 'bg-orange-100 text-orange-600' };
+    return { status: 'available', label: 'Available', color: 'bg-green-100 text-green-600' };
+  }, [event?.date, event?.seating?.availableSeats, event?.seating?.totalSeats]);
+
   // Pre-check: is the user on the waitlist?
   useEffect(() => {
     let aborted = false;
@@ -190,11 +200,11 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
       }
     };
     // Only check if sold out to avoid unnecessary requests
-    if (eventStatus.status === 'sold-out') {
+    if (computedEventStatus.status === 'sold-out') {
       checkWaitlist();
     }
     return () => { aborted = true; };
-  }, [event?._id, user, eventStatus.status]);
+  }, [event?._id, user, computedEventStatus.status]);
 
   const formatDate = (dateString) => {
     try {
@@ -231,7 +241,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
     return { status: 'available', label: 'Available', color: 'bg-green-100 text-green-600' };
   };
 
-  const eventStatus = getEventStatus(event);
+  const eventStatus = computedEventStatus;
   const canBook = eventStatus.status === 'available' || eventStatus.status === 'limited';
   const canBookForUser = !!user && canBook && !hasTicketForEvent;
   // Build an effective seat map with fallbacks for display

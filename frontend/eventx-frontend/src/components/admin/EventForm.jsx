@@ -108,7 +108,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
     if (eventId && !event) {
       const fetchEvent = async () => {
         try {
-          const res = await fetch(`${API_BASE_URL}/events/${eventId}`);
+          const res = await fetch(`${API_BASE_URL}/events/${eventId}`, { credentials: 'include' });
           if (res.ok) {
             const data = await res.json();
             const fetchedEvent = data.data?.event || data.data;
@@ -167,10 +167,10 @@ const EventForm = ({ event, onSave, onCancel }) => {
     for (let f of files) uploadData.append('images', f);
     try {
       setUploadingImage(true);
-      const res = await fetch(`${API_BASE_URL}/upload`, { method: 'POST', body: uploadData });
+      const res = await fetch(`${API_BASE_URL}/upload`, { method: 'POST', body: uploadData, credentials: 'include' });
       const data = await res.json();
       if (data.success) setFormData(prev => ({ ...prev, images: [...prev.images, ...data.urls.map(url => ({ url }))] }));
-    } catch { toast.error('Upload failed'); }
+    } catch (err) { console.error('Upload error:', err); toast.error('Upload failed'); }
     finally { setUploadingImage(false); }
   };
 
@@ -212,11 +212,25 @@ const EventForm = ({ event, onSave, onCancel }) => {
     if (e) e.preventDefault();
     setLoading(true);
     try {
+      // Coerce numeric fields before sending
+      const sanitizedData = {
+        ...formData,
+        seating: {
+          ...formData.seating,
+          totalSeats: parseInt(formData.seating?.totalSeats, 10) || 0,
+          availableSeats: parseInt(formData.seating?.availableSeats, 10) || 0,
+        },
+        pricing: {
+          ...formData.pricing,
+          amount: parseFloat(formData.pricing?.amount) || 0,
+        },
+      };
       const url = (event || eventId) ? `${API_BASE_URL}/events/${event?._id || eventId}` : `${API_BASE_URL}/events`;
       const res = await fetch(url, {
         method: (event || eventId) ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        credentials: 'include',
+        body: JSON.stringify(sanitizedData)
       });
       const data = await res.json();
       if (res.ok) {
@@ -227,7 +241,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
       } else {
         setError(data.message || 'Failed to save');
       }
-    } catch { setError('Network error'); }
+    } catch (err) { console.error('Save error:', err); setError('Network error'); }
     finally { setLoading(false); }
   };
 
@@ -239,6 +253,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
       const res = await fetch(`${API_BASE_URL}/events/${event?._id || eventId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ reason })
       });
       if (res.ok) {
@@ -249,7 +264,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
         const data = await res.json();
         toast.error(data.message);
       }
-    } catch { toast.error("Error cancelling event"); }
+    } catch (err) { console.error('Cancel error:', err); toast.error("Error cancelling event"); }
     finally { setLoading(false); }
   };
 

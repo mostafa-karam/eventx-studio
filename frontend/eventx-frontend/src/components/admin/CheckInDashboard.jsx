@@ -30,7 +30,7 @@ export default function CheckInDashboard() {
             const data = await res.json();
             if (res.ok) setEvents(data.data?.events || []);
         } catch (e) {
-            console.error("Failed to load events for check-in filter");
+            console.error("Failed to load events for check-in filter", e);
         }
     };
 
@@ -55,7 +55,8 @@ export default function CheckInDashboard() {
                 setRecentCheckins(prev => [{ ...data.data.ticket, checkedInAt: new Date() }, ...prev.slice(0, 19)]);
                 setStats(prev => ({ ...prev, checkedIn: prev.checkedIn + 1, remaining: Math.max(0, prev.remaining - 1) }));
             }
-        } catch {
+        } catch (err) {
+            console.error("Process code error:", err);
             setResult({ success: false, message: 'Network error. Please try again.' });
         } finally {
             setLoading(false);
