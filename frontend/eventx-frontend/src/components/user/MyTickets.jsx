@@ -65,20 +65,22 @@ const MyTickets = () => {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [favorites, setFavorites] = useState(new Set());
-  const [searchSuggestions, setSearchSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+//   const [searchSuggestions] = useState([]);
+//   const [showSuggestions] = useState(false);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [ticketsPerPage] = useState(6);
   const [totalTickets, setTotalTickets] = useState(0);
 
-  const { user, fetchCsrfToken } = useAuth();
+  // eslint-disable-next-line no-unused-vars
+// //   const { user, fetchCsrfToken } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchMyTickets();
     fetchMyWaitlists();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchMyWaitlists = async () => {
@@ -285,7 +287,7 @@ const MyTickets = () => {
     }
   };
 
-  const downloadQrFromDataUrl = (dataUrl, filename) => {
+   const downloadQrFromDataUrl = (dataUrl, filename) => {
     if (!dataUrl) return;
     const a = document.createElement('a');
     a.href = dataUrl;

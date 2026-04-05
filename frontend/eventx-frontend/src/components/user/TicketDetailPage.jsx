@@ -27,7 +27,7 @@ const TicketDetailPage = () => {
                 toast.error(data.message || 'Failed to load ticket');
                 navigate('/user/tickets');
             }
-        } catch (error) {
+        } catch {
             toast.error('Network error');
             navigate('/user/tickets');
         } finally {
@@ -49,7 +49,7 @@ const TicketDetailPage = () => {
             } else {
                 toast.error(data.message || 'Refund failed');
             }
-        } catch (error) {
+        } catch {
             toast.error('Network error during refund');
         } finally {
             setActionLoading(false);

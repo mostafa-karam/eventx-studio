@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Search, ChevronDown, HelpCircle, Ticket, Building2, CreditCard, Shield, Users } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 const faqCategories = [
     { id: 'all', label: 'All', icon: HelpCircle },

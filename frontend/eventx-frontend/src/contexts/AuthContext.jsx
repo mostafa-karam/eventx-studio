@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api, { fetchCsrfToken as initCsrf } from '../utils/apiClient';
 import { setGlobalCsrfToken } from '../utils/csrf';

@@ -40,7 +40,7 @@ const AuditLogViewer = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
     const [resourceFilter, setResourceFilter] = useState('all');
-    const [actionFilter, setActionFilter] = useState('all');
+    const [actionFilter] = useState('all');
     const [expandedLog, setExpandedLog] = useState(null);
 
     const fetchLogs = async () => {
@@ -69,8 +69,10 @@ const AuditLogViewer = () => {
 
     useEffect(() => {
         fetchLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page, resourceFilter, actionFilter]);
 
+  // eslint-disable-next-line no-unused-vars
     const formatDate = (d) => new Date(d).toLocaleString('en-US', {
         month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit',
     });

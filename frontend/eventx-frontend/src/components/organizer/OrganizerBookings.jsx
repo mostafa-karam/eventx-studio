@@ -14,7 +14,7 @@ const statusConfig = {
 };
 
 const OrganizerBookings = () => {
-    const { user } = useAuth();
+    useAuth();
     const navigate = useNavigate();
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -57,7 +57,7 @@ const OrganizerBookings = () => {
             } else {
                 toast.error(data.message || 'Failed to cancel booking');
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to cancel booking');
         }
     };

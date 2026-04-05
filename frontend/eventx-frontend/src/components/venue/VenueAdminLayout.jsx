@@ -41,7 +41,7 @@ const VenueAdminLayout = () => {
             <div className="flex-1 px-4 pt-4 overflow-y-auto">
                 <h3 className="text-sm font-medium text-teal-300 mb-3">Navigation</h3>
                 <nav className="space-y-1">
-                    {navItems.map(({ to, icon: Icon, label }) => (
+                    {navItems.map(({ to, icon: label }) => (
                         <NavLink key={to} to={to} onClick={() => setSidebarOpen(false)}
                             className={({ isActive }) => navCls(isActive)}>
                             <Icon className="w-4 h-4" />

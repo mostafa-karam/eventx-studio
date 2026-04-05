@@ -27,7 +27,7 @@ const EQUIPMENT_ICONS = {
 };
 
 const HallBrowser = ({ onSelectHall }) => {
-    const { token } = useAuth();
+    useAuth();
     const [halls, setHalls] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({
@@ -54,6 +54,7 @@ const HallBrowser = ({ onSelectHall }) => {
 
     useEffect(() => {
         fetchHalls();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters]);
 
     const fetchHalls = async () => {

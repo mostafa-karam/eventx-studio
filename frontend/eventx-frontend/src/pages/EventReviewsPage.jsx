@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 const EventReviewsPage = () => {
     const { eventId } = useParams();
-    const { isAuthenticated, user } = useAuth();
+//     const { isAuthenticated, user } = useAuth();
 
     const [reviews, setReviews] = useState([]);
     const [stats, setStats] = useState({ avgRating: 0, totalReviews: 0 });

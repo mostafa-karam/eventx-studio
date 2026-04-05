@@ -20,7 +20,7 @@ const priorityColors = {
 };
 
 const UserNotifications = () => {
-    const { user } = useAuth();
+    useAuth();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all'); // all | unread | read
@@ -59,7 +59,7 @@ const UserNotifications = () => {
             setNotifications(prev =>
                 prev.map(n => n._id === id ? { ...n, read: true } : n)
             );
-        } catch (error) {
+        } catch {
             toast.error('Failed to mark notification as read');
         }
     };
@@ -73,7 +73,7 @@ const UserNotifications = () => {
             });
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
             toast.success('All notifications marked as read');
-        } catch (error) {
+        } catch {
             toast.error('Failed to mark all as read');
         }
     };
@@ -87,7 +87,7 @@ const UserNotifications = () => {
             });
             setNotifications(prev => prev.filter(n => n._id !== id));
             toast.success('Notification deleted');
-        } catch (error) {
+        } catch {
             toast.error('Failed to delete notification');
         }
     };

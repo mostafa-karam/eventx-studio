@@ -64,7 +64,7 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
       } else {
         navigate('/dashboard');
       }
-    } catch (error) {
+    } catch {
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
@@ -93,7 +93,7 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
       } else {
         navigate('/dashboard');
       }
-    } catch (error) {
+    } catch {
       setError('Network error during demo login');
     } finally {
       setLoading(false);
@@ -111,7 +111,7 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
       } else {
         setError(result.message || 'Failed to send reset email');
       }
-    } catch (error) {
+    } catch {
       setError('Network error. Please try again.');
     } finally {
       setForgotPasswordLoading(false);

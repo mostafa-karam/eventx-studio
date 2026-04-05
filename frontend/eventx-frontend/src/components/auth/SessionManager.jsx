@@ -32,7 +32,7 @@ const SessionManager = () => {
       } else {
         setError(result.message || 'Failed to load sessions');
       }
-    } catch (error) {
+    } catch {
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
@@ -41,6 +41,7 @@ const SessionManager = () => {
 
   useEffect(() => {
     loadSessions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getDeviceIcon = (deviceInfo) => {
@@ -81,7 +82,7 @@ const SessionManager = () => {
       } else {
         setError(result.message || 'Failed to remove session');
       }
-    } catch (error) {
+    } catch {
       setError('Network error. Please try again.');
     } finally {
       setActionLoading(prev => ({ ...prev, [sessionId]: false }));
@@ -103,7 +104,7 @@ const SessionManager = () => {
       } else {
         setError(result.message || 'Failed to remove sessions');
       }
-    } catch (error) {
+    } catch {
       setError('Network error. Please try again.');
     } finally {
       setActionLoading(prev => ({ ...prev, removeAll: false }));

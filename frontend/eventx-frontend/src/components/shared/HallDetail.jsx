@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
     ArrowLeft,
@@ -60,7 +60,7 @@ const HallDetail = ({ hall, onBack }) => {
             } else {
                 setErrorMsg(data.message || 'Failed to submit booking request');
             }
-        } catch (error) {
+        } catch {
             setErrorMsg('An error occurred during booking submission');
         } finally {
             setSubmitting(false);

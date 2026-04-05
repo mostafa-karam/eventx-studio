@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -104,9 +104,10 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
         return value === formData.password ? null : 'Passwords do not match';
       case 'accountType':
         return ['user', 'organizer'].includes(value) ? null : 'Please select an account type';
-      case 'age':
+      case 'age': {
         const ageNum = parseInt(value);
         return ageNum >= 13 && ageNum <= 120 ? null : 'Age must be between 13 and 120';
+      }
       case 'gender':
         return value ? null : 'Please select your gender';
       case 'city':
@@ -189,7 +190,7 @@ const OptimizedRegisterForm = ({ onToggleMode }) => {
       } else {
         setErrors({ submit: result.message || 'Registration failed' });
       }
-    } catch (error) {
+    } catch {
       setErrors({ submit: 'Network error. Please try again.' });
     } finally {
       setLoading(false);

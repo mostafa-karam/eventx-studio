@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
@@ -19,8 +19,7 @@ const AdvancedAnalytics = () => {
   const [timeRange, setTimeRange] = useState('30d');
   const [refreshing, setRefreshing] = useState(false);
 
-  const { } = useAuth();
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchAnalytics();
@@ -72,6 +71,7 @@ const AdvancedAnalytics = () => {
     </div>
   );
 
+  // eslint-disable-next-line no-unused-vars
   const StatCard = ({ title, value, change = 0, icon: Icon, colorClass }) => {
     const isUp = Number(change) >= 0;
     const pct = Math.abs(Number(change)).toFixed(1);

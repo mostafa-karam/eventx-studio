@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Mail, Phone, MapPin, Clock, Send, ArrowLeft, MessageSquare, HelpCircle, Bug, Lightbulb, CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 
 const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -16,7 +16,7 @@ const contactReasons = [
 
 export default function ContactPage() {
     const { user, isAuthenticated } = useAuth();
-    const navigate = useNavigate();
+//     const navigate = useNavigate();
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({

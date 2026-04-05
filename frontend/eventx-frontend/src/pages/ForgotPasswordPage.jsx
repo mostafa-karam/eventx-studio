@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const ForgotPasswordPage = () => {
     const { forgotPassword } = useAuth();
-    const navigate = useNavigate();
+//     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);

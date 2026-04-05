@@ -34,6 +34,7 @@ const HallManagement = ({ onSelectHall }) => {
 
     useEffect(() => {
         fetchHalls();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchHalls = async () => {
@@ -100,7 +101,7 @@ const HallManagement = ({ onSelectHall }) => {
             } else {
                 setErrorMsg(data.message || 'Failed to save hall');
             }
-        } catch (error) {
+        } catch {
             setErrorMsg('An error occurred while saving.');
         }
     };
@@ -122,7 +123,7 @@ const HallManagement = ({ onSelectHall }) => {
             } else {
                 alert(data.message || 'Failed to delete hall');
             }
-        } catch (error) {
+        } catch {
             alert('An error occurred while deleting.');
         }
     };

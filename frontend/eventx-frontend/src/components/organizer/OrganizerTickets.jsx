@@ -13,7 +13,7 @@ const statusConfig = {
 };
 
 const OrganizerTickets = () => {
-    const { user } = useAuth();
+    useAuth();
     const [tickets, setTickets] = useState([]);
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -29,6 +29,7 @@ const OrganizerTickets = () => {
 
     useEffect(() => {
         fetchTickets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedEvent, statusFilter, page]);
 
     const fetchEvents = async () => {
@@ -84,7 +85,7 @@ const OrganizerTickets = () => {
             } else {
                 toast.error(data.message || 'Check-in failed');
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to check in ticket');
         }
     };

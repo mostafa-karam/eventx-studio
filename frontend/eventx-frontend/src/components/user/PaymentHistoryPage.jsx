@@ -29,7 +29,7 @@ const PaymentHistoryPage = () => {
             } else {
                 toast.error('Failed to load payment history');
             }
-        } catch (error) {
+        } catch {
             toast.error('Network error');
         } finally {
             setLoading(false);

@@ -140,7 +140,7 @@ const HallsManagement = () => {
             } else {
                 toast.error(data.message || 'Failed to delete hall');
             }
-        } catch (error) {
+        } catch {
             toast.error('Network error during deletion');
         }
     };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+
 import {
     CalendarDays,
     CheckCircle,
@@ -14,8 +14,7 @@ import EmptyState from '../shared/EmptyState';
 import Breadcrumbs from '../shared/Breadcrumbs';
 
 const BookingApproval = () => {
-    const { } = useAuth();
-    const [bookings, setBookings] = useState([]);
+        const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('pending');
 
@@ -23,6 +22,7 @@ const BookingApproval = () => {
 
     useEffect(() => {
         fetchBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filter]);
 
     const fetchBookings = async () => {
@@ -70,7 +70,7 @@ const BookingApproval = () => {
             } else {
                 alert(data.message || `Failed to ${action} booking.`);
             }
-        } catch (error) {
+        } catch {
             alert(`An error occurred while trying to ${action} the booking.`);
         }
     };

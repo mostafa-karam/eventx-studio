@@ -38,6 +38,7 @@ const EventsManagement = () => {
 
   useEffect(() => {
     fetchEvents();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, dateFrom, dateTo]);
 
   useEffect(() => {

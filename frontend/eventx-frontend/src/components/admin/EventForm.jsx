@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -8,7 +8,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
 import { TiptapEditor } from '../ui/TiptapEditor';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -145,7 +145,8 @@ const EventForm = ({ event, onSave, onCancel }) => {
     fetchBookings();
   }, [API_BASE_URL]);
 
-  const handleBookingSelect = (bookingId) => {
+  // eslint-disable-next-line no-unused-vars
+   const handleBookingSelect = (bookingId) => {
     setSelectedBookingId(bookingId);
     if (!bookingId || bookingId === 'manual') return;
     const booking = myBookings.find(b => b._id === bookingId);

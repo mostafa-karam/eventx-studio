@@ -17,7 +17,7 @@ import { DashboardStatsSkeleton } from '../shared/LoadingSkeletons';
 import EmptyState from '../shared/EmptyState';
 
 const OrganizerDashboard = ({ onTabChange }) => {
-    const { user } = useAuth();
+    useAuth();
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     const [stats, setStats] = useState({
         totalEvents: 0,
@@ -31,6 +31,7 @@ const OrganizerDashboard = ({ onTabChange }) => {
 
     useEffect(() => {
         fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchDashboardData = async () => {

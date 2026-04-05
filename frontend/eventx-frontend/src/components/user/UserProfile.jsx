@@ -14,6 +14,7 @@ import {
     TrendingUp, Award, Clock, MapPin, CreditCard, Download, AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 const UserProfile = () => {
     const { user, setUser, logout } = useAuth();
     const navigate = useNavigate();
@@ -57,7 +58,7 @@ const UserProfile = () => {
     const [recentActivity, setRecentActivity] = useState([]);
 
     // Loading states
-    const [loadingStats, setLoadingStats] = useState(true);
+//     const [loadingStats, setLoadingStats] = useState(true);
 
     // 2FA state
     const [twoFactorSetup, setTwoFactorSetup] = useState(null);
@@ -100,7 +101,7 @@ const UserProfile = () => {
                     });
                 });
             }
-        } catch (error) {
+        } catch {
             // silently ignore — activity list is optional
         }
 
@@ -179,7 +180,7 @@ const UserProfile = () => {
                             try { totalTickets = JSON.parse(savedTickets).length; } catch { /* corrupted */ }
                         }
                     }
-                } catch (apiError) {
+                } catch {
                     // Fallback: try to get from localStorage
                     const savedTickets = localStorage.getItem('user_tickets');
                     if (savedTickets) {
@@ -196,7 +197,7 @@ const UserProfile = () => {
 
                 // Load recent activity
                 loadRecentActivity();
-            } catch (error) {
+            } catch {
                 console.error('Error loading account stats:', error);
                 // Set default values if everything fails
                 setAccountStats({
@@ -211,6 +212,7 @@ const UserProfile = () => {
         };
 
         loadAccountStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     const handleSaveProfile = async (e) => {
@@ -233,7 +235,7 @@ const UserProfile = () => {
             localStorage.setItem('last_profile_update', new Date().toISOString());
             // Reload activity to show the new profile update
             loadRecentActivity();
-        } catch (e) {
+        } catch {
             console.error('Profile update error:', e);
             setProfileMsg(e.message || 'Profile update failed');
         } finally {
@@ -276,7 +278,7 @@ const UserProfile = () => {
             } else {
                 setProfileMsg('Avatar upload failed: ' + data.message);
             }
-        } catch (err) {
+        } catch {
             setProfileMsg('Network error during upload');
         } finally {
             setSavingProfile(false);
@@ -313,7 +315,7 @@ const UserProfile = () => {
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
-        } catch (e) {
+        } catch {
             console.error('Change password error:', e);
             setPwdMsg(e.message || 'Password change failed');
         } finally {
@@ -342,7 +344,7 @@ const UserProfile = () => {
             } else {
                 setTwoFactorMsg({ type: 'error', text: data.message || 'Failed to setup 2FA' });
             }
-        } catch (err) {
+        } catch {
             setTwoFactorMsg({ type: 'error', text: 'Error setting up 2FA' });
         } finally {
             setTwoFactorLoading(false);
@@ -371,7 +373,7 @@ const UserProfile = () => {
             } else {
                 setTwoFactorMsg({ type: 'error', text: data.message || 'Failed to enable 2FA' });
             }
-        } catch (err) {
+        } catch {
             setTwoFactorMsg({ type: 'error', text: 'Error enabling 2FA' });
         } finally {
             setTwoFactorLoading(false);
@@ -395,7 +397,7 @@ const UserProfile = () => {
             } else {
                 setTwoFactorMsg({ type: 'error', text: data.message || 'Failed to disable 2FA' });
             }
-        } catch (err) {
+        } catch {
             setTwoFactorMsg({ type: 'error', text: 'Error disabling 2FA' });
         } finally {
             setTwoFactorLoading(false);
@@ -412,7 +414,7 @@ const UserProfile = () => {
             if (data.success) {
                 setSessions(data.data.sessions);
             }
-        } catch (err) {
+        } catch {
             console.error('Failed to load sessions', err);
         } finally {
             setLoadingSessions(false);
@@ -421,6 +423,7 @@ const UserProfile = () => {
 
     useEffect(() => {
         loadSessions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleRevokeSession = async (sessionId) => {
@@ -430,7 +433,7 @@ const UserProfile = () => {
                 credentials: 'include'
             });
             setSessions(sessions.filter(s => s.sessionId !== sessionId));
-        } catch (err) {
+        } catch {
             console.error('Failed to revoke session', err);
         }
     };
@@ -442,7 +445,7 @@ const UserProfile = () => {
                 credentials: 'include'
             });
             loadSessions();
-        } catch (err) {
+        } catch {
             console.error('Failed to revoke all sessions', err);
         }
     };
@@ -471,7 +474,7 @@ const UserProfile = () => {
             } else {
                 toast.error(data.message || 'Failed to delete account');
             }
-        } catch (err) {
+        } catch {
             console.error('Delete account error:', err);
             toast.error('An error occurred while deleting your account.');
         } finally {

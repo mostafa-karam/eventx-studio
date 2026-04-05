@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 export default function CheckInDashboard() {
-    const { user } = useAuth();
+    useAuth();
     const [manualCode, setManualCode] = useState('');
     const [result, setResult] = useState(null); // { success, message, ticket }
     const [loading, setLoading] = useState(false);

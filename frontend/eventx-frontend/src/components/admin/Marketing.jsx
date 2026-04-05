@@ -131,7 +131,7 @@ const Marketing = () => {
           { title: 'Avg Open Rate', value: `${stats.avgOpenRate || 0}%`, icon: Eye, color: 'from-teal-400 to-emerald-600', lightBg: 'bg-teal-50 text-teal-600' },
           { title: 'Revenue Generated', value: `$${stats.revenue?.toLocaleString() || '0'}`, icon: TrendingUp, color: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50 text-amber-600' }
         ].map((stat, i) => {
-          const Icon = stat.icon;
+          // const Icon = stat.icon;
           return (
             <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
               <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.color} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>

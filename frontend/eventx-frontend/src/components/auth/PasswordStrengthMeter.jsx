@@ -7,7 +7,7 @@ const getStrength = (password) => {
     if (/[A-Z]/.test(password)) score++;
     if (/[a-z]/.test(password)) score++;
     if (/[0-9]/.test(password)) score++;
-    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) score++;
+    if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) score++;
 
     const levels = [
         { label: '', color: '', bg: 'bg-gray-200' },
@@ -29,7 +29,7 @@ const PasswordStrengthMeter = ({ password }) => {
         { test: /[A-Z]/, label: 'Uppercase letter' },
         { test: /[a-z]/, label: 'Lowercase letter' },
         { test: /[0-9]/, label: 'Number' },
-        { test: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, label: 'Special character' },
+        { test: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/, label: 'Special character' },
     ];
 
     return (

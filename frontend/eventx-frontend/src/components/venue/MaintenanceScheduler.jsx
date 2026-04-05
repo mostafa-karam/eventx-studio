@@ -43,7 +43,7 @@ const MaintenanceScheduler = () => {
                     (bookingsData.data.bookings || []).filter(b => b.status === 'maintenance')
                 );
             }
-        } catch (error) {
+        } catch {
             toast.error('Network error loading data');
         } finally {
             setLoading(false);
@@ -88,7 +88,7 @@ const MaintenanceScheduler = () => {
             } else {
                 toast.error(data.message || 'Failed to schedule maintenance. Dates may overlap with an existing booking.');
             }
-        } catch (error) {
+        } catch {
             toast.error('Network error. Check your connection.');
         } finally {
             setSubmitting(false);
@@ -107,7 +107,7 @@ const MaintenanceScheduler = () => {
             } else {
                 toast.error(data.message || 'Failed to cancel');
             }
-        } catch (error) {
+        } catch {
             toast.error('Network error');
         }
     };

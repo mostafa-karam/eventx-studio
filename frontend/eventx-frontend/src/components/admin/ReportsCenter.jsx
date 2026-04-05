@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -38,6 +37,7 @@ const ReportsCenter = () => {
 
   useEffect(() => {
     fetchReports();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchReports = async () => {
@@ -112,7 +112,8 @@ const ReportsCenter = () => {
     }
   };
 
-  const getReportTypeName = (type) => {
+  // eslint-disable-next-line no-unused-vars
+   const getReportTypeName = (type) => {
     const types = {
       revenue: 'Revenue Report',
       demographics: 'Demographics Analysis',

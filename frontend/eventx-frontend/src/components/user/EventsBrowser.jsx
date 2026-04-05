@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -50,10 +50,10 @@ const EventsBrowser = ({ onEventSelect }) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [pagination, setPagination] = useState({ current: 1, pages: 1, total: 0 });
   const [favorites, setFavorites] = useState(new Set());
-  const [searchSuggestions, setSearchSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+//   const [searchSuggestions] = useState([]);
+//   const [showSuggestions] = useState(false);
 
-  const { token } = useAuth();
+  useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   // Load favorites from localStorage on component mount
@@ -69,6 +69,7 @@ const EventsBrowser = ({ onEventSelect }) => {
       fetchEvents();
     }, 300);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, categoryFilter, sortBy, cityFilter, dateFrom, dateTo, priceRange, pagination.current]);
 
   // When specificDate changes, constrain the range to that exact day

@@ -35,12 +35,12 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
   const [seatMap, setSeatMap] = useState(null);
   const [seatMapLoading, setSeatMapLoading] = useState(false);
   const [seatMapError, setSeatMapError] = useState('');
-  const [bookingSuccess, setBookingSuccess] = useState('');
+//   const [bookingSuccess, setBookingSuccess] = useState('');
   const bookStickyRef = useRef(null);
   const [statsTop, setStatsTop] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
   const [hasTicketForEvent, setHasTicketForEvent] = useState(false);
-  const [myTicketsLoading, setMyTicketsLoading] = useState(false);
+//   const [myTicketsLoading, setMyTicketsLoading] = useState(false);
   const [myTicketsError, setMyTicketsError] = useState('');
   const [myTicketsReloadKey, setMyTicketsReloadKey] = useState(0);
 
@@ -51,7 +51,8 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
 
   // payment removed per request
 
-  const { user, fetchCsrfToken } = useAuth();
+  // eslint-disable-next-line no-unused-vars
+//   const { user, fetchCsrfToken } = useAuth();
 
   // Image gallery state
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -88,6 +89,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
     if (ro && bookStickyRef.current) ro.observe(bookStickyRef.current);
     return () => {
       window.removeEventListener('resize', update);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (ro && bookStickyRef.current) ro.unobserve(bookStickyRef.current);
     };
   }, []);
@@ -135,6 +137,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
     if (showSeatSelection || (event && event._id)) loadSeatMap();
 
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?._id, showSeatSelection, bookingQuantity, reloadKey]);
 
   // Pre-check: does the current user already have a ticket for this event?
@@ -217,7 +220,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
         hour: '2-digit',
         minute: '2-digit'
       });
-    } catch (e) {
+    } catch {
       return dateString;
     }
   };
@@ -232,7 +235,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
     return (event.pricing?.amount ?? 0) * bookingQuantity;
   };
 
-  const getEventStatus = (ev) => {
+   const getEventStatus = (ev) => {
     const now = new Date();
     const eventDate = new Date(ev.date || Date.now());
     if (eventDate < now) return { status: 'past', label: 'Past Event', color: 'bg-gray-100 text-gray-600' };
@@ -242,8 +245,9 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
   };
 
   const eventStatus = computedEventStatus;
+  // eslint-disable-next-line no-unused-vars
   const canBook = eventStatus.status === 'available' || eventStatus.status === 'limited';
-  const canBookForUser = !!user && canBook && !hasTicketForEvent;
+   const canBookForUser = !!user && canBook && !hasTicketForEvent;
   // Build an effective seat map with fallbacks for display
   let displaySeatMap = seatMap ?? event?.seating?.seatMap ?? [];
   if ((!displaySeatMap || displaySeatMap.length === 0) && (event?.seating?.totalSeats > 0)) {
@@ -391,7 +395,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
       try {
         await navigator.clipboard.writeText(url);
         toast.success('Link copied to clipboard!');
-      } catch (err) {
+      } catch {
         toast.error('Failed to copy link');
       }
     }

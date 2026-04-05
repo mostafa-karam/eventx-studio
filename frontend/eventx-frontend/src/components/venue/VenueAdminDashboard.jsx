@@ -18,7 +18,7 @@ import { DashboardStatsSkeleton } from '../shared/LoadingSkeletons';
 import EmptyState from '../shared/EmptyState';
 
 const VenueAdminDashboard = ({ onTabChange }) => {
-    const { user } = useAuth();
+    useAuth();
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     const [stats, setStats] = useState({
         totalHalls: 0,
@@ -44,6 +44,7 @@ const VenueAdminDashboard = ({ onTabChange }) => {
 
     useEffect(() => {
         fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchDashboardData = async () => {
@@ -135,7 +136,7 @@ const VenueAdminDashboard = ({ onTabChange }) => {
             } else {
                 setMaintenanceMsg({ type: 'error', text: data.message || 'Failed to schedule maintenance' });
             }
-        } catch (error) {
+        } catch {
             setMaintenanceMsg({ type: 'error', text: 'Error scheduling maintenance' });
         } finally {
             setSubmittingMaintenance(false);

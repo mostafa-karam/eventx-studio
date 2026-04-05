@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '../ui/dialog';
 import { Ticket, Users, Calendar, QrCode, Search, Filter, Download, CheckCircle, XCircle, Clock, AlertCircle, DollarSign, CreditCard, ChevronLeft, ChevronRight, MoreHorizontal, ArrowUpDown, ChevronDown } from 'lucide-react';
@@ -35,6 +34,7 @@ const TicketManagement = () => {
 
     useEffect(() => {
         fetchTickets(statusView, page, eventFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [statusView, page, eventFilter]);
 
     useEffect(() => {
@@ -50,6 +50,7 @@ const TicketManagement = () => {
             }
         };
         loadEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchTickets = async (status = '', pageParam = 1, eventId = '') => {

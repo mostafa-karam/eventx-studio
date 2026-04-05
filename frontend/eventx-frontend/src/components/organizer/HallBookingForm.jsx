@@ -36,7 +36,7 @@ const HallBookingForm = () => {
                 toast.error('Failed to load hall details');
                 navigate('/organizer/halls');
             }
-        } catch (error) {
+        } catch {
             toast.error('Network error');
             navigate('/organizer/halls');
         } finally {
@@ -82,7 +82,7 @@ const HallBookingForm = () => {
             } else {
                 toast.error(data.message || 'Failed to request booking');
             }
-        } catch (error) {
+        } catch {
             toast.error('Network error');
         } finally {
             setSubmitting(false);

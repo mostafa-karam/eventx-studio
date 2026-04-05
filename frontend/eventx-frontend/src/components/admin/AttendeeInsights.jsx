@@ -154,10 +154,7 @@ const AttendeeInsights = () => {
     : ((dynamicDemographics?.ageGroups || []).map(a => ({ name: a.name || a.group || a.age, value: a.count })))).filter(a => a.value > 0);
 
   // Growth Calculation via API
-  const growthRate = viewType === 'all' 
-    ? (apiOverview?.interestStats?.trend || 0)
-    : (insightsData?.growth?.percentage || 0);
-
+  const growthRate = apiOverview
   const overview = apiOverview || {
     totalAttendees: totalCount,
     dominantAgeGroup: computedAges.sort((a,b)=>b.value-a.value)[0]?.name || '—',

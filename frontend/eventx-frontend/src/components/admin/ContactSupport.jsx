@@ -88,7 +88,7 @@ const ContactSupport = () => {
       setTickets(tickets.map(t => t.id === selectedTicket.id ? updatedTicket : t));
       setSelectedTicket(updatedTicket);
       setReplyText('');
-    } catch (error) {
+    } catch {
       console.error("Failed to reply");
     } finally {
       setIsReplying(false);
@@ -101,7 +101,7 @@ const ContactSupport = () => {
       const updatedTicket = { ...selectedTicket, status: newStatus };
       setTickets(tickets.map(t => t.id === selectedTicket.id ? updatedTicket : t));
       setSelectedTicket(updatedTicket);
-    } catch (e) {
+    } catch {
       console.error("Failed to update status");
     }
   };

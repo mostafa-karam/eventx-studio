@@ -43,6 +43,7 @@ const EventDetails = ({ eventId: propEventId, onBack, onEdit }) => {
     if (eventId) {
       fetchEventDetails();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
   const fetchEventDetails = async () => {

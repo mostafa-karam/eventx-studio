@@ -24,7 +24,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 
 const BookingPage = () => {
   const { eventId } = useParams();
-  const { user } = useAuth();
+  useAuth();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -33,8 +33,8 @@ const BookingPage = () => {
   const [step, setStep] = useState(1); // 1: Initiate, 2: Payment, 3: Confirmation
   // SECURITY: Use tokenized payment provider (Stripe, Square, etc.)
   // Do NOT handle raw card data in frontend. Payment tokens should only be received from PCI-compliant providers
-  const [paymentToken, setPaymentToken] = useState('');
-  const [paymentTokenError, setPaymentTokenError] = useState('');
+//   const [paymentToken] = useState('');
+//   const [paymentTokenError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);

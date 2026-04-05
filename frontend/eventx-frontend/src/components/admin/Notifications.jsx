@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Check, X, AlertCircle, Info, CheckCircle, XCircle, Clock, Users, Calendar, Ticket, CheckCircle2, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { useAuth } from '../../contexts/AuthContext';
+
 
 const Notifications = ({ onOpenAction }) => {
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  const { } = useAuth();
-
+  
   useEffect(() => {
     fetchNotifications();
   }, []);

@@ -74,7 +74,7 @@ function generateInvoicePDF(booking) {
 }
 
 export default function OrganizerInvoiceHistory() {
-    const { user } = useAuth();
+    useAuth();
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');

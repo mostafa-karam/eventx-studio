@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 const OrganizerAnalytics = () => {
-    const { user } = useAuth();
+    useAuth();
     const [loading, setLoading] = useState(true);
     const [events, setEvents] = useState([]);
     const [stats, setStats] = useState({
