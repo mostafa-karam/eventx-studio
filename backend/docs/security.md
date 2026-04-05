@@ -1,90 +1,45 @@
-# Security Implementation Details
+# Security Posture & Configurations
 
-Security is a foundational pillar of EventX Studio. This document provides a technical deep dive into how we protect the platform.
+The EventX Studio backend employs a zero-trust, defense-in-depth model to protect Organizer and Attendee data. All traffic routing through Express interacts with a dense ring of security middlewares.
 
-## 🔑 Authentication Strategy (JWT + Cookies)
+## Authentication (JWT & HttpOnly Cookies)
 
-We use a "Double Token" system stored exclusively in `httpOnly` cookies:
+We do not transmit authorization tokens via JSON bodies or LocalStorage, defeating standard XSS (Cross-Site Scripting) token exfiltration.
+- **Login Flow**: Upon successful authentication, the server generates a JSON Web Token (JWT) signed with `JWT_SECRET`. 
+- **Storage**: The token is set natively as an `HttpOnly`, `Secure` cookie named `token`. The browser handles token attachment automatically.
+- **Refresh Flow**: A parallel `refreshToken` cookie allows users to generate new ephemeral access tokens without continuously requesting credentials.
 
-1. **Access Token (`accessToken`)**:
-   - **Expiration**: 7 days (Configurable via `JWT_EXPIRE`).
-   - **Payload**: `id` (User ID), `sessionId` (for session tracking).
-   - **Use**: Verification for all protected API calls.
+## Cross-Site Request Forgery (CSRF)
 
-2. **Refresh Token (`refreshToken`)**:
-   - **Expiration**: 30 days.
-   - **Payload**: `id` (User ID), `type: 'refresh'`.
-   - **Storage**: A SHA-256 hash is stored securely in the `User` model.
-   - **Rotation & Reuse Detection**: Every time a refresh token is used, a _new_ refresh token is issued (Token Rotation). If an old, already-used refresh token is presented, the system detects a potential replay attack and instantly revokes _all_ active sessions for that user.
+Because tokens are stored in Cookies automatically sent by browsers, the application uses **Double Submit Cookie** + **Token Hash** mitigation via `csrf-csrf`.
+- **Read Operations (`GET`, `HEAD`, `OPTIONS`)**: Allowed through freely.
+- **Mutating Operations (`POST`, `PUT`, `DELETE`)**: The frontend must fetch `/api/v1/auth/csrf-token` to retrieve a cryptographically signed CSRF seed. This seed must be attached to the mutating request under the `X-CSRF-Token` HTTP Header. If the hash derived from the header does not cryptographically match the session context, the server immediately drops the connection (`403 Forbidden`).
 
-### 🔄 Double Token Rotation Flow
+## Rate Limiting (Brute Force Protection)
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant DB
+`express-rate-limit` governs traffic globally across the entire API space to prevent Denial of Service (DoS) and credential stuffing.
+- **Global API Limit**: 100 requests per 10 minutes per IP.
+- **Authentication Route Limit** (`authLimiter`): 10 requests per 10 minutes per IP to defeat dictionary attacks against schemas like `/login` or `/tfa/verify`.
 
-    Client->>API: POST /api/auth/login
-    API->>DB: Verify Credentials
-    API->>API: Generate Access & Refresh Tokens
-    API->>DB: Hash & Store Initial Refresh Token
-    API-->>Client: Set secure httpOnly Cookies
+## Payload Sanitization (NoSQL Injection & XSS)
 
-    Note over Client,API: Access Token Expires (7 Days)
+Before body payloads strike the Models, they are sanitized recursively:
+1. **`express-mongo-sanitize`**: Scans the `req.body`, `req.query`, and `req.params`. Any keys beginning with `$` or containing `.` (MongoDB operators) are aggressively stripped. This defeats queries like `{ email: { $gt: "" } }`.
+2. **Data Structure Validation**: Heavily relies on Mongoose schemas forcing `Number` casting or `enum` evaluation, preventing unexpected object properties from sliding into DB mutations.
 
-    Client->>API: API Request (Expired Access Token)
-    API-->>Client: 401 Unauthorized
-    Client->>API: POST /api/auth/refresh (Sends Refresh Cookie)
-    API->>DB: Validate Refresh Token Hash
-    API->>API: Generate NEW Access & NEW Refresh Tokens
-    API->>DB: Store NEW Refresh Token Hash (Rotation)
-    API-->>Client: Set New secure httpOnly Cookies
-```
+## HTTP Headers (Helmet)
 
-### 🛡️ Cookie Protection:
+Helmet sets 11 protective HTTP headers securely defining browser behavioral limits:
+- **`Content-Security-Policy`**: Governs authorized resource origins.
+- **`Strict-Transport-Security`**: Enforces strict HTTPS binding (HSTS) for 1 year.
+- **`X-Frame-Options`**: `DENY`. Stops UI redressing/Clickjacking techniques.
+- **`X-Download-Options`**: `noopen`. Mitigates IE8 execution risks.
+- **`X-Content-Type-Options`**: `nosniff`. Blocks MIME-type sniffing.
 
-Tokens are never stored in `localStorage` or `sessionStorage` (which are vulnerable to XSS).
-Instead, we use:
+## Session Revocation
 
-- `httpOnly: true`: Prevents JavaScript from reading the cookie.
-- `secure: true`: Ensures the cookie is only sent over HTTPS (in production).
-- `sameSite: 'strict'`: Prevents CSRF by ensuring the cookie is sent only from our origin.
+When a user logs out (`/api/v1/auth/logout`), the server responds by overwriting the `token` and `refreshToken` cookies with explicit `expires: new Date(Date.now() - 1)` parameters, causing immediate local annihilation of auth states on the client.
 
----
+## Multi-Factor Authentication (MFA/2FA)
 
-## 🛡️ CSRF Protection (Cross-Site Request Forgery)
-
-We use the `csrf-csrf` library with a double-submit cookie pattern:
-
-1. **Retrieval**: The client first calls `GET /api/auth/csrf-token`.
-2. **Cookie + token**: The server sets the `__csrf` cookie and returns a CSRF token in the JSON body.
-3. **Requirement**: Every POST, PUT, DELETE, or PATCH request must include the `x-csrf-token` header.
-4. **Validation**: The server validates the header token against the cookie-backed CSRF mechanism. If validation fails, the request is rejected with an invalid CSRF token error.
-
----
-
-## 🚦 Rate Limiting Tiers
-
-To prevent brute-force and Denial-o-Service (DoS) attacks, we use `express-rate-limit`:
-
-- **Global Tier**: 200 requests / 15 mins. Applied to all `/api` routes.
-- **Auth Tier**: 15 requests / 15 mins. Applied specifically to `/api/auth/login` and `/api/auth/register`.
-- **Upload Tier**: Stricter limits (5/min) specifically for file uploads to prevent storage exhaustion.
-
----
-
-## 🧹 Sanitization & XSS Mitigation
-
-1. **NoSQL Injection**: `mongo-sanitize` strips all `$` prefixed keys from `req.body` and `req.query`, preventing attackers from bypassing auth via queries like `{"email": {"$gt": ""}}`.
-2. **XSS Protection**: `xss-clean` sanitizes all user-provided strings by stripping HTML tags and script fragments.
-3. **Helmet JS**: Configured with strict `Content-Security-Policy` (CSP) directives to ensure only trusted assets are loaded.
-
----
-
-## 🪵 Audit & Logging
-
-Every administrative or sensitive action is recorded in the **Audit Logs**.
-
-- **What is logged**: Actor ID, Action Name (e.g., `user.delete`), Target Resource, IP Address, and User-Agent.
-- **Why**: This provides a non-repudiable trail for security investigations and simplifies troubleshooting for support staff.
+Administrators and Organizers can opt into Time-Based One-Time Password (TOTP) constraints leveraging `otplib`. Upon enabling, login validation routes enforce a secondary intercept requiring users to supply temporary codes verified against the hashed Base32 `twoFactorSecret` locked to their schema.

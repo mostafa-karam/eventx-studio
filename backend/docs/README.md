@@ -1,59 +1,58 @@
-# EventX Studio Backend Documentation
+# EventX Studio Backend
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)
-![Express](https://img.shields.io/badge/express-4.19.2-lightgrey.svg)
-![MongoDB](https://img.shields.io/badge/mongodb-7.0-brightgreen.svg)
+Welcome to the backend core of EventX Studio—a scalable, secure API managing advanced ticketing, hall subleasing, multi-role user authentication, and atomic event analytics.
 
-Welcome to the official, in-depth backend documentation for **EventX Studio**. This documentation is designed to serve as a comprehensive guide for developers, system administrators, and security auditors.
+Built primarily on **Express.js**, **Mongoose (MongoDB)**, and **JWT Auth**, the app enforces a zero-trust model utilizing multi-ring security mitigations (`helmet`, `csrf-csrf`, rate limiting) and highly optimized architecture (MVC + Services).
 
-## 🏗️ Project Overview
+## Table of Contents
 
-**EventX Studio** is a professional venue management system designed for high-concurrency event hosting. The core value proposition is the seamless management of a large physical venue containing multiple halls (varying in capacity and equipment).
+The complete developer knowledge base has been drastically expanded. Dive into the detailed documentation specific to the layer you are working on:
 
-### 🔑 Core Features
+### 1. Operations & Onboarding
+- 🚀 **[Setup & Deployment Guide](./setup.md)**: Environment variable references (`.env`), dev-ops run scripts.
+- 🏗 **[System Architecture Map](./architecture.md)**: The lifecycle ring map—how requests flow from clients through the controller matrices.
+- 🗺 **[Codebase Explorer](./codebase-map.md)**: Details the exact responsibility of every folder (utilities, configs, uploads).
 
-- **Hall Management**: Complete CRUD for venue halls, including capacity tracking and feature lists (AV equipment, accessibility, etc.).
-- **Organization Support**: Allows companies and event organizers to rent specific halls for conferences, workshops, or private events.
-- **Dynamic Event Lifecycle**: Support for draft events, scheduling, and live publishing.
-- **Atomic Booking Engine**: A high-performance seat-booking system that prevents double-bookings through database-level locks.
-- **Advanced Analytics**: Real-time tracking of revenue, attendance, and hall occupancy rates.
-- **Security-First Auth**: JWT-based session management with Refresh Token rotation and 2FA support.
-- **Communication Layer**: Automated email notifications for registrations, bookings, and waitlist availability.
+### 2. Implementation Maps
+- 💾 **[Database Models](./models.md)**: Exhaustive taxonomy of all 13 schemas, pre-save hooks, and virtualized derivations.
+- 📡 **[API Reference](./api-reference.md)**: Exhaustive mapping of all HTTP boundaries, required params, and RBAC authentication strata for categories like Bookings, Halls, and Notifications.
 
-## 📁 Detailed Project Structure
+### 3. Core Logic & Security
+- 🛡️ **[Security Posture](./security.md)**: Explains the active Zero-Trust defense models (anti XSS, CSRF tracking, JWT validation, SQL Injection sanitization).
+- 🧩 **[Services Layer](./services-reference.md)**: Documentation on atomic calculation engines (`bookingService`) ensuring mathematical transaction integrity.
+- 🚧 **[Middleware Interceptors](./middleware-reference.md)**: Details the role-based gating system and universal `express-validator` schema catchers.
 
-```text
-backend/
-├── controllers/          # Business Logic
-│   ├── authController.js     # User registration, login, 2FA, session tracking
-│   ├── eventsController.js   # Event CRUD, lifecycle, and waitlists
-│   ├── ticketsController.js  # Atomic booking, check-ins, and user tickets
-│   ├── analyticsController.js# Complex MongoDB aggregations for reports
-│   └── ... (see docs/api-reference.md)
-├── docs/                 # Documentation (Line-by-line detailed guides)
-├── middleware/           # Pipeline Processing
-│   ├── auth.js               # Multi-layer role-based authorization (RBAC)
-│   ├── errorMiddleware.js     # Centralized error mapping and sanitization
-│   └── ... (CORS, Rate Limiting, CSRF are in server.js)
-├── models/               # Data Layer & Schemas
-│   ├── User.js               # Profiles, security state, and sessions
-│   ├── Event.js              # Event details and atomic seat map logic
-│   ├── Ticket.js             # Booking records and QR code generation
-│   └── ... (Halls, Audits, Notifications)
-├── routes/               # lean entry points (mapping URLs to Controllers)
-├── utils/                # Utility Services
-│   ├── logger.js             # Winston-based Winston logger
-│   └── emailService.js       # Nodemailer wrapper with template support
-├── uploads/              # Storage for event images and user avatars
-└── server.js             # Entry Point & Global Security configuration
+### 4. Diagnostics & Testing
+- 🧪 **[Testing Framework Guide](./testing-guide.md)**: How to leverage our `mongodb-memory-server` setups and `supertest` CI injections.
+- ⚙️ **[Scripts & DB Management](./scripts-guide.md)**: Documentation covering the massive `@faker-js` database `seed.js` script and self-healing cron logic.
+
+---
+
+## Technical Stack Overview
+
+| Category | Technology |
+| :--- | :--- |
+| **Framework** | Node.js v18+, Express v4.21+ |
+| **Database** | MongoDB v6+ (Mongoose v8+) |
+| **Authentication** | JSON Web Tokens (`jsonwebtoken`), bcryptjs, otplib (2FA) |
+| **Application Security**| Helmet, csrf-csrf, express-rate-limit, mongo-sanitize |
+| **Testing** | Jest, Supertest, MongoDB-Memory-Server |
+| **Storage & Mail** | Multer, Nodemailer |
+| **Linting** | ESLint |
+
+## Standard Dev Run
+
+*(Refer to `setup.md` for full environment mapping and Mongo configuration first.)*
+
+```bash
+# Install dependencies
+npm install
+
+# Wipe and populate mock deterministic data (Organizers, Users, Events, Bookings)
+npm run seed
+
+# Boot the API proxy watcher
+npm run dev
 ```
 
-## 📚 Detailed Documentation Index
-
-1. [**Architecture Deep Dive**](architecture.md) - Understanding the technical patterns and middleware pipelines.
-2. [**Complete Codebase Map**](codebase-map.md) - **<NEW>** comprehensive file-by-file professional guide to all directories.
-3. [**API Reference (Full Specs)**](api-reference.md) - Request bodies, response schemas, and error codes.
-4. [**Database & Schemas**](models.md) - Detailed field-level definitions and indexing strategy.
-5. [**Security Implementation**](security.md) - How we protect tokens, mitigate XSS/CSRF, and handle sessions.
-6. [**Setup, Dev & Deployment**](setup.md) - Step-by-step configuration for local and production environments.
+> Application boots natively to http://localhost:5000/api/v1

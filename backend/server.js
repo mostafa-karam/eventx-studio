@@ -10,6 +10,9 @@ const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
 const crypto = require('crypto');
 const path = require('path');
+const morgan = require('morgan');
+const hpp = require('hpp');
+const responseTime = require('response-time');
 const logger = require('./utils/logger');
 const AppError = require('./utils/AppError');
 
@@ -108,6 +111,8 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
 app.use(compression());
+app.use(hpp()); // Prevent HTTP Parameter Pollution
+app.use(responseTime()); // Add X-Response-Time header
 
 // ─── CSRF Protection (csrf-csrf double-submit cookie) ───────────────
 const csrfSecret = process.env.CSRF_SECRET || process.env.JWT_SECRET;
@@ -151,12 +156,12 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 }));
 
 // ─── Request Logging ─────────────────────────────────────────────────
-app.use((req, _res, next) => {
-  if (process.env.NODE_ENV !== 'production') {
-    logger.info(`${req.method} ${req.path}`);
-  }
-  next();
-});
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+} else {
+  // Standard production logging format
+  app.use(morgan('[:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] - :response-time ms'));
+}
 
 // ─── Swagger API Documentation ───────────────────────────────────────
 const setupSwagger = require('./swagger');
@@ -175,54 +180,22 @@ const connectDB = async () => {
 };
 
 // ─── Routes ──────────────────────────────────────────────────────────
-const authRoutes = require('./routes/auth');
-const eventRoutes = require('./routes/events');
-const ticketRoutes = require('./routes/tickets');
-const analyticsRoutes = require('./routes/analytics');
-const paymentRoutes = require('./routes/payments');
-const bookingRoutes = require('./routes/booking');
-const userRoutes = require('./routes/users');
-const notificationRoutes = require('./routes/notifications');
-const supportRoutes = require('./routes/support');
-const marketingRoutes = require('./routes/marketing');
-const categoriesRoutes = require('./routes/categories');
-const hallRoutes = require('./routes/halls');
-const hallBookingRoutes = require('./routes/hallBookings');
-const publicRoutes = require('./routes/public');
-const auditLogRoutes = require('./routes/auditLog');
-const searchRoutes = require('./routes/search');
-const uploadRoutes = require('./routes/upload');
-const couponRoutes = require('./routes/coupons');
-const reviewsRoutes = require('./routes/reviews');
+const apiRoutes = require('./routes');
 
-app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/events', eventRoutes);
-app.use('/api/tickets', ticketRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/booking', bookingRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/support', supportRoutes);
-app.use('/api/marketing', marketingRoutes);
-app.use('/api/categories', categoriesRoutes);
-app.use('/api/halls', hallRoutes);
-app.use('/api/hall-bookings', hallBookingRoutes);
-app.use('/api/public', publicRoutes);
-app.use('/api/audit-log', auditLogRoutes);
-app.use('/api/search', searchRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/events/:eventId/reviews', reviewsRoutes);
-app.use('/api/coupons', couponRoutes);
+// Mount all API routes under /api
+app.use('/api', apiRoutes);
 
 app.get('/', (_req, res) => res.json({ message: 'EventX Studio API is running!', version: '2.0.0' }));
 
 // ─── Health Check ────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    dbStatus,
+    memory: process.memoryUsage(),
     environment: process.env.NODE_ENV || 'development',
   });
 });

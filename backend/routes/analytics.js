@@ -11,7 +11,7 @@ router.get('/dashboard', authenticate, requireAdmin, analyticsController.getDash
 router.get('/attendees', authenticate, requireAdmin, analyticsController.getAttendees);
 
 // Route: /events/:eventId
-router.get('/events/:eventId', authenticate, requireAdmin, analyticsController.getEventAnalytics);
+router.get('/events/:eventId', authenticate, analyticsController.getEventAnalytics);
 
 // Route: /export
 router.get('/export', authenticate, requireAdmin, analyticsController.exportAnalytics);

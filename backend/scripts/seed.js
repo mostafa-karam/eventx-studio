@@ -1,6 +1,7 @@
 require('dotenv').config({ path: './.env' });
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { faker } = require('@faker-js/faker');
 
 // Models
 const User = require('../models/User');
@@ -8,208 +9,391 @@ const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const Hall = require('../models/Hall');
 const Category = require('../models/EventCategory');
+const HallBooking = require('../models/HallBooking');
+const Coupon = require('../models/Coupon');
+const Review = require('../models/Review');
+const Notification = require('../models/Notification');
+const Waitlist = require('../models/Waitlist');
+const Campaign = require('../models/Campaign');
+const SupportTicket = require('../models/SupportTicket');
+const AuditLog = require('../models/AuditLog');
 
 const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/eventx', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (err) {
-    console.error(`Error connecting to MongoDB: ${err.message}`);
-    process.exit(1);
-  }
+    try {
+        const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/eventx', {
+            useNewUrlParser: true,
+            useUnifiedTopology: true
+        });
+        console.log(`MongoDB Connected: ${conn.connection.host}`);
+    } catch (err) {
+        console.error(`Error connecting to MongoDB: ${err.message}`);
+        process.exit(1);
+    }
 };
 
 const seedData = async () => {
-  try {
-    console.log('Connecting to database...');
-    await connectDB();
+    try {
+        console.log('--- Connecting to database... ---');
+        await connectDB();
 
-    console.log('Clearing existing data...');
-    await Ticket.deleteMany({});
-    await Event.deleteMany({});
-    await Hall.deleteMany({});
-    await Category.deleteMany({});
-    await User.deleteMany({});
+        console.log('--- Clearing existing data... ---');
+        await Promise.all([
+            Ticket.deleteMany({}),
+            Event.deleteMany({}),
+            Hall.deleteMany({}),
+            Category.deleteMany({}),
+            User.deleteMany({}),
+            HallBooking.deleteMany({}),
+            Coupon.deleteMany({}),
+            Review.deleteMany({}),
+            Notification.deleteMany({}),
+            Waitlist.deleteMany({}),
+            Campaign.deleteMany({}),
+            SupportTicket.deleteMany({}),
+            AuditLog.deleteMany({})
+        ]);
 
-    console.log('Inserting mock data...');
+        console.log('--- Inserting realistic mock data... ---');
 
-    // 1. Create Users
-    const salt = await bcrypt.genSalt(10);
-    const password = await bcrypt.hash('password123', salt);
+        const salt = await bcrypt.genSalt(10);
+        const password = await bcrypt.hash('password123', salt);
 
-    const admin = await User.create({
-      name: 'Admin User',
-      email: 'admin@eventx.com',
-      password,
-      role: 'admin',
-      location: { city: 'Dubai', country: 'UAE' },
-      interests: ['Technology', 'Music']
-    });
-
-    const organizer1 = await User.create({
-      name: 'Tech Organizer',
-      email: 'organizer@techx.com',
-      password,
-      role: 'organizer',
-      location: { city: 'London', country: 'UK' }
-    });
-
-    const organizer2 = await User.create({
-      name: 'Music Festivals Ltd',
-      email: 'music@events.com',
-      password,
-      role: 'organizer',
-      location: { city: 'New York', country: 'USA' }
-    });
-
-    // Create 10 attendees with various interests
-    const attendees = [];
-    const interests = ['music', 'technology', 'sports', 'art', 'networking', 'business', 'food'];
-    
-    for (let i = 1; i <= 10; i++) {
-        const userInterests = [];
-        for (let j = 0; j < 3; j++) {
-            const randomInterest = interests[Math.floor(Math.random() * interests.length)];
-            if (!userInterests.includes(randomInterest)) userInterests.push(randomInterest);
-        }
-        
-        attendees.push(await User.create({
-            name: `Attendee ${i}`,
-            email: `attendee${i}@test.com`,
+        // 1. Create Core Users (Fixed logins for ease of access)
+        const admin = await User.create({
+            name: 'Admin Chief',
+            email: 'admin@eventx.com',
             password,
-            role: 'user',
-            age: 20 + i,
-            gender: i % 2 === 0 ? 'female' : 'male',
-            location: { city: i % 2 === 0 ? 'Dubai' : 'Cairo', country: i % 2 === 0 ? 'UAE' : 'Egypt' },
-            interests: userInterests
-        }));
-    }
-
-    // 2. Create Categories
-    await Category.create([
-      { name: 'Conference', slug: 'conference', icon: '💼', color: '#3B82F6' },
-      { name: 'Music', slug: 'music', icon: '🎵', color: '#8B5CF6' },
-      { name: 'Sports', slug: 'sports', icon: '🏆', color: '#10B981' },
-      { name: 'Workshop', slug: 'workshop', icon: '🛠️', color: '#F59E0B' }
-    ]);
-
-    // 3. Create Halls
-    const mainHall = await Hall.create({
-        name: 'Grand Convention Center',
-        description: 'A large hall suitable for grand events and conferences.',
-        capacity: 500,
-        location: {
-            address: '123 Main St',
-            city: 'Dubai',
-            state: 'Dubai',
-            country: 'UAE',
-            zipCode: '00000',
-            coordinates: { type: 'Point', coordinates: [55.2708, 25.2048] }
-        },
-        pricing: { basePrice: 1000, pricePerHour: 200, currency: 'USD' },
-        equipment: ['projector', 'sound_system', 'stage'],
-        amenities: ['wifi', 'parking', 'ac'],
-        rules: ['no_smoking']
-    });
-
-    // 4. Create Events
-    const event1Date = new Date();
-    event1Date.setDate(event1Date.getDate() + 10); // 10 days in the future
-    
-    const event2Date = new Date();
-    event2Date.setDate(event2Date.getDate() - 5); // 5 days in the past
-    
-    const event1 = await Event.create({
-        title: 'Global Tech Expo 2024',
-        description: '<p>The biggest tech event of the year featuring innovations in AI, Web3, and more.</p>',
-        category: 'conference',
-        date: event1Date,
-        venue: {
-            name: mainHall.name,
-            address: mainHall.location.address,
-            city: mainHall.location.city,
-            country: mainHall.location.country,
-            capacity: 500
-        },
-        pricing: { type: 'paid', amount: 49.99, currency: 'USD' },
-        seating: { totalSeats: 500, availableSeats: 500 },
-        organizer: organizer1._id,
-        status: 'published',
-        hall: mainHall._id,
-        analytics: { views: 154, bookings: 0, revenue: 0 }
-    });
-
-    const event2 = await Event.create({
-        title: 'Summer Music Fest',
-        description: '<p>Live outdoor summer music festival with top artists.</p>',
-        category: 'music',
-        date: event2Date,
-        venue: {
-            name: 'Central Park Arena',
-            address: 'Park Ave',
-            city: 'New York',
-            country: 'USA',
-            capacity: 200
-        },
-        pricing: { type: 'paid', amount: 150, currency: 'USD' },
-        seating: { totalSeats: 200, availableSeats: 200 },
-        organizer: organizer2._id,
-        status: 'completed',
-        analytics: { views: 980, bookings: 0, revenue: 0 }
-    });
-
-    // 5. Create Tickets (Attendees joining events)
-    console.log('Booking tickets...');
-    
-    // 8 attendees book event 1
-    for (let i = 0; i < 8; i++) {
-        await event1.bookSeat(`S00${i+1}`, attendees[i]._id);
-        await Ticket.create({
-            event: event1._id,
-            user: attendees[i]._id,
-            seatNumber: `S00${i+1}`,
-            status: 'booked',
-            payment: {
-                status: 'completed',
-                amount: event1.pricing.amount,
-                currency: 'USD',
-                paymentMethod: 'credit_card'
-            },
-            qrCode: 'mock_qr_data'
+            role: 'admin',
+            emailVerified: true,
+            isActive: true,
+            location: { city: 'Dubai', country: 'UAE' },
+            interests: ['Technology', 'Music']
         });
-    }
-    await event1.save();
-    
-    // 5 attendees book event 2 (already completed, so tickets might be 'used')
-    for (let i = 0; i < 5; i++) {
-        await event2.bookSeat(`S00${i+1}`, attendees[i+5 > 9 ? i : i+5]._id);
-        await Ticket.create({
-            event: event2._id,
-            user: attendees[i+5 > 9 ? i : i+5]._id,
-            seatNumber: `S00${i+1}`,
-            status: 'used',
-            payment: {
-                status: 'completed',
-                amount: event2.pricing.amount,
-                currency: 'USD',
-                paymentMethod: 'credit_card'
-            },
-            qrCode: 'mock_qr_data',
-            checkIn: { isCheckedIn: true, checkInTime: event2Date }
-        });
-    }
-    await event2.save();
 
-    console.log('Database seeded successfully!');
-    console.log('Admin Info: email: admin@eventx.com | password: password123');
-    process.exit();
-  } catch (error) {
-    console.error('Seeding error:', error);
-    process.exit(1);
-  }
+        const venueAdmin = await User.create({
+            name: 'Venue Executive',
+            email: 'venue@eventx.com',
+            password,
+            role: 'venue_admin',
+            emailVerified: true,
+            isActive: true
+        });
+
+        const organizer1 = await User.create({
+            name: 'Innovate Tech',
+            email: 'organizer@techx.com',
+            password,
+            role: 'organizer',
+            emailVerified: true,
+            isActive: true,
+            location: { city: 'London', country: 'UK' }
+        });
+
+        const organizer2 = await User.create({
+            name: 'Live Music Festivals',
+            email: 'music@events.com',
+            password,
+            role: 'organizer',
+            emailVerified: true,
+            isActive: true,
+            location: { city: 'New York', country: 'USA' }
+        });
+
+        // 2. Generate Realistic Attendees using Faker
+        const attendees = [];
+        const interestsPool = ['music', 'technology', 'sports', 'art', 'networking', 'business', 'food'];
+
+        for (let i = 1; i <= 20; i++) {
+            attendees.push(await User.create({
+                name: faker.person.fullName(),
+                email: faker.internet.email().toLowerCase(),
+                password,
+                role: 'user',
+                emailVerified: true,
+                isActive: true,
+                age: faker.number.int({ min: 18, max: 65 }),
+                gender: faker.helpers.arrayElement(['male', 'female', 'other']),
+                location: { 
+                    city: faker.location.city(), 
+                    country: faker.helpers.arrayElement(['UAE', 'UK', 'USA', 'Egypt', 'France']) 
+                },
+                interests: faker.helpers.arrayElements(interestsPool, { min: 2, max: 4 })
+            }));
+        }
+
+        // 3. Create Event Categories
+        const categories = await Category.insertMany([
+            { name: 'Conference', slug: 'conference', icon: '💼', color: '#3B82F6', createdBy: admin._id },
+            { name: 'Music', slug: 'music', icon: '🎵', color: '#8B5CF6', createdBy: admin._id },
+            { name: 'Sports', slug: 'sports', icon: '🏆', color: '#10B981', createdBy: admin._id },
+            { name: 'Workshop', slug: 'workshop', icon: '🛠️', color: '#F59E0B', createdBy: admin._id }
+        ]);
+
+        // 4. Create World-Class Halls
+        const mainHall = await Hall.create({
+            name: 'Grand Expo Center',
+            description: faker.lorem.paragraph(),
+            capacity: 1000,
+            hourlyRate: 350,
+            dailyRate: 2500,
+            status: 'active',
+            createdBy: venueAdmin._id,
+            location: {
+                address: faker.location.streetAddress(),
+                city: 'Dubai',
+                country: 'UAE'
+            },
+            equipment: ['projector', 'sound_system', 'stage', 'lighting'],
+            amenities: ['wifi', 'parking', 'ac'],
+            rules: ['no_smoking']
+        });
+
+        const musicArena = await Hall.create({
+            name: 'Central Music Arena',
+            description: faker.lorem.paragraph(),
+            capacity: 500,
+            hourlyRate: 150,
+            dailyRate: 1000,
+            status: 'active',
+            createdBy: venueAdmin._id,
+            location: {
+                address: faker.location.streetAddress(),
+                city: 'New York',
+                country: 'USA'
+            },
+            equipment: ['stage', 'sound_system', 'lighting'],
+            amenities: ['wifi', 'bar', 'ac'],
+            rules: ['no_outside_food']
+        });
+
+        // 5. Hall Bookings (Organizers renting halls)
+        await HallBooking.create([
+            {
+                hall: mainHall._id,
+                event: null, // Will map to an event logically
+                organizer: organizer1._id,
+                startDate: faker.date.future(),
+                endDate: faker.date.future(),
+                status: 'approved',
+                totalCost: 1500,
+                notes: 'Annual Tech Conference setup'
+            },
+            {
+                hall: musicArena._id,
+                event: null,
+                organizer: organizer2._id,
+                startDate: faker.date.past(),
+                endDate: faker.date.past(),
+                status: 'approved',
+                totalCost: 800,
+                notes: 'Summer festival main stage'
+            }
+        ]);
+
+        // 6. Create Realistic Events
+        const pastEventDate = faker.date.past();
+        const futureEventDate = faker.date.future();
+
+        const eventTech = await Event.create({
+            title: 'Global Tech & AI Summit 2026',
+            description: `<p>${faker.lorem.paragraphs(2)}</p>`,
+            category: 'conference',
+            date: futureEventDate,
+            endDate: new Date(futureEventDate.getTime() + 8 * 60 * 60 * 1000), // 8 hours later
+            venue: {
+                name: mainHall.name,
+                city: mainHall.location.city,
+                country: mainHall.location.country,
+                capacity: mainHall.capacity
+            },
+            pricing: { type: 'paid', amount: 199.99, currency: 'USD' },
+            seating: { totalSeats: 500, availableSeats: 500 },
+            organizer: organizer1._id,
+            status: 'published',
+            hall: mainHall._id,
+            analytics: { views: faker.number.int({min: 200, max: 1000}), bookings: 0, revenue: 0 },
+            tags: ['AI', 'Tech', 'Web3', 'Future']
+        });
+
+        const eventMusic = await Event.create({
+            title: 'Electric Summer SoundFest',
+            description: `<p>${faker.lorem.paragraphs(2)}</p>`,
+            category: 'music',
+            date: pastEventDate,
+            endDate: new Date(pastEventDate.getTime() + 6 * 60 * 60 * 1000), 
+            venue: {
+                name: musicArena.name,
+                city: musicArena.location.city,
+                country: musicArena.location.country,
+                capacity: musicArena.capacity
+            },
+            pricing: { type: 'paid', amount: 85, currency: 'USD' },
+            seating: { totalSeats: 250, availableSeats: 250 },
+            organizer: organizer2._id,
+            status: 'completed',
+            hall: musicArena._id,
+            analytics: { views: faker.number.int({min: 1500, max: 4000}), bookings: 0, revenue: 0 },
+            tags: ['Music', 'Summer', 'Live', 'Festival']
+        });
+
+        // 7. Seed Tickets, Check-ins, and Generate Database Notifications
+        console.log('Generating bookings and notifications...');
+        
+        // 12 Attendees book the upcoming Tech event
+        for (let i = 0; i < 12; i++) {
+            const user = attendees[i];
+            const seatNumber = `A-${String(i + 1).padStart(2, '0')}`;
+            
+            await eventTech.bookSeat(seatNumber, user._id);
+            
+            const ticket = await Ticket.create({
+                event: eventTech._id,
+                user: user._id,
+                seatNumber: seatNumber,
+                status: 'booked',
+                payment: {
+                    status: 'completed',
+                    amount: eventTech.pricing.amount,
+                    currency: eventTech.pricing.currency,
+                    paymentMethod: 'credit_card',
+                    paymentDate: new Date()
+                },
+                qrCode: faker.string.uuid()
+            });
+
+            // True Database Notification!
+            await Notification.create({
+                title: 'Order Confirmed! 🎉',
+                message: `You successfully booked a ticket for ${eventTech.title}. Get ready!`,
+                type: 'booking',
+                userId: user._id,
+                priority: 'high',
+                metadata: { eventId: eventTech._id, ticketId: ticket._id },
+                createdAt: faker.date.recent()
+            });
+
+            // Occasional Support Ticket related to booking
+            if (i === 3) {
+                await SupportTicket.create({
+                    subject: 'Dietary requirements for lunch',
+                    description: 'Hello, I just booked my ticket. Do you provide vegan lunch options?',
+                    category: 'event',
+                    priority: 'medium',
+                    status: 'open',
+                    userId: user._id
+                });
+            }
+        }
+        await eventTech.save();
+
+        // 8 Attendees booked the past Music event (some checked in, some missed it)
+        for (let i = 12; i < 20; i++) {
+            const user = attendees[i];
+            const checkedIn = Math.random() > 0.2; // 80% attendance rate
+            const seatNumber = `M-${String(i + 1).padStart(2, '0')}`;
+
+            await eventMusic.bookSeat(seatNumber, user._id);
+
+            const ticket = await Ticket.create({
+                event: eventMusic._id,
+                user: user._id,
+                seatNumber: seatNumber,
+                status: checkedIn ? 'used' : 'booked',
+                payment: {
+                    status: 'completed',
+                    amount: eventMusic.pricing.amount,
+                    currency: eventMusic.pricing.currency,
+                    paymentMethod: 'paypal',
+                    paymentDate: faker.date.past()
+                },
+                qrCode: faker.string.uuid(),
+                checkIn: { isCheckedIn: checkedIn, checkInTime: checkedIn ? eventMusic.date : null }
+            });
+
+            await Notification.create({
+                title: 'Here is your ticket!',
+                message: `You booked a ticket for ${eventMusic.title}. Keep this safe.`,
+                type: 'booking',
+                userId: user._id,
+                metadata: { eventId: eventMusic._id, ticketId: ticket._id },
+                createdAt: faker.date.past()
+            });
+
+            // If checked in and attended, maybe write a glowing review!
+            if (checkedIn && Math.random() > 0.3) {
+                await Review.create({
+                    event: eventMusic._id,
+                    user: user._id,
+                    rating: faker.number.int({ min: 4, max: 5 }),
+                    title: faker.helpers.arrayElement(['Incredible experience!', 'Best weekend ever', 'Awesome vibes', 'Sound system was insane']),
+                    body: faker.lorem.paragraph(),
+                    attendedVerified: true,
+                    createdAt: faker.date.recent()
+                });
+            }
+        }
+        await eventMusic.save();
+
+        // 8. Create Sales & Discounts (Coupons)
+        await Coupon.create([
+            { code: 'EARLYBIRD', description: 'Early Bird 20%', discountType: 'percentage', discountValue: 20, createdBy: admin._id },
+            { code: 'VIPUPGRADE', description: '$50 Off VIP Packages', discountType: 'fixed', discountValue: 50, createdBy: organizer1._id }
+        ]);
+
+        // 9. Create a Waitlist for a heavily-demanded event
+        await Waitlist.create({
+            event: eventTech._id,
+            user: attendees[19]._id, // The last guy didn't make the cut for the first block!
+            status: 'pending',
+            createdAt: faker.date.recent()
+        });
+
+        // 10. Audit Logs
+        await AuditLog.create([
+            {
+                actor: admin._id,
+                actorName: admin.name,
+                actorRole: admin.role,
+                action: 'auth.login',
+                resource: 'Auth',
+                ip: '127.0.0.1',
+                createdAt: faker.date.recent()
+            },
+            {
+                actor: admin._id,
+                actorName: admin.name,
+                actorRole: admin.role,
+                action: 'coupon.create',
+                resource: 'Coupon',
+                ip: '127.0.0.1',
+                createdAt: faker.date.recent()
+            }
+        ]);
+
+        // 11. Marketing Campaigns
+        await Campaign.create({
+            name: 'Tech Summit Final Push',
+            type: 'email',
+            status: 'completed',
+            eventId: eventTech._id,
+            content: 'Last chance to grab your tickets for the Innovation Tech Summit 2026. Only a few spots left!',
+            createdBy: organizer1._id,
+            metrics: { sent: 500, delivered: 480, opened: 320 },
+            createdAt: faker.date.recent()
+        });
+
+        console.log('\n--- Database Seeded Successfully! ---');
+        console.log('Use the following credentials to test your panels:');
+        console.log('🔑 Admin:      admin@eventx.com     / password123');
+        console.log('🔑 Organizer:  organizer@techx.com  / password123');
+        console.log('🔑 Venue Mngr: venue@eventx.com     / password123');
+        console.log('🔑 User:       (Any faker email)    / password123');
+        
+        process.exit();
+    } catch (error) {
+        console.error('Seeding error:', error);
+        process.exit(1);
+    }
 };
 
 seedData();

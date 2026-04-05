@@ -23,6 +23,12 @@ jobs:
       - name: Run tests
         working-directory: backend
         run: npm test
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci-test-jwt-secret
+          JWT_REFRESH_SECRET: ci-test-refresh-secret
+          MONGODB_URI: mongodb://localhost:27017/eventx-ci
+          CSRF_SECRET: ci-test-csrf-secret
 
   frontend-lint:
     runs-on: ubuntu-latest

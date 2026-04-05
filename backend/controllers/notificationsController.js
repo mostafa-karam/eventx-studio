@@ -8,101 +8,13 @@ const logger = require('../utils/logger');
 // @access  Private
 exports.getNotifications = async (req, res) => {
     try {
-        const notifications = [];
-
-        // Get recent bookings for the current user only
-        const isAdmin = req.user.role === 'admin';
-        const ticketFilter = isAdmin ? {} : { user: req.user._id };
-        const recentTickets = await Ticket.find(ticketFilter)
-            .populate('user', 'name')
-            .populate('event', 'title')
-            .sort({ bookingDate: -1 })
-            .limit(10);
-
-        // Get recent user registrations (admin only)
-        const recentUsers = isAdmin
-            ? await User.find({ role: 'user' }).sort({ createdAt: -1 }).limit(5).select('name createdAt')
-            : [];
-
-        // Get recent events (admin sees all; others see only their own published events)
-        const eventFilter = isAdmin ? {} : { organizer: req.user._id, status: 'published' };
-        const recentEvents = await Event.find(eventFilter)
+        const notifications = await Notification.find({ userId: req.user._id })
             .sort({ createdAt: -1 })
-            .limit(5)
-            .select('title createdAt status');
-
-        // Add booking notifications
-        recentTickets.forEach((ticket, index) => {
-            if (ticket.user && ticket.event) {
-                notifications.push({
-                    _id: `booking-${ticket._id}`,
-                    title: 'New Booking',
-                    message: `${ticket.user.name} booked a ticket for ${ticket.event.title}`,
-                    type: 'booking',
-                    priority: 'medium',
-                    read: index > 3, // Mark first 4 as unread
-                    createdAt: ticket.bookingDate || ticket.createdAt,
-                    actionUrl: '/admin/tickets',
-                    metadata: { ticketId: ticket._id, eventId: ticket.event._id }
-                });
-            }
-        });
-
-        // Add user registration notifications
-        recentUsers.forEach((user, index) => {
-            notifications.push({
-                _id: `user-${user._id}`,
-                title: 'New User Registration',
-                message: `${user.name} joined the platform`,
-                type: 'user',
-                priority: 'low',
-                read: index > 2, // Mark first 3 as unread
-                createdAt: user.createdAt,
-                actionUrl: '/admin/users',
-                metadata: { userId: user._id }
-            });
-        });
-
-        // Add event notifications
-        recentEvents.forEach((event, index) => {
-            notifications.push({
-                _id: `event-${event._id}`,
-                title: 'Event Activity',
-                message: `Event "${event.title}" was ${event.status === 'published' ? 'published' : 'created'}`,
-                type: 'event',
-                priority: event.status === 'published' ? 'high' : 'medium',
-                read: index > 2, // Mark first 3 as unread
-                createdAt: event.createdAt,
-                actionUrl: '/admin/events',
-                metadata: { eventId: event._id }
-            });
-        });
-
-        // Add some system notifications
-        if (recentTickets.length > 0) {
-            const totalRevenue = recentTickets.reduce((sum, ticket) => sum + (ticket.payment?.amount || 0), 0);
-            if (totalRevenue > 0) {
-                notifications.push({
-                    _id: 'system-revenue',
-                    title: 'Revenue Update',
-                    message: `Total revenue reached $${totalRevenue.toLocaleString()}`,
-                    type: 'system',
-                    priority: 'medium',
-                    read: false,
-                    createdAt: new Date(),
-                    actionUrl: '/admin/dashboard',
-                    metadata: { revenue: totalRevenue }
-                });
-            }
-        }
-
-        // Sort by timestamp (newest first) and limit
-        notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        const limitedNotifications = notifications.slice(0, 20);
+            .limit(20);
 
         res.json({
             success: true,
-            data: { notifications: limitedNotifications }
+            data: { notifications }
         });
     } catch (error) {
         logger.error('Error fetching notifications:', error);

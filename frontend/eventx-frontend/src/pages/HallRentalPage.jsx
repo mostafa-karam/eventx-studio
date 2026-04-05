@@ -27,8 +27,8 @@ const HallRentalPage = () => {
     const [confirmedBookingId, setConfirmedBookingId] = useState(null);
 
     useEffect(() => {
-        if (!user) {
-            toast.info("Please sign in or create an organizer account to book a hall.");
+        if (!user || (user.role !== 'organizer' && user.role !== 'admin')) {
+            toast.info("Please sign in with an organizer account to book a hall.");
             navigate('/auth');
             return;
         }

@@ -688,13 +688,21 @@ exports.cancelTicket = async (req, res) => {
 exports.checkinTicket = async (req, res) => {
   try {
     const ticket = await Ticket.findById(req.params.id)
-      .populate('event', 'title date')
+      .populate('event', 'title date organizer')
       .populate('user', 'name email');
 
     if (!ticket) {
       return res.status(404).json({
         success: false,
         message: 'Ticket not found'
+      });
+    }
+
+    // Enforce organizer ownership of the event before allowing check-in
+    if (req.user.role !== 'admin' && (!ticket.event.organizer || ticket.event.organizer.toString() !== req.user._id.toString())) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to check in tickets for this event'
       });
     }
 
