@@ -1,6 +1,7 @@
 const Review = require('../models/Review');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
+const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
 // @desc    Get reviews for an event
@@ -20,7 +21,7 @@ exports.getReviews = async (req, res) => {
                 .limit(limit),
             Review.countDocuments({ event: eventId, deletedAt: null }),
             Review.aggregate([
-                { $match: { event: require('mongoose').Types.ObjectId ? new (require('mongoose').Types.ObjectId)(eventId) : eventId, deletedAt: null } },
+                { $match: { event: new mongoose.Types.ObjectId(eventId), deletedAt: null } },
                 {
                     $group: {
                         _id: null,

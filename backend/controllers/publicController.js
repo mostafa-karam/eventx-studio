@@ -1,5 +1,6 @@
 const Event = require('../models/Event');
 const Hall = require('../models/Hall');
+const logger = require('../utils/logger');
 const { escapeRegex } = require('../utils/helpers');
 
 // @desc    Get published events with filters
@@ -59,7 +60,8 @@ exports.getPublicEventById = async (req, res) => {
         await Event.findByIdAndUpdate(req.params.id, { $inc: { 'analytics.views': 1 } });
 
         res.json({ success: true, data: { event } });
-    } catch {
+    } catch (error) {
+        logger.error('Get public event error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
@@ -91,7 +93,8 @@ exports.getPublicHalls = async (req, res) => {
             success: true,
             data: { halls, pagination: { current: page, pages: Math.ceil(total / limit), total } },
         });
-    } catch {
+    } catch (error) {
+        logger.error('Get public halls error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
@@ -105,7 +108,8 @@ exports.getPublicHallById = async (req, res) => {
         if (!hall) return res.status(404).json({ success: false, message: 'Hall not found' });
 
         res.json({ success: true, data: { hall } });
-    } catch {
+    } catch (error) {
+        logger.error('Get public hall error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };

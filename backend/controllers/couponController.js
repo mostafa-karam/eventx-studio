@@ -7,10 +7,24 @@ const { ACTIONS, RESOURCES } = require('../utils/auditConstants');
 // @access  Private/Admin
 exports.getCoupons = async (req, res) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        
         const coupons = await Coupon.find()
             .populate('createdBy', 'name email')
-            .sort({ createdAt: -1 });
-        res.json({ success: true, data: { coupons } });
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit);
+        
+        const total = await Coupon.countDocuments();
+            
+        res.json({ 
+            success: true, 
+            data: { 
+                coupons,
+                pagination: { current: page, pages: Math.ceil(total / limit), total } 
+            } 
+        });
     } catch (error) {
         logger.error('Get coupons error: ' + error.message);
         res.status(500).json({ success: false, message: 'Server error' });

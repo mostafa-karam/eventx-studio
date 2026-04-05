@@ -14,7 +14,7 @@ exports.processPayment = async (req, res) => {
 
         // In production, integrate with a PSP (Stripe, etc.)
         // For this project, simulate success and issue a signed token to bind transaction to user/session
-        const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
+        const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET;
         const txId = `tx_${uuidv4().replace(/-/g, '').slice(0, 24)}`;
         // Include amount, quantity, and currency in token to prevent tampering
         const token = jwt.sign({ txId, userId: req.user._id, eventId: eventId || null, amount, quantity, currency }, secret, { expiresIn: '10m' });
@@ -47,7 +47,12 @@ exports.processPayment = async (req, res) => {
 exports.testToken = async (req, res) => {
     try {
         const { eventId } = req.body || {};
-        const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
+        // Gate test token behind non-production environment
+        if (process.env.NODE_ENV === 'production') {
+            return res.status(404).json({ success: false, message: 'Not available in production' });
+        }
+
+        const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET;
 
         const txId = `tx_${uuidv4().replace(/-/g, '').slice(0, 20)}`;
         const payload = {

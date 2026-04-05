@@ -20,6 +20,12 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: npm ci
+      - name: Security Scan
+        working-directory: backend
+        run: npm audit --audit-level=high || true
+      - name: Run lint
+        working-directory: backend
+        run: npm run lint || true
       - name: Run tests
         working-directory: backend
         run: npm test

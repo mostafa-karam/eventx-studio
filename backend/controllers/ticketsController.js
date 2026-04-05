@@ -120,7 +120,7 @@ exports.bookTicket = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid or missing payment token' });
       }
       try {
-        const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
+        const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET;
         const payload = jwt.verify(paymentToken, secret);
         
         // TODO (LOGIC-04): Coupon Usage Not Validated During Ticket Booking
@@ -259,7 +259,7 @@ exports.bookMultiTickets = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Payment token is required to complete a paid booking' });
       }
       try {
-        const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
+        const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET;
         const payload = jwt.verify(paymentToken, secret);
         if (payload.txId !== transactionId || payload.userId.toString() !== req.user._id.toString() || (payload.eventId && payload.eventId !== eventId)) {
           return res.status(400).json({ success: false, message: 'Invalid payment token' });
@@ -747,7 +747,7 @@ exports.checkinTicket = async (req, res) => {
 exports.getEventTickets = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
     const skip = (page - 1) * limit;
 
     const tickets = await Ticket.find({ event: req.params.eventId })
@@ -808,7 +808,7 @@ exports.checkinByQR = async (req, res) => {
         const { sig, ...qrData } = parsed;
         if (sig) {
           const expectedSig = crypto
-            .createHmac('sha256', process.env.JWT_SECRET || 'qr-fallback-secret')
+            .createHmac('sha256', process.env.JWT_SECRET)
             .update(JSON.stringify(qrData))
             .digest('hex');
           if (sig !== expectedSig) {

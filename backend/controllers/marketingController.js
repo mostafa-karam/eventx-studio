@@ -5,7 +5,7 @@ const logger = require('../utils/logger');
 // @access  Private
 exports.getCampaigns = async (req, res) => {
     try {
-        const campaigns = await Campaign.find({ createdBy: req.user.id })
+        const campaigns = await Campaign.find({ createdBy: req.user._id })
             .populate('eventId', 'title')
             .sort({ createdAt: -1 });
 
@@ -40,24 +40,26 @@ exports.getCampaigns = async (req, res) => {
 
         res.json({
             success: true,
-            campaigns: campaigns.map(campaign => ({
-                id: campaign._id,
-                name: campaign.name,
-                type: campaign.type,
-                status: campaign.status,
-                eventName: campaign.eventName || (campaign.eventId ? campaign.eventId.title : 'General'),
-                subject: campaign.subject,
-                content: campaign.content,
-                targetAudience: campaign.targetAudience,
-                createdAt: campaign.createdAt,
-                scheduledAt: campaign.scheduledAt,
-                sentAt: campaign.sentAt,
-                sent: campaign.metrics.sent,
-                opened: campaign.metrics.opened,
-                clicked: campaign.metrics.clicked,
-                conversions: campaign.metrics.conversions
-            })),
-            stats
+            data: {
+                campaigns: campaigns.map(campaign => ({
+                    id: campaign._id,
+                    name: campaign.name,
+                    type: campaign.type,
+                    status: campaign.status,
+                    eventName: campaign.eventName || (campaign.eventId ? campaign.eventId.title : 'General'),
+                    subject: campaign.subject,
+                    content: campaign.content,
+                    targetAudience: campaign.targetAudience,
+                    createdAt: campaign.createdAt,
+                    scheduledAt: campaign.scheduledAt,
+                    sentAt: campaign.sentAt,
+                    sent: campaign.metrics.sent,
+                    opened: campaign.metrics.opened,
+                    clicked: campaign.metrics.clicked,
+                    conversions: campaign.metrics.conversions
+                })),
+                stats
+            }
         });
     } catch (error) {
         logger.error('Error fetching marketing campaigns:', error);
@@ -83,7 +85,7 @@ exports.createCampaign = async (req, res) => {
             content,
             targetAudience: targetAudience || 'all',
             scheduledAt,
-            createdBy: req.user.id
+            createdBy: req.user._id
         });
 
         await campaign.save();
@@ -91,13 +93,15 @@ exports.createCampaign = async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'Campaign created successfully',
-            campaign: {
-                id: campaign._id,
-                name: campaign.name,
-                type: campaign.type,
-                status: campaign.status,
-                eventName: campaign.eventName,
-                createdAt: campaign.createdAt
+            data: {
+                campaign: {
+                    id: campaign._id,
+                    name: campaign.name,
+                    type: campaign.type,
+                    status: campaign.status,
+                    eventName: campaign.eventName,
+                    createdAt: campaign.createdAt
+                }
             }
         });
     } catch (error) {
@@ -115,7 +119,7 @@ exports.getCampaignById = async (req, res) => {
     try {
         const campaign = await Campaign.findOne({
             _id: req.params.id,
-            createdBy: req.user.id
+            createdBy: req.user._id
         }).populate('eventId', 'title');
 
         if (!campaign) {
@@ -127,20 +131,22 @@ exports.getCampaignById = async (req, res) => {
 
         res.json({
             success: true,
-            campaign: {
-                id: campaign._id,
-                name: campaign.name,
-                type: campaign.type,
-                status: campaign.status,
-                eventName: campaign.eventName || (campaign.eventId ? campaign.eventId.title : 'General'),
-                subject: campaign.subject,
-                content: campaign.content,
-                targetAudience: campaign.targetAudience,
-                createdAt: campaign.createdAt,
-                scheduledAt: campaign.scheduledAt,
-                sentAt: campaign.sentAt,
-                metrics: campaign.metrics,
-                settings: campaign.settings
+            data: {
+                campaign: {
+                    id: campaign._id,
+                    name: campaign.name,
+                    type: campaign.type,
+                    status: campaign.status,
+                    eventName: campaign.eventName || (campaign.eventId ? campaign.eventId.title : 'General'),
+                    subject: campaign.subject,
+                    content: campaign.content,
+                    targetAudience: campaign.targetAudience,
+                    createdAt: campaign.createdAt,
+                    scheduledAt: campaign.scheduledAt,
+                    sentAt: campaign.sentAt,
+                    metrics: campaign.metrics,
+                    settings: campaign.settings
+                }
             }
         });
     } catch (error) {
@@ -158,7 +164,7 @@ exports.updateCampaign = async (req, res) => {
     try {
         const campaign = await Campaign.findOne({
             _id: req.params.id,
-            createdBy: req.user.id
+            createdBy: req.user._id
         });
 
         if (!campaign) {
@@ -205,7 +211,7 @@ exports.deleteCampaign = async (req, res) => {
     try {
         const campaign = await Campaign.findOneAndDelete({
             _id: req.params.id,
-            createdBy: req.user.id
+            createdBy: req.user._id
         });
 
         if (!campaign) {
@@ -234,7 +240,7 @@ exports.launchCampaign = async (req, res) => {
     try {
         const campaign = await Campaign.findOne({
             _id: req.params.id,
-            createdBy: req.user.id
+            createdBy: req.user._id
         });
 
         if (!campaign) {

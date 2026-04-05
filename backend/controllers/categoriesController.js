@@ -1,5 +1,18 @@
 const EventCategory = require('../models/EventCategory');
+const Event = require('../models/Event');
 const logger = require('../utils/logger');
+
+// Shared helper to get event counts by category
+const getCategoryEventCounts = async () => {
+    const eventCounts = await Event.aggregate([
+        { $group: { _id: { $toLower: '$category' }, count: { $sum: 1 } } }
+    ]);
+    const countMap = {};
+    eventCounts.forEach(e => {
+        if (e._id) countMap[e._id.toString().trim().toLowerCase()] = e.count;
+    });
+    return countMap;
+};
 
 // @desc    Get all event categories
 // @access  Private
@@ -10,32 +23,26 @@ exports.getCategories = async (req, res) => {
             .sort({ name: 1 });
 
         // Dynamically calculate event counts
-        const Event = require('../models/Event');
-        const eventCounts = await Event.aggregate([
-            { $group: { _id: { $toLower: '$category' }, count: { $sum: 1 } } }
-        ]);
-        
-        const countMap = {};
-        eventCounts.forEach(e => {
-            if (e._id) countMap[e._id.toString().trim().toLowerCase()] = e.count;
-        });
+        const countMap = await getCategoryEventCounts();
 
         res.json({
             success: true,
-            categories: categories.map(category => {
-                const catName = category.name.toString().trim().toLowerCase();
-                return {
-                    id: category._id,
-                    name: category.name,
-                    description: category.description,
-                    color: category.color,
-                    emoji: category.emoji,
-                    eventCount: countMap[catName] || 0,
-                    isActive: category.isActive,
-                    createdAt: category.createdAt,
-                    createdBy: category.createdBy
-                };
-            })
+            data: {
+                categories: categories.map(category => {
+                    const catName = category.name.toString().trim().toLowerCase();
+                    return {
+                        id: category._id,
+                        name: category.name,
+                        description: category.description,
+                        color: category.color,
+                        emoji: category.emoji,
+                        eventCount: countMap[catName] || 0,
+                        isActive: category.isActive,
+                        createdAt: category.createdAt,
+                        createdBy: category.createdBy
+                    };
+                })
+            }
         });
     } catch (error) {
         logger.error('Error fetching categories:', error);
@@ -57,7 +64,7 @@ exports.createCategory = async (req, res) => {
             description,
             color: color || '#3B82F6',
             emoji: emoji || '📅',
-            createdBy: req.user.id
+            createdBy: req.user._id
         });
 
         await category.save();
@@ -227,12 +234,7 @@ exports.getCategoryStats = async (req, res) => {
             .limit(5)
             .select('name eventCount emoji');
 
-        const Event = require('../models/Event');
-        const eventCounts = await Event.aggregate([
-            { $group: { _id: { $toLower: '$category' }, count: { $sum: 1 } } }
-        ]);
-        const countMap = {};
-        eventCounts.forEach(e => { if (e._id) countMap[e._id.toString().trim().toLowerCase()] = e.count; });
+        const countMap = await getCategoryEventCounts();
 
         const topCategoriesWithCounts = topCategories.map(cat => {
             const catName = cat.name.toString().trim().toLowerCase();

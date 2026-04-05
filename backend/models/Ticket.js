@@ -100,7 +100,7 @@ ticketSchema.pre('validate', function(next) {
     const payload = JSON.stringify(qrData);
     // Sign the QR payload with HMAC to prevent forgery
     const signature = crypto
-      .createHmac('sha256', process.env.JWT_SECRET || 'qr-fallback-secret')
+      .createHmac('sha256', process.env.JWT_SECRET)
       .update(payload)
       .digest('hex');
     this.qrCode = JSON.stringify({ ...qrData, sig: signature });

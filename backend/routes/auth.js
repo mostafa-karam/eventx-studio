@@ -1,19 +1,14 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const { authLimiter, passwordResetLimiter } = require('../middleware/rateLimiter');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { registerValidator, loginValidator, updateProfileValidator, changePasswordValidator } = require('../middleware/validators');
 const authController = require('../controllers/authController');
 
 const router = express.Router();
 
-// Stricter rate limiter for password reset — 5 requests per 15 minutes
-const passwordResetLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { success: false, message: 'Too many password reset attempts, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Apply authLimiter to all auth routes
+router.use(authLimiter);
 
 /**
  * @swagger

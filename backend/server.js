@@ -15,6 +15,9 @@ const hpp = require('hpp');
 const responseTime = require('response-time');
 const logger = require('./utils/logger');
 const AppError = require('./utils/AppError');
+const errorHandler = require('./middleware/errorHandler');
+const { globalLimiter } = require('./middleware/rateLimiter');
+const xssCleaner = require('./middleware/xssCleaner');
 
 dotenv.config();
 
@@ -61,34 +64,8 @@ app.use(helmet.contentSecurityPolicy({
 // Parse cookies for httpOnly token support
 app.use(cookieParser(process.env.CSRF_SECRET || process.env.JWT_SECRET));
 
-// Global rate limiter — 200 requests per 15 minutes per IP
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  message: { success: false, message: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Global rate limiter
 app.use(globalLimiter);
-
-// Stricter rate limiter for auth routes — 15 requests per 15 minutes
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 15,
-  message: { success: false, message: 'Too many authentication attempts, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Stricter rate limiter for password reset — 5 requests per 15 minutes
-const passwordResetLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { success: false, message: 'Too many password reset attempts, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
 // ─── CORS ────────────────────────────────────────────────────────────
 const allowedOrigins = (process.env.FRONTEND_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
@@ -110,6 +87,8 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
+// Data sanitization against XSS
+app.use(xssCleaner());
 app.use(compression());
 app.use(hpp()); // Prevent HTTP Parameter Pollution
 app.use(responseTime()); // Add X-Response-Time header
@@ -204,30 +183,7 @@ app.get('/api/health', (_req, res) => {
 app.use('*', (_req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
 
 // ─── Error Handling (must be LAST — 4-arg signature) ─────────────────
-app.use((err, req, res, _next) => {
-  // CSRF token errors from csrf-csrf
-  if (err.message === 'invalid csrf token' || err.code === 'EBADCSRFTOKEN') {
-    return res.status(403).json({ success: false, message: 'Invalid or missing CSRF token' });
-  }
-
-  logger.error(`${err.statusCode || err.status || 500} — ${err.message} — ${req.originalUrl}`);
-
-  const statusCode = err.statusCode || err.status || 500;
-
-  // Only send detailed error messages for operational errors in non-production
-  if (err.isOperational) {
-    return res.status(statusCode).json({
-      success: false,
-      message: err.message,
-    });
-  }
-
-  res.status(statusCode).json({
-    success: false,
-    message: process.env.NODE_ENV === 'production' ? 'Something went wrong!' : err.message,
-  });
-});
-
+app.use(errorHandler);
 const startServer = async () => {
   await connectDB();
 

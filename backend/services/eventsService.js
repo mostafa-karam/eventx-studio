@@ -1,8 +1,7 @@
 const Event = require('../models/Event');
 const Waitlist = require('../models/Waitlist');
 const Ticket = require('../models/Ticket');
-
-const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&');
+const { escapeRegex } = require('../utils/helpers');
 
 class EventsService {
     buildEventQuery(queryParams) {
@@ -124,9 +123,9 @@ class EventsService {
 
         await Event.findByIdAndUpdate(eventId, { $inc: { 'analytics.views': 1 } });
         
-        const ticketCount = await Ticket.countDocuments({ event: eventId, status: { $in: ['booked', 'used'] } });
         const eventObj = event.toObject();
-        eventObj.ticketCount = ticketCount;
+        // Use the atomically maintained analytics counter for display
+        eventObj.ticketCount = event.analytics?.bookings || 0;
         
         return eventObj;
     }

@@ -3,12 +3,14 @@ const Event = require('../models/Event');
 const Waitlist = require('../models/Waitlist');
 const Ticket = require('../models/Ticket');
 const { escapeRegex } = require('../utils/helpers');
+const auditService = require('../services/auditService');
+const eventsService = require('../services/eventsService');
+const eventLifecycleService = require('../services/eventLifecycleService');
 
 // @desc    Get all events (public with optional auth)
 // @access  Public
 exports.getEvents = async (req, res) => {
     try {
-        const eventsService = require('../services/eventsService');
         const result = await eventsService.getEvents(req.query, req.query.page, req.query.limit);
         res.json({ success: true, data: result });
     } catch (error) {
@@ -21,7 +23,6 @@ exports.getEvents = async (req, res) => {
 // @access  Private/Organizer
 exports.getMyEvents = async (req, res) => {
     try {
-        const eventsService = require('../services/eventsService');
         const result = await eventsService.getMyEvents(req.user, req.query, req.query.page, req.query.limit);
         res.json({ success: true, data: result });
     } catch (error) {
@@ -34,7 +35,6 @@ exports.getMyEvents = async (req, res) => {
 // @access  Public
 exports.getEventById = async (req, res) => {
     try {
-        const eventsService = require('../services/eventsService');
         const event = await eventsService.getEventById(req.params.id, req.user);
         res.json({ success: true, data: { event } });
     } catch (error) {
@@ -49,8 +49,8 @@ exports.getEventById = async (req, res) => {
 // @access  Private/Organizer
 exports.createEvent = async (req, res) => {
     try {
-        const eventsService = require('../services/eventsService');
         const event = await eventsService.createEvent(req.body, req.user._id);
+        await auditService.log({ req, actor: req.user, action: 'event.create', resource: 'Event', resourceId: event._id, details: { title: event.title } });
         res.status(201).json({ success: true, message: 'Event created successfully', data: { event } });
     } catch (error) {
         logger.error('Create event error:', error);
@@ -66,8 +66,8 @@ exports.createEvent = async (req, res) => {
 // @access  Private/Organizer
 exports.cloneEvent = async (req, res) => {
     try {
-        const eventsService = require('../services/eventsService');
         const event = await eventsService.cloneEvent(req.params.id, req.user);
+        await auditService.log({ req, actor: req.user, action: 'event.create', resource: 'Event', resourceId: event._id, details: { title: event.title, clonedFrom: req.params.id } });
         res.status(201).json({ success: true, message: 'Event cloned successfully', data: { event } });
     } catch (error) {
         logger.error('Clone event error:', error);
@@ -80,8 +80,8 @@ exports.cloneEvent = async (req, res) => {
 // @access  Private/Organizer
 exports.updateEvent = async (req, res) => {
     try {
-        const eventsService = require('../services/eventsService');
         const event = await eventsService.updateEvent(req.params.id, req.body, req.user);
+        await auditService.log({ req, actor: req.user, action: 'event.update', resource: 'Event', resourceId: event._id, details: { updatedFields: Object.keys(req.body) } });
         res.json({ success: true, message: 'Event updated successfully', data: { event } });
     } catch (error) {
         logger.error('Update event error:', error);
@@ -99,8 +99,8 @@ exports.updateEvent = async (req, res) => {
 // @access  Private/Organizer
 exports.deleteEvent = async (req, res) => {
     try {
-        const eventsService = require('../services/eventsService');
         await eventsService.deleteEvent(req.params.id, req.user);
+        await auditService.log({ req, actor: req.user, action: 'event.delete', resource: 'Event', resourceId: req.params.id });
         res.json({ success: true, message: 'Event deleted successfully' });
     } catch (error) {
         logger.error('Delete event error:', error);
@@ -299,7 +299,6 @@ exports.getMyWaitlists = async (req, res) => {
 // @access  Private (organizer, admin)
 exports.cancelEvent = async (req, res) => {
     try {
-        const eventLifecycleService = require('../services/eventLifecycleService');
         const { reason } = req.body;
         const result = await eventLifecycleService.cancelEvent(req.params.id, req.user, reason);
         

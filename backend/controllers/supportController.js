@@ -5,27 +5,29 @@ const logger = require('../utils/logger');
 // @access  Private
 exports.getTickets = async (req, res) => {
     try {
-        const tickets = await SupportTicket.find({ userId: req.user.id })
+        const tickets = await SupportTicket.find({ userId: req.user._id })
             .populate('assignedTo', 'name email')
             .populate('responses.userId', 'name email')
             .sort({ createdAt: -1 });
 
         res.json({
             success: true,
-            tickets: tickets.map(ticket => ({
-                id: ticket._id,
-                ticketNumber: ticket.ticketNumber,
-                subject: ticket.subject,
-                description: ticket.description,
-                category: ticket.category,
-                priority: ticket.priority,
-                status: ticket.status,
-                createdAt: ticket.createdAt,
-                updatedAt: ticket.updatedAt,
-                assignedTo: ticket.assignedTo,
-                attachments: ticket.attachments,
-                responses: ticket.responses
-            }))
+            data: {
+                tickets: tickets.map(ticket => ({
+                    id: ticket._id,
+                    ticketNumber: ticket.ticketNumber,
+                    subject: ticket.subject,
+                    description: ticket.description,
+                    category: ticket.category,
+                    priority: ticket.priority,
+                    status: ticket.status,
+                    createdAt: ticket.createdAt,
+                    updatedAt: ticket.updatedAt,
+                    assignedTo: ticket.assignedTo,
+                    attachments: ticket.attachments,
+                    responses: ticket.responses
+                }))
+            }
         });
     } catch (error) {
         logger.error('Error fetching support tickets:', error);
@@ -47,7 +49,7 @@ exports.createTicket = async (req, res) => {
             description,
             category: category || 'general',
             priority: priority || 'medium',
-            userId: req.user.id,
+            userId: req.user._id,
             attachments: attachments || []
         });
 
@@ -56,16 +58,18 @@ exports.createTicket = async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'Support ticket created successfully',
-            ticket: {
-                id: ticket._id,
-                ticketNumber: ticket.ticketNumber,
-                subject: ticket.subject,
-                description: ticket.description,
-                category: ticket.category,
-                priority: ticket.priority,
-                status: ticket.status,
-                createdAt: ticket.createdAt,
-                attachments: ticket.attachments
+            data: {
+                ticket: {
+                    id: ticket._id,
+                    ticketNumber: ticket.ticketNumber,
+                    subject: ticket.subject,
+                    description: ticket.description,
+                    category: ticket.category,
+                    priority: ticket.priority,
+                    status: ticket.status,
+                    createdAt: ticket.createdAt,
+                    attachments: ticket.attachments
+                }
             }
         });
     } catch (error) {
@@ -83,7 +87,7 @@ exports.getTicketById = async (req, res) => {
     try {
         const ticket = await SupportTicket.findOne({
             _id: req.params.id,
-            userId: req.user.id
+            userId: req.user._id
         })
             .populate('assignedTo', 'name email')
             .populate('responses.userId', 'name email');
@@ -97,19 +101,21 @@ exports.getTicketById = async (req, res) => {
 
         res.json({
             success: true,
-            ticket: {
-                id: ticket._id,
-                ticketNumber: ticket.ticketNumber,
-                subject: ticket.subject,
-                description: ticket.description,
-                category: ticket.category,
-                priority: ticket.priority,
-                status: ticket.status,
-                createdAt: ticket.createdAt,
-                updatedAt: ticket.updatedAt,
-                assignedTo: ticket.assignedTo,
-                attachments: ticket.attachments,
-                responses: ticket.responses
+            data: {
+                ticket: {
+                    id: ticket._id,
+                    ticketNumber: ticket.ticketNumber,
+                    subject: ticket.subject,
+                    description: ticket.description,
+                    category: ticket.category,
+                    priority: ticket.priority,
+                    status: ticket.status,
+                    createdAt: ticket.createdAt,
+                    updatedAt: ticket.updatedAt,
+                    assignedTo: ticket.assignedTo,
+                    attachments: ticket.attachments,
+                    responses: ticket.responses
+                }
             }
         });
     } catch (error) {
@@ -129,7 +135,7 @@ exports.addTicketResponse = async (req, res) => {
 
         const ticket = await SupportTicket.findOne({
             _id: req.params.id,
-            userId: req.user.id
+            userId: req.user._id
         });
 
         if (!ticket) {
@@ -141,7 +147,7 @@ exports.addTicketResponse = async (req, res) => {
 
         ticket.responses.push({
             message,
-            userId: req.user.id,
+            userId: req.user._id,
             isStaff: false
         });
 
@@ -181,7 +187,7 @@ exports.updateTicketStatus = async (req, res) => {
         }
 
         // Only allow users to update their own tickets or staff to update any
-        if (ticket.userId.toString() !== req.user.id && req.user.role !== 'admin') {
+        if (ticket.userId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
             return res.status(403).json({
                 success: false,
                 message: 'Access denied'

@@ -10,7 +10,10 @@ const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const analyticsService = require('../services/analyticsService');
 
-// In-memory reports store (replace with DB model later if needed)
+const User = require('../models/User');
+
+// WARNING: In-memory store — data is lost on restart and doesn't scale across instances.
+// TODO: Replace with a database-backed Report model for production multi-instance deployments.
 const reportsStore = [];
 
 // @route   GET /api/analytics/dashboard
@@ -28,39 +31,57 @@ exports.getDashboard = async (req, res) => {
     ]);
 
     // Top events with enhanced data
-    const topEvents = await Event.find({})
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .select('title date venue.name venue.city seating category status createdAt pricing');
-
-    const enrichedTopEvents = await Promise.all(topEvents.map(async (event) => {
-      const eventTickets = await Ticket.aggregate([
-        { $match: { event: event._id, status: { $in: ['booked', 'used'] } } },
-        {
-          $group: {
-            _id: null,
-            totalTicketsSold: { $sum: 1 },
-            totalRevenue: { $sum: { $ifNull: ['$payment.amount', 0] } },
-            averageTicketPrice: { $avg: { $ifNull: ['$payment.amount', 0] } },
+    // Top events with enhanced data — single aggregate instead of N+1 queries (P-01)
+    const enrichedTopEvents = await Ticket.aggregate([
+      { $match: { status: { $in: ['booked', 'used'] } } },
+      {
+        $group: {
+          _id: '$event',
+          totalTicketsSold: { $sum: 1 },
+          totalRevenue: { $sum: { $ifNull: ['$payment.amount', 0] } },
+          averageTicketPrice: { $avg: { $ifNull: ['$payment.amount', 0] } },
+        },
+      },
+      { $lookup: { from: 'events', localField: '_id', foreignField: '_id', as: 'eventData' } },
+      { $unwind: '$eventData' },
+      { $sort: { 'eventData.createdAt': -1 } },
+      { $limit: 10 },
+      {
+        $project: {
+          _id: '$eventData._id',
+          title: '$eventData.title',
+          date: '$eventData.date',
+          venue: '$eventData.venue',
+          seating: '$eventData.seating',
+          category: '$eventData.category',
+          status: '$eventData.status',
+          createdAt: '$eventData.createdAt',
+          pricing: '$eventData.pricing',
+          analytics: {
+            ticketsSold: '$totalTicketsSold',
+            totalRevenue: '$totalRevenue',
+            averageTicketPrice: '$averageTicketPrice',
+            views: { $ifNull: ['$eventData.analytics.views', 0] },
+            occupancyRate: {
+              $cond: {
+                if: { $gt: [{ $ifNull: ['$eventData.seating.totalSeats', 0] }, 0] },
+                then: {
+                  $round: [{
+                    $multiply: [{
+                      $divide: [
+                        { $subtract: ['$eventData.seating.totalSeats', { $ifNull: ['$eventData.seating.availableSeats', 0] }] },
+                        '$eventData.seating.totalSeats'
+                      ]
+                    }, 100]
+                  }]
+                },
+                else: 0
+              }
+            },
           },
         },
-      ]);
-
-      const eventViews = await Event.findById(event._id).select('analytics.views');
-
-      return {
-        ...event.toObject(),
-        analytics: {
-          ticketsSold: eventTickets[0]?.totalTicketsSold || 0,
-          totalRevenue: eventTickets[0]?.totalRevenue || 0,
-          averageTicketPrice: eventTickets[0]?.averageTicketPrice || 0,
-          views: eventViews?.analytics?.views || 0,
-          occupancyRate: event.seating?.totalSeats > 0
-            ? Math.round(((event.seating.totalSeats - event.seating.availableSeats) / event.seating.totalSeats) * 100)
-            : 0,
-        },
-      };
-    }));
+      },
+    ]);
 
     // Latest event analytics
     let latestEventAnalytics = enrichedTopEvents.length > 0 ? enrichedTopEvents[0] : null;
@@ -68,7 +89,7 @@ exports.getDashboard = async (req, res) => {
     // Recent activity / notifications
     const [recentTickets, recentUsers, recentEvents] = await Promise.all([
       Ticket.find({}).populate('user', 'name email').populate('event', 'title date venue.name').sort({ bookingDate: -1 }).limit(8),
-      require('../models/User').find({ role: 'user' }).sort({ createdAt: -1 }).limit(5).select('name email createdAt'),
+      User.find({ role: 'user' }).sort({ createdAt: -1 }).limit(5).select('name email createdAt'),
       Event.find({}).sort({ createdAt: -1 }).limit(3).select('title date status createdAt'),
     ]);
 
@@ -241,7 +262,8 @@ exports.exportAnalytics = async (req, res) => {
         .populate({ path: 'event', match: { organizer: req.user._id }, select: 'title date venue' })
         .populate('user', 'name email')
         .select('ticketId seatNumber bookingDate status payment')
-        .sort({ bookingDate: -1 });
+        .sort({ bookingDate: -1 })
+        .limit(10000);
 
       data = data.filter((ticket) => ticket.event);
     }

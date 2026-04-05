@@ -149,7 +149,10 @@ exports.updateProfile = async (req, res) => {
     if (age !== undefined) user.age = age;
     if (gender) user.gender = gender;
     if (interests) user.interests = interests;
-    if (location) user.location = { ...user.location.toObject?.() || user.location, ...location };
+    if (location) {
+      const existing = user.location?.toObject?.() || user.location || {};
+      user.location = { ...existing, ...location };
+    }
     await user.save();
     res.json({ success: true, message: 'Profile updated successfully', data: { user: user.toJSON() } });
   } catch (error) {
@@ -292,6 +295,7 @@ exports.resetPassword = async (req, res) => {
 // POST /api/auth/2fa/setup — generate secret + QR code URL
 exports.setup2FA = async (req, res) => {
   try {
+    // Dynamic requires prevent Jest ESM parsing errors on startup
     const { authenticator } = require('otplib');
     const qrcode = require('qrcode');
 
@@ -316,6 +320,7 @@ exports.enable2FA = async (req, res) => {
     const { code } = req.body;
     if (!code) return res.status(400).json({ success: false, message: '2FA code is required' });
 
+    // Dynamic require prevents Jest ESM parsing errors
     const { authenticator } = require('otplib');
     const user = await User.findById(req.user._id).select('+twoFactorSecret');
 
@@ -405,7 +410,7 @@ exports.getAllUsers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 10, 100);
-    const users = await User.find().select('-password').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit);
+    const users = await User.find().select('name email role isActive createdAt lastLogin avatar phone').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit);
     const total = await User.countDocuments();
     res.json({ success: true, data: { users, pagination: { current: page, pages: Math.ceil(total / limit), total } } });
   } catch (error) {

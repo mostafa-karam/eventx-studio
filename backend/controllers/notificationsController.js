@@ -2,6 +2,7 @@ const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const User = require('../models/User');
 const Notification = require('../models/Notification'); // Ensure we require this since it's used inside
+const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
 // @desc    Get all notifications for the authenticated user
@@ -30,7 +31,6 @@ exports.getNotifications = async (req, res) => {
 exports.markAsRead = async (req, res) => {
     try {
         const { id } = req.params;
-        const mongoose = require('mongoose');
         if (mongoose.Types.ObjectId.isValid(id)) {
             const notification = await Notification.findOneAndUpdate(
                 { _id: id, userId: req.user._id },
@@ -71,7 +71,6 @@ exports.markAllAsRead = async (req, res) => {
 exports.deleteNotification = async (req, res) => {
     try {
         const { id } = req.params;
-        const mongoose = require('mongoose');
         if (mongoose.Types.ObjectId.isValid(id)) {
             const notification = await Notification.findOneAndDelete(
                 { _id: id, userId: req.user._id }
@@ -102,7 +101,7 @@ exports.createNotification = async (req, res) => {
             message,
             type,
             priority: priority || 'medium',
-            userId: req.user.id,
+            userId: req.user._id,
             actionUrl,
             metadata
         });
@@ -160,8 +159,9 @@ exports.createSystemNotification = createSystemNotification;
 exports.sendBookingConfirmation = async (req, res) => {
     try {
         const { bookingId, eventId, userId } = req.body || {};
+        // Always use the authenticated user — prevent arbitrary userId injection
         await createSystemNotification(
-            userId || req.user.id,
+            req.user._id,
             'Booking Confirmed',
             'Your ticket has been confirmed. See My Tickets for details.',
             'booking',

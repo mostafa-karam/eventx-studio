@@ -8,6 +8,7 @@ const logger = require('../utils/logger');
 const jwt = require('jsonwebtoken');
 const Event = require('../models/Event');
 const bookingService = require('../services/bookingService');
+const auditService = require('../services/auditService');
 const { validationResult } = require('express-validator');
 
 // @desc    Initiates a booking session
@@ -74,7 +75,7 @@ exports.confirmBooking = async (req, res) => {
                 return res.status(400).json({ success: false, message: 'Payment token is required for paid events' });
             }
             try {
-                const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET || 'dev-payment-secret';
+                const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET;
                 const verifiedPayment = jwt.verify(paymentToken, secret);
                 // Ensure token matches user, event, and amount
                 if (verifiedPayment.userId.toString() !== req.user._id.toString() ||
@@ -115,6 +116,12 @@ exports.confirmBooking = async (req, res) => {
                 dark: '#000000',
                 light: '#FFFFFF'
             }
+        });
+
+        // Audit log
+        await auditService.log({
+            req, actor: req.user, action: 'ticket.purchase', resource: 'Ticket', resourceId: ticket._id,
+            details: { eventId, paymentMethod, amount: expectedAmount }
         });
 
         return res.json({
