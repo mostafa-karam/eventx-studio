@@ -1,12 +1,13 @@
 const express = require('express');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const usersController = require('../controllers/usersController');
+const authController = require('../controllers/authController');
 
 const router = express.Router();
 
 // Static routes MUST come before parameterized /:id routes
-router.get('/profile/me', authenticate, usersController.getProfile);
-router.put('/profile/me', authenticate, usersController.updateProfile);
+router.get('/profile/me', authenticate, authController.getCurrentUser);
+router.put('/profile/me', authenticate, authController.updateProfile);
 router.get('/organizer/:id', usersController.getOrganizerProfile);
 
 router.get('/', authenticate, requireAdmin, usersController.getUsers);

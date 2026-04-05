@@ -277,78 +277,7 @@ exports.deleteUser = async (req, res) => {
     }
 };
 
-// @desc    Get current user profile
-// @access  Private
-exports.getProfile = async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id).select('-password');
 
-        res.json({
-            success: true,
-            data: {
-                user
-            }
-        });
-    } catch (error) {
-        logger.error('Get profile error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error while fetching profile'
-        });
-    }
-};
-
-// @desc    Update current user profile
-// @access  Private
-exports.updateProfile = async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
-        }
-
-        // Strict allowlist to prevent mass assignment of sensitive fields (e.g., isLocked, twoFactorEnabled)
-        const allowedFields = ['name', 'phone', 'age', 'gender', 'interests', 'location', 'avatar'];
-
-        allowedFields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                user[field] = req.body[field];
-            }
-        });
-
-        await user.save();
-
-        const updatedUser = await User.findById(user._id).select('-password');
-
-        res.json({
-            success: true,
-            message: 'Profile updated successfully',
-            data: {
-                user: updatedUser
-            }
-        });
-    } catch (error) {
-        logger.error('Update profile error:', error);
-
-        if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors).map(err => err.message);
-            return res.status(400).json({
-                success: false,
-                message: 'Validation error',
-                errors
-            });
-        }
-
-        res.status(500).json({
-            success: false,
-            message: 'Server error while updating profile'
-        });
-    }
-};
 // @desc    Get public organizer profile by ID
 // @access  Public
 exports.getOrganizerProfile = async (req, res) => {

@@ -142,13 +142,14 @@ exports.logout = async (req, res) => {
 // PUT /api/auth/profile
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone, age, gender, interests, location } = req.body;
+    const { name, phone, age, gender, interests, location, avatar } = req.body;
     const user = await User.findById(req.user._id);
     if (name) user.name = name;
     if (phone !== undefined) user.phone = phone;
     if (age !== undefined) user.age = age;
     if (gender) user.gender = gender;
     if (interests) user.interests = interests;
+    if (avatar !== undefined) user.avatar = avatar;
     if (location) {
       const existing = user.location?.toObject?.() || user.location || {};
       user.location = { ...existing, ...location };
