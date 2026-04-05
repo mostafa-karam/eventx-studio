@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const mongoose = require('mongoose');
 const QRCode = require('qrcode');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const notificationService = require('../services/notificationService');
@@ -45,6 +46,14 @@ exports.bookTicket = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Cannot book tickets for past events'
+      });
+    }
+
+    // Reject paid bookings without verified payment — enforce /api/booking flow
+    if (event.pricing?.type === 'paid' && !transactionId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Paid events require a verified payment. Please use the booking flow.'
       });
     }
 
@@ -270,6 +279,11 @@ exports.bookMultiTickets = async (req, res) => {
     if (event.status !== 'published') return res.status(400).json({ success: false, message: 'Event is not available for booking' });
     if (event.date < new Date()) return res.status(400).json({ success: false, message: 'Cannot book tickets for past events' });
 
+    // Reject paid bookings without verified payment — enforce /api/booking flow
+    if (event.pricing?.type === 'paid' && !transactionId) {
+      return res.status(400).json({ success: false, message: 'Paid events require a verified payment. Please use the booking flow.' });
+    }
+
     // Prepare seat map as in single booking
     if (!event.seating || !Array.isArray(event.seating.seatMap) || event.seating.seatMap.length === 0) {
       const existingTickets = await Ticket.find({ event: eventId, status: { $in: ['booked', 'used'] } }).select('seatNumber user');
@@ -440,7 +454,13 @@ exports.getOrganizerTickets = async (req, res) => {
     const eventIds = events.map(e => e._id);
 
     const query = { event: { $in: eventIds } };
-    if (req.query.eventId) query.event = req.query.eventId;
+    if (req.query.eventId) {
+      // Intersect: verify the requested eventId belongs to this organizer
+      if (!eventIds.some(id => id.toString() === req.query.eventId)) {
+        return res.status(403).json({ success: false, message: 'Not authorized to view tickets for this event' });
+      }
+      query.event = req.query.eventId;
+    }
     if (req.query.status) query.status = req.query.status;
 
     const tickets = await Ticket.find(query)
@@ -771,14 +791,27 @@ exports.checkinByQR = async (req, res) => {
     const { qrCode, eventId } = req.body;
     if (!qrCode) return res.status(400).json({ success: false, message: 'QR code is required' });
 
-    let ticketId = qrCode;
+    let ticketIdValue = qrCode;
     try {
       const parsed = JSON.parse(qrCode);
-      if (parsed.ticketId) ticketId = parsed.ticketId;
-    } catch (e) { /* ignore JSON parse error */ }
+      if (parsed.ticketId) {
+        ticketIdValue = parsed.ticketId;
+        // Verify HMAC signature to detect tampered QR codes
+        const { sig, ...qrData } = parsed;
+        if (sig) {
+          const expectedSig = crypto
+            .createHmac('sha256', process.env.JWT_SECRET || 'qr-fallback-secret')
+            .update(JSON.stringify(qrData))
+            .digest('hex');
+          if (sig !== expectedSig) {
+            return res.status(400).json({ success: false, message: 'Invalid or tampered QR code' });
+          }
+        }
+      }
+    } catch (e) { /* ignore JSON parse error — treat as raw ticket id */ }
 
-    // Find ticket by ID or unique identifier if that exists
-    const ticket = await Ticket.findById(ticketId).populate('event user', 'title name email organizer');
+    // Look up by ticketId field (not _id) to match QR payload content
+    const ticket = await Ticket.findOne({ ticketId: ticketIdValue }).populate('event user', 'title name email organizer');
     if (!ticket) {
       return res.status(404).json({ success: false, message: 'Ticket not found from QR' });
     }

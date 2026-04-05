@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
 const HallBookingForm = () => {
     const { hallId } = useParams();
     const navigate = useNavigate();
@@ -26,7 +28,7 @@ const HallBookingForm = () => {
     const fetchHall = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`/api/halls/${hallId}`);
+            const res = await fetch(`${API_BASE_URL}/halls/${hallId}`, { credentials: 'include' });
             const data = await res.json();
             if (data.success) {
                 setHall(data.data.hall);
@@ -59,11 +61,12 @@ const HallBookingForm = () => {
 
         try {
             setSubmitting(true);
-            const res = await fetch('/api/hall-bookings', {
+            const res = await fetch(`${API_BASE_URL}/hall-bookings`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     hall: hallId,
                     startDate: formData.startDate,

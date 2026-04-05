@@ -79,17 +79,20 @@ const HallRentalPage = () => {
         setSubmitting(true);
         try {
             const payload = {
-                hallId,
-                eventType: bookingDetails.eventType,
+                hall: hallId,
                 startDate: bookingDetails.startDate,
                 endDate: bookingDetails.endDate,
-                expectedAttendees: Number(bookingDetails.estimatedAttendees),
-                specialRequirements: bookingDetails.specialRequirements,
+                notes: [
+                    bookingDetails.eventType && `Event: ${bookingDetails.eventType}`,
+                    bookingDetails.estimatedAttendees && `Attendees: ${bookingDetails.estimatedAttendees}`,
+                    bookingDetails.specialRequirements
+                ].filter(Boolean).join('\n'),
             };
 
             const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/hall-bookings`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(payload)
             });
             const data = await res.json();

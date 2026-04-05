@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
 const TicketDetailPage = () => {
     const { ticketId } = useParams();
     const navigate = useNavigate();
@@ -17,7 +19,7 @@ const TicketDetailPage = () => {
     const fetchTicket = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`/api/tickets/${ticketId}`);
+            const res = await fetch(`${API_BASE_URL}/tickets/${ticketId}`, { credentials: 'include' });
             const data = await res.json();
             if (data.success) {
                 setTicket({ ...data.data.ticket, qrCodeImage: data.data.qrCodeImage });
@@ -38,7 +40,7 @@ const TicketDetailPage = () => {
 
         try {
             setActionLoading(true);
-            const res = await fetch(`/api/tickets/${ticketId}/refund`, { method: 'PUT' });
+            const res = await fetch(`${API_BASE_URL}/tickets/${ticketId}/refund`, { method: 'PUT', credentials: 'include' });
             const data = await res.json();
 
             if (data.success) {

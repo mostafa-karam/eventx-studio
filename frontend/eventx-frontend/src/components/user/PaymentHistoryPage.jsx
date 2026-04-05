@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
 const PaymentHistoryPage = () => {
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -15,7 +17,7 @@ const PaymentHistoryPage = () => {
             setLoading(true);
             // Since there's no dedicated GET /api/payments/history endpoint, 
             // we'll fetch tickets and extract payments from them
-            const res = await fetch('/api/tickets/my-tickets');
+            const res = await fetch(`${API_BASE_URL}/tickets/my-tickets`, { credentials: 'include' });
             const data = await res.json();
 
             if (data.success) {

@@ -115,8 +115,8 @@ const csrfSecret = process.env.CSRF_SECRET || process.env.JWT_SECRET;
 const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
   getSecret: () => csrfSecret,
   getSessionIdentifier: (req) => {
-    // Use the access_token cookie as session identifier, or fallback for pre-auth requests
-    return req.cookies?.access_token || req.ip || 'anonymous';
+    // Use the accessToken cookie as session identifier, or fallback for pre-auth requests
+    return req.cookies?.accessToken || req.ip || 'anonymous';
   },
   cookieName: '__csrf',
   cookieOptions: {

@@ -166,21 +166,15 @@ OpenAPI (Swagger) available at `/api-docs`. Core endpoints:
 
 ## 🧪 Testing & Quality Assurance
 
-- **Frontend**: React Testing Library, Cypress, axe-core
-- **Backend**: Jest, Supertest, k6, OWASP ZAP
-- **Coverage**: Frontend 85%+, Backend 90%+
-
+- **Backend**: Jest + Supertest (integration tests against `mongodb-memory-server`)
+- **Frontend**: ESLint for static analysis
+- **Run backend tests**: `cd backend && npm test`
+- **Run frontend lint**: `cd frontend/eventx-frontend && npx eslint .`
 ---
 
 ## 🚀 Deployment Guide
 
 ### Production Deployment
-
-**Docker (Recommended):**
-
-```bash
-docker-compose -f docker-compose.prod.yml up --build -d
-```
 
 **Manual Deployment:**
 

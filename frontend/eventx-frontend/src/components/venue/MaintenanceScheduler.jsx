@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
 const MaintenanceScheduler = () => {
     const [halls, setHalls] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -25,11 +27,11 @@ const MaintenanceScheduler = () => {
         try {
             setLoading(true);
             // Fetch halls
-            const hallsRes = await fetch('/api/halls');
+            const hallsRes = await fetch(`${API_BASE_URL}/halls`, { credentials: 'include' });
             const hallsData = await hallsRes.json();
 
             // Fetch bookings to extract maintenance blocks
-            const bookingsRes = await fetch('/api/hall-bookings');
+            const bookingsRes = await fetch(`${API_BASE_URL}/hall-bookings`, { credentials: 'include' });
             const bookingsData = await bookingsRes.json();
 
             if (hallsData.success) {
@@ -65,10 +67,16 @@ const MaintenanceScheduler = () => {
 
         try {
             setSubmitting(true);
-            const res = await fetch('/api/hall-bookings/maintenance', {
+            const res = await fetch(`${API_BASE_URL}/hall-bookings/maintenance`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                credentials: 'include',
+                body: JSON.stringify({
+                    hall: formData.hallId,
+                    startDate: formData.startDate,
+                    endDate: formData.endDate,
+                    notes: formData.reason,
+                })
             });
             const data = await res.json();
 
@@ -91,7 +99,7 @@ const MaintenanceScheduler = () => {
         if (!window.confirm('Are you sure you want to cancel this maintenance block?')) return;
 
         try {
-            const res = await fetch(`/api/hall-bookings/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_BASE_URL}/hall-bookings/${id}`, { method: 'DELETE', credentials: 'include' });
             const data = await res.json();
             if (data.success) {
                 toast.success('Maintenance block cancelled');

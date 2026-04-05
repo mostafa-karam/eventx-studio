@@ -23,7 +23,7 @@ const Notifications = ({ onOpenAction }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setNotifications(data.notifications || []);
+        setNotifications(data.data?.notifications || []);
       } else {
         setNotifications([]);
       }
@@ -37,16 +37,17 @@ const Notifications = ({ onOpenAction }) => {
 
   const markAsRead = async (notificationId) => {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-    setNotifications((prev) => prev.map(n => n.id === notificationId ? { ...n, read: true } : n));
+    setNotifications((prev) => prev.map(n => n._id === notificationId ? { ...n, read: true } : n));
     try {
       const res = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Failed to mark as read');
     } catch (e) {
       console.error('markAsRead error:', e);
-      setNotifications((prev) => prev.map(n => n.id === notificationId ? { ...n, read: false } : n));
+      setNotifications((prev) => prev.map(n => n._id === notificationId ? { ...n, read: false } : n));
     }
   };
 
@@ -57,7 +58,8 @@ const Notifications = ({ onOpenAction }) => {
     try {
       const res = await fetch(`${API_BASE_URL}/notifications/mark-all-read`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Failed to mark all as read');
     } catch (e) {
@@ -69,11 +71,12 @@ const Notifications = ({ onOpenAction }) => {
   const deleteNotification = async (notificationId) => {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     const previous = [...notifications];
-    setNotifications((prev) => prev.filter(n => n.id !== notificationId));
+    setNotifications((prev) => prev.filter(n => n._id !== notificationId));
     try {
       const res = await fetch(`${API_BASE_URL}/notifications/${notificationId}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Failed to delete notification');
     } catch (e) {
@@ -238,7 +241,7 @@ const Notifications = ({ onOpenAction }) => {
                 const NotificationIcon = info.icon;
                 
                 return (
-                  <div key={notification.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active animate-in fade-in slide-in-from-bottom-4 duration-300" style={{ animationFillMode: 'both', animationDelay: `${index * 50}ms` }}>
+                  <div key={notification._id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active animate-in fade-in slide-in-from-bottom-4 duration-300" style={{ animationFillMode: 'both', animationDelay: `${index * 50}ms` }}>
                     {/* Timeline Dot/Icon */}
                     <div className={`flex items-center justify-center w-14 h-14 rounded-full border-4 border-white shadow-xl shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 ${info.bg} z-10 transition-transform duration-300 group-hover:scale-110`}>
                       <NotificationIcon className="w-5 h-5" />
@@ -257,7 +260,7 @@ const Notifications = ({ onOpenAction }) => {
                         </div>
                         <div className="flex items-center text-xs font-bold text-gray-400 gap-1.5 flex-shrink-0">
                           <Clock className="w-3.5 h-3.5" />
-                          {formatTimestamp(notification.timestamp)}
+                          {formatTimestamp(notification.createdAt)}
                         </div>
                       </div>
                       
@@ -284,7 +287,7 @@ const Notifications = ({ onOpenAction }) => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => markAsRead(notification.id)}
+                              onClick={() => markAsRead(notification._id)}
                               className="text-blue-600 border-blue-100 hover:bg-blue-50 h-8 rounded-xl"
                               title="Mark as read"
                             >
@@ -294,7 +297,7 @@ const Notifications = ({ onOpenAction }) => {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => deleteNotification(notification.id)}
+                            onClick={() => deleteNotification(notification._id)}
                             className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8 p-0 rounded-xl"
                             title="Delete"
                           >

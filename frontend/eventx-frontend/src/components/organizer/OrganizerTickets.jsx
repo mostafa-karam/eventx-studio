@@ -33,7 +33,7 @@ const OrganizerTickets = () => {
 
     const fetchEvents = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/events?organizer=me`, {
+            const response = await fetch(`${API_BASE_URL}/events/admin/my-events`, {
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
             });
@@ -72,8 +72,8 @@ const OrganizerTickets = () => {
 
     const handleCheckIn = async (ticketId) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/check-in`, {
-                method: 'PUT',
+            const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/checkin`, {
+                method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
             });

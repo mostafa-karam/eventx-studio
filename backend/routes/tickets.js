@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireOrganizer, requireRole } = require('../middleware/auth');
 const ticketsController = require('../controllers/ticketsController');
 
 const router = express.Router();
@@ -7,7 +7,6 @@ const router = express.Router();
 router.post('/book', authenticate, ticketsController.bookTicket);
 router.post('/book-multi', authenticate, ticketsController.bookMultiTickets);
 router.get('/my-tickets', authenticate, ticketsController.getMyTickets);
-const { requireOrganizer } = require('../middleware/auth');
 router.get('/organizer', authenticate, requireOrganizer, ticketsController.getOrganizerTickets);
 router.get('/admin', authenticate, requireAdmin, ticketsController.getTicketsAdmin);
 router.get('/admin/orphans', authenticate, requireAdmin, ticketsController.getOrphanTickets);
@@ -15,7 +14,7 @@ router.post('/admin/orphans/:id/assign', authenticate, requireAdmin, ticketsCont
 router.post('/admin/orphans/:id/cancel', authenticate, requireAdmin, ticketsController.cancelOrphanTicket);
 router.get('/:id', authenticate, ticketsController.getTicketById);
 router.put('/:id/cancel', authenticate, ticketsController.cancelTicket);
-router.post('/:id/checkin', authenticate, requireAdmin, ticketsController.checkinTicket);
+router.post('/:id/checkin', authenticate, requireRole(['admin', 'organizer']), ticketsController.checkinTicket);
 router.get('/event/:eventId', authenticate, requireAdmin, ticketsController.getEventTickets);
 router.post('/lookup-qr', authenticate, ticketsController.checkinByQR);
 router.put('/:id/refund', authenticate, ticketsController.refundTicket);

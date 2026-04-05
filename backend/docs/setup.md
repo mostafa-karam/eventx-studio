@@ -22,8 +22,7 @@ This document provides a comprehensive guide to setting up and running the Event
    - Standard: `npm start`
 
 5. **Database Seeding (Demo Users)**:
-   - In development mode (`NODE_ENV=development`), the server automatically seeds the database with demo users on startup.
-   - To manually run the seeder: `npm run seed`
+   - Run the seeder manually: `npm run seed`
    - Default users created:
      - Admin: `mostafa.karam.work@gmail.com` / `admin123`
      - Venue Admin: `venueadmin@eventx.com` / `password123`
@@ -50,6 +49,7 @@ This document provides a comprehensive guide to setting up and running the Event
 | `BACKEND_URL`               | The base URL of the server           | `http://localhost:5000`                   |
 | `EMAIL_HOST`                | SMTP server host                     | (Logged to file if missing)               |
 | `PAYMENT_SIMULATION_SECRET` | Secret for simulated payments        | `JWT_SECRET`                              |
+| `CSRF_SECRET`               | Required secret for CSRF tokens      | (Must be set explicitly)                  |
 
 ---
 

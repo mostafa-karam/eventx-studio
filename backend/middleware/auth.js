@@ -221,10 +221,16 @@ const optionalAuth = async (req, res, next) => {
       const user = await User.findById(decoded.id).select('-password');
 
       if (user && user.isActive && !user.isLocked) {
-        req.user = user;
+        // Mirror main authenticate: verify session is still active
         if (decoded.sessionId) {
+          const session = user.activeSessions?.find(s => s.sessionId === decoded.sessionId);
+          if (!session) {
+            // Session was revoked — treat as unauthenticated
+            return next();
+          }
           req.sessionId = decoded.sessionId;
         }
+        req.user = user;
       }
     }
 

@@ -270,20 +270,25 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
       toast.error('You already have a ticket for this event');
       return;
     }
+
+    // Paid events must go through the secure booking flow
+    if (event.pricing?.type === 'paid') {
+      window.location.href = `/booking/${event._id}`;
+      return;
+    }
+
     setLoading(true);
     setBookingError('');
     try {
-      // Call backend booking endpoints
+      // Call backend booking endpoints (free events only at this point)
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-
-      // If booking more than 1 ticket use book-multi
 
       if (bookingQuantity > 1) {
         const body = {
           eventId: event._id,
           quantity: bookingQuantity,
           seatNumbers: selectedSeats && selectedSeats.length ? selectedSeats : [],
-          paymentMethod: event.pricing?.type === 'free' ? 'free' : 'card'
+          paymentMethod: 'free'
         };
 
         const res = await fetch(`${API_BASE_URL}/tickets/book-multi`, {
@@ -299,13 +304,13 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
         setBookingSuccess('Booked — check My Tickets');
         toast.success('Booking confirmed — check My Tickets');
         onBookTicket?.(data.data);
-        setReloadKey(k => k + 1); // refresh seat map to update availability
-        setMyTicketsReloadKey(k => k + 1); // refresh hasTicket pre-check
+        setReloadKey(k => k + 1);
+        setMyTicketsReloadKey(k => k + 1);
       } else {
         const body = {
           eventId: event._id,
           seatNumber: selectedSeats && selectedSeats.length ? selectedSeats[0] : undefined,
-          paymentMethod: event.pricing?.type === 'free' ? 'free' : 'card'
+          paymentMethod: 'free'
         };
 
         const res = await fetch(`${API_BASE_URL}/tickets/book`, {
@@ -320,8 +325,8 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
 
         setBookingSuccess('Booked — check My Tickets');
         onBookTicket?.(data.data);
-        setReloadKey(k => k + 1); // refresh seat map to update availability
-        setMyTicketsReloadKey(k => k + 1); // refresh hasTicket pre-check
+        setReloadKey(k => k + 1);
+        setMyTicketsReloadKey(k => k + 1);
       }
     } catch (e) {
       setBookingError(e.message || 'Booking failed');
