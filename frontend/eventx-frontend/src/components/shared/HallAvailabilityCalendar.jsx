@@ -101,7 +101,6 @@ export default function HallAvailabilityCalendar({ hallId }) {
 
                             const booked = isBooked(day);
                             const past = isPast(day);
-                            const available = !booked && !past;
 
                             let style = "h-12 rounded-lg border flex items-center justify-center text-sm font-medium transition-all ";
                             if (past) {

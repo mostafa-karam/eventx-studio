@@ -7,7 +7,7 @@
  * Compatible with csrf-csrf (double-submit cookie pattern).
  */
 
-import { setCsrfToken as setApiClientToken, getCsrfToken } from './apiClient';
+import { setCsrfToken as setApiClientToken } from './apiClient';
 
 let globalCsrfToken = null;
 

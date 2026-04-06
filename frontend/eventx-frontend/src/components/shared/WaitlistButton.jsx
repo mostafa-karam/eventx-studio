@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-export default function WaitlistButton({ eventId, isSoldOut, currentUserId }) {
+export default function WaitlistButton({ isSoldOut, currentUserId }) {
     const [loading, setLoading] = useState(false);
     const [joined, setJoined] = useState(false);
 

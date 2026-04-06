@@ -2,12 +2,13 @@ import React from 'react';
 import { Search } from 'lucide-react';
 
 const EmptyState = ({
-    icon: Icon = Search,
+    icon,
     title = "No results found",
     description = "Try adjusting your filters or search terms.",
     actionText,
     onAction
 }) => {
+    const EmptyStateIcon = icon || Search;
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center flex flex-col items-center justify-center">
             <div className="w-16 h-16 bg-gray-50 border border-gray-100 rounded-full flex items-center justify-center mb-4 shadow-sm">

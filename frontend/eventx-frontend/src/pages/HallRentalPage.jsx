@@ -45,6 +45,7 @@ const HallRentalPage = () => {
                     navigate('/halls');
                 }
             } catch (err) {
+                console.error('Load hall details error:', err);
                 toast.error('Error loading hall details');
                 navigate('/halls');
             } finally {
@@ -105,6 +106,7 @@ const HallRentalPage = () => {
                 toast.error(data.message || 'Failed to submit booking request');
             }
         } catch (err) {
+            console.error('Booking submit error:', err);
             toast.error('Network error. Please try again.');
         } finally {
             setSubmitting(false);

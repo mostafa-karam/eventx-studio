@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 const EventReviewsPage = () => {
     const { eventId } = useParams();
-//     const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated } = useAuth();
 
     const [reviews, setReviews] = useState([]);
     const [stats, setStats] = useState({ avgRating: 0, totalReviews: 0 });
@@ -35,7 +35,6 @@ const EventReviewsPage = () => {
             if (eventJson.success) setEventData(eventJson.data.event);
 
             // Fetch reviews
-            const reqHeaders = {};
             // If using cookies, standard fetch with credentials:'include' handles it.
             // eventx uses httpOnly cookies, so just standard fetch works, but we should pass credentials
             const revRes = await fetch(`/api/events/${eventId}/reviews`);
@@ -47,6 +46,7 @@ const EventReviewsPage = () => {
                 setUserReviewId(revJson.data.userReviewId);
             }
         } catch (error) {
+            console.error('Fetch event reviews error:', error);
             toast.error('Failed to load reviews');
         } finally {
             setLoading(false);
@@ -77,6 +77,7 @@ const EventReviewsPage = () => {
                 toast.error(data.message || 'Failed to submit review');
             }
         } catch (error) {
+            console.error('Submit review error:', error);
             toast.error('Network error');
         } finally {
             setSubmitting(false);

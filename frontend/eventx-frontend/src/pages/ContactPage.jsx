@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Mail, Phone, MapPin, Clock, Send, ArrowLeft, MessageSquare, HelpCircle, Bug, Lightbulb, CheckCircle2 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
@@ -16,7 +16,7 @@ const contactReasons = [
 
 export default function ContactPage() {
     const { user, isAuthenticated } = useAuth();
-//     const navigate = useNavigate();
+    //     const navigate = useNavigate();
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({

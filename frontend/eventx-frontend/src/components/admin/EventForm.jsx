@@ -39,10 +39,9 @@ const STEPS = [
   { id: 'tickets', label: 'Tickets & Media', icon: DollarSign }
 ];
 
-const EventForm = ({ event, onSave, onCancel }) => {
+const EventForm = ({ event, onSave }) => {
   const validStatuses = ['draft', 'published', 'cancelled', 'completed'];
   const navigate = useNavigate();
-  const location = useLocation();
   const { eventId } = useParams();
 
   const [isFetchingEvent, setIsFetchingEvent] = useState(!!eventId && !event);
@@ -73,8 +72,6 @@ const EventForm = ({ event, onSave, onCancel }) => {
   });
 
   const [bookedTicketsCount, setBookedTicketsCount] = useState(event?.ticketCount || 0);
-  const [myBookings, setMyBookings] = useState([]);
-  const [selectedBookingId, setSelectedBookingId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -132,34 +129,6 @@ const EventForm = ({ event, onSave, onCancel }) => {
       fetchEvent();
     }
   }, [eventId, event, API_BASE_URL]);
-
-  // Fetch hall bookings
-  useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/hall-bookings/my`, { credentials: 'include' });
-        const data = await res.json();
-        if (data.success) setMyBookings(data.data.bookings.filter(b => b.status === 'approved'));
-      } catch (err) { console.error(err); }
-    };
-    fetchBookings();
-  }, [API_BASE_URL]);
-
-  // eslint-disable-next-line no-unused-vars
-   const handleBookingSelect = (bookingId) => {
-    setSelectedBookingId(bookingId);
-    if (!bookingId || bookingId === 'manual') return;
-    const booking = myBookings.find(b => b._id === bookingId);
-    if (booking) {
-      setFormData(prev => ({
-        ...prev,
-        hall: booking.hall._id,
-        venue: { ...prev.venue, name: booking.hall.name, capacity: booking.hall.capacity },
-        seating: { ...prev.seating, totalSeats: booking.hall.capacity, availableSeats: booking.hall.capacity },
-        date: new Date(booking.startDate).toISOString().slice(0, 16)
-      }));
-    }
-  };
 
   const handleImageUpload = async (e) => {
     const files = e.target.files;
@@ -274,10 +243,9 @@ const EventForm = ({ event, onSave, onCancel }) => {
       {STEPS.map((step, idx) => (
         <div key={idx} className="flex flex-col items-center z-10">
           <div onClick={() => idx < currentStep && setCurrentStep(idx)}
-            className={`w-10 h-10 rounded-full flex items-center justify-center cursor-pointer border-2 shadow-sm transition-all ${
-            idx === currentStep ? 'bg-blue-600 text-white border-blue-600 scale-110' : 
-            idx < currentStep ? 'bg-green-500 text-white border-green-500' : 'bg-gray-100 text-gray-400 border-gray-200'
-          }`}>
+            className={`w-10 h-10 rounded-full flex items-center justify-center cursor-pointer border-2 shadow-sm transition-all ${idx === currentStep ? 'bg-blue-600 text-white border-blue-600 scale-110' :
+              idx < currentStep ? 'bg-green-500 text-white border-green-500' : 'bg-gray-100 text-gray-400 border-gray-200'
+              }`}>
             {idx < currentStep ? <CheckCircle2 className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
           </div>
           <span className="text-[10px] mt-2 font-semibold uppercase tracking-wider">{step.label}</span>
@@ -294,7 +262,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-200">
-             <Tag className="w-6 h-6 text-white" />
+            <Tag className="w-6 h-6 text-white" />
           </div>
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{(event || eventId) ? 'Edit Event' : 'New Event'}</h1>
@@ -303,12 +271,12 @@ const EventForm = ({ event, onSave, onCancel }) => {
         </div>
 
         <div className="flex gap-2">
-           {isLocked && (
-             <Button variant="destructive" onClick={handleCancelEvent} disabled={loading} className="shadow-lg shadow-red-100">
-                <XCircle className="w-4 h-4 mr-2" /> Cancel Event
-             </Button>
-           )}
-           <Button variant="outline" onClick={() => navigate(-1)} className="rounded-xl">Cancel</Button>
+          {isLocked && (
+            <Button variant="destructive" onClick={handleCancelEvent} disabled={loading} className="shadow-lg shadow-red-100">
+              <XCircle className="w-4 h-4 mr-2" /> Cancel Event
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => navigate(-1)} className="rounded-xl">Cancel</Button>
         </div>
       </div>
 
@@ -316,7 +284,7 @@ const EventForm = ({ event, onSave, onCancel }) => {
         <Alert className="bg-amber-50 border-amber-200 text-amber-900 rounded-2xl shadow-sm border">
           <AlertTriangle className="h-5 w-5 text-amber-600" />
           <AlertDescription className="font-medium">
-            This event is published and has <strong>{bookedTicketsCount}</strong> active bookings. 
+            This event is published and has <strong>{bookedTicketsCount}</strong> active bookings.
             Modifying critical logistics (date, venue, pricing) is restricted to protect attendees.
           </AlertDescription>
         </Alert>
@@ -338,21 +306,21 @@ const EventForm = ({ event, onSave, onCancel }) => {
               <TiptapEditor value={formData.description} onChange={(val) => setFormData({ ...formData, description: val })} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="grid gap-2">
-                  <Label className="text-sm font-bold ml-1">Category</Label>
-                  <Select value={formData.category} onValueChange={(v) => handleSelectChange('category', v)}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select Category" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="conference">Conference</SelectItem>
-                      <SelectItem value="concert">Concert</SelectItem>
-                      <SelectItem value="workshop">Workshop</SelectItem>
-                    </SelectContent>
-                  </Select>
-               </div>
-               <div className="grid gap-2">
-                  <Label className="text-sm font-bold ml-1">Date & Time</Label>
-                  <Input type="datetime-local" name="date" value={formData.date} onChange={handleChange} disabled={isLocked} className={`h-12 rounded-xl ${isLocked ? 'bg-gray-50 border-amber-100' : ''}`} />
-               </div>
+              <div className="grid gap-2">
+                <Label className="text-sm font-bold ml-1">Category</Label>
+                <Select value={formData.category} onValueChange={(v) => handleSelectChange('category', v)}>
+                  <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select Category" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="conference">Conference</SelectItem>
+                    <SelectItem value="concert">Concert</SelectItem>
+                    <SelectItem value="workshop">Workshop</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label className="text-sm font-bold ml-1">Date & Time</Label>
+                <Input type="datetime-local" name="date" value={formData.date} onChange={handleChange} disabled={isLocked} className={`h-12 rounded-xl ${isLocked ? 'bg-gray-50 border-amber-100' : ''}`} />
+              </div>
             </div>
           </div>
         )}
@@ -369,12 +337,12 @@ const EventForm = ({ event, onSave, onCancel }) => {
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div className="grid gap-2">
-                 <Label className="text-sm font-bold ml-1">City</Label>
-                 <Input name="venue.city" value={formData.venue.city} onChange={handleChange} disabled={isLocked} className="h-12 rounded-xl" />
+                <Label className="text-sm font-bold ml-1">City</Label>
+                <Input name="venue.city" value={formData.venue.city} onChange={handleChange} disabled={isLocked} className="h-12 rounded-xl" />
               </div>
               <div className="grid gap-2">
-                 <Label className="text-sm font-bold ml-1">Country</Label>
-                 <Input name="venue.country" value={formData.venue.country} onChange={handleChange} disabled={isLocked} className="h-12 rounded-xl" />
+                <Label className="text-sm font-bold ml-1">Country</Label>
+                <Input name="venue.country" value={formData.venue.country} onChange={handleChange} disabled={isLocked} className="h-12 rounded-xl" />
               </div>
             </div>
           </div>
@@ -382,80 +350,80 @@ const EventForm = ({ event, onSave, onCancel }) => {
 
         {currentStep === 2 && (
           <div className="space-y-6">
-             <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 flex items-center gap-4">
-               <Users className="w-8 h-8 text-blue-600" />
-               <p className="text-sm text-blue-900 font-medium">Configure your seating capacity. If linked to a hall, this is limited by hall size.</p>
-             </div>
-             <div className="grid grid-cols-2 gap-6 pt-4">
-                <div className="grid gap-2">
-                  <Label className="text-sm font-bold ml-1">Total Capacity</Label>
-                  <Input type="number" name="seating.totalSeats" value={formData.seating.totalSeats} onChange={handleChange} disabled={isLocked} className="h-12 rounded-xl" />
-                </div>
-                <div className="grid gap-2">
-                  <Label className="text-sm font-bold ml-1">Currently Available</Label>
-                  <Input type="number" name="seating.availableSeats" value={formData.seating.availableSeats} onChange={handleChange} className="h-12 rounded-xl" />
-                </div>
-             </div>
+            <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 flex items-center gap-4">
+              <Users className="w-8 h-8 text-blue-600" />
+              <p className="text-sm text-blue-900 font-medium">Configure your seating capacity. If linked to a hall, this is limited by hall size.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-6 pt-4">
+              <div className="grid gap-2">
+                <Label className="text-sm font-bold ml-1">Total Capacity</Label>
+                <Input type="number" name="seating.totalSeats" value={formData.seating.totalSeats} onChange={handleChange} disabled={isLocked} className="h-12 rounded-xl" />
+              </div>
+              <div className="grid gap-2">
+                <Label className="text-sm font-bold ml-1">Currently Available</Label>
+                <Input type="number" name="seating.availableSeats" value={formData.seating.availableSeats} onChange={handleChange} className="h-12 rounded-xl" />
+              </div>
+            </div>
           </div>
         )}
 
         {currentStep === 3 && (
           <div className="space-y-8">
             <div className="grid grid-cols-2 gap-6">
-               <div className="grid gap-2">
-                  <Label className="text-sm font-bold ml-1">Pricing Model</Label>
-                  <Select value={formData.pricing.type} onValueChange={(v) => handleSelectChange('pricing.type', v)} disabled={isLocked}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="free">Free Admission</SelectItem>
-                      <SelectItem value="paid">Paid Ticket</SelectItem>
-                    </SelectContent>
-                  </Select>
-               </div>
-               {formData.pricing.type === 'paid' && (
-                 <div className="grid gap-2">
-                    <Label className="text-sm font-bold ml-1">Price (USD)</Label>
-                    <Input type="number" name="pricing.amount" value={formData.pricing.amount} onChange={handleChange} disabled={isLocked} className="h-12 rounded-xl" />
-                 </div>
-               )}
+              <div className="grid gap-2">
+                <Label className="text-sm font-bold ml-1">Pricing Model</Label>
+                <Select value={formData.pricing.type} onValueChange={(v) => handleSelectChange('pricing.type', v)} disabled={isLocked}>
+                  <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Free Admission</SelectItem>
+                    <SelectItem value="paid">Paid Ticket</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.pricing.type === 'paid' && (
+                <div className="grid gap-2">
+                  <Label className="text-sm font-bold ml-1">Price (USD)</Label>
+                  <Input type="number" name="pricing.amount" value={formData.pricing.amount} onChange={handleChange} disabled={isLocked} className="h-12 rounded-xl" />
+                </div>
+              )}
             </div>
-            
+
             <div className="pt-6 border-t border-gray-50">
-               <Label className="text-sm font-bold mb-4 block ml-1">Event Gallery</Label>
-               <div className="flex items-center gap-4 mb-4">
-                  <label htmlFor="media-up" className="cursor-pointer bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-8 flex-1 flex flex-col items-center hover:bg-gray-100 hover:border-blue-200 transition-all">
-                     <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
-                     <span className="text-xs font-bold text-gray-500">Upload Media</span>
-                     <input id="media-up" type="file" hidden multiple onChange={handleImageUpload} disabled={uploadingImage} />
-                  </label>
-               </div>
-               <div className="grid grid-cols-4 gap-4">
-                  {formData.images.map((img, i) => (
-                    <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-gray-100 group relative">
-                       <img src={img.url} className="w-full h-full object-cover" />
-                       <button onClick={() => setFormData({ ...formData, images: formData.images.filter((_, idx) => idx !== i) })} className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><XCircle className="w-4 h-4" /></button>
-                    </div>
-                  ))}
-               </div>
+              <Label className="text-sm font-bold mb-4 block ml-1">Event Gallery</Label>
+              <div className="flex items-center gap-4 mb-4">
+                <label htmlFor="media-up" className="cursor-pointer bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-8 flex-1 flex flex-col items-center hover:bg-gray-100 hover:border-blue-200 transition-all">
+                  <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
+                  <span className="text-xs font-bold text-gray-500">Upload Media</span>
+                  <input id="media-up" type="file" hidden multiple onChange={handleImageUpload} disabled={uploadingImage} />
+                </label>
+              </div>
+              <div className="grid grid-cols-4 gap-4">
+                {formData.images.map((img, i) => (
+                  <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-gray-100 group relative">
+                    <img src={img.url} alt={img.alt || 'Uploaded event media'} className="w-full h-full object-cover" />
+                    <button onClick={() => setFormData({ ...formData, images: formData.images.filter((_, idx) => idx !== i) })} className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><XCircle className="w-4 h-4" /></button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
       </div>
 
       <div className="flex items-center justify-between pt-4">
-         <Button variant="ghost" onClick={handleBack} disabled={currentStep === 0} className="rounded-xl h-12 px-8 font-bold">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Previous
-         </Button>
-         
-         {currentStep < STEPS.length -1 ? (
-           <Button onClick={handleNext} className="rounded-2xl h-12 px-10 bg-blue-600 hover:bg-blue-700 font-bold shadow-lg shadow-blue-100">
-             Next <ArrowRight className="w-4 h-4 ml-4" />
-           </Button>
-         ) : (
-           <Button onClick={handleSubmit} disabled={loading} className="rounded-2xl h-12 px-10 bg-green-600 hover:bg-green-700 font-bold shadow-lg shadow-green-100 min-w-[160px]">
-             {loading ? 'Saving...' : 'Finalize Event'}
-           </Button>
-         )}
+        <Button variant="ghost" onClick={handleBack} disabled={currentStep === 0} className="rounded-xl h-12 px-8 font-bold">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Previous
+        </Button>
+
+        {currentStep < STEPS.length - 1 ? (
+          <Button onClick={handleNext} className="rounded-2xl h-12 px-10 bg-blue-600 hover:bg-blue-700 font-bold shadow-lg shadow-blue-100">
+            Next <ArrowRight className="w-4 h-4 ml-4" />
+          </Button>
+        ) : (
+          <Button onClick={handleSubmit} disabled={loading} className="rounded-2xl h-12 px-10 bg-green-600 hover:bg-green-700 font-bold shadow-lg shadow-green-100 min-w-[160px]">
+            {loading ? 'Saving...' : 'Finalize Event'}
+          </Button>
+        )}
       </div>
     </div>
   );

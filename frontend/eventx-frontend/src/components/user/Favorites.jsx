@@ -78,16 +78,6 @@ const Favorites = ({ onEventSelect }) => {
     setFavorites(favorites.filter(event => event._id !== eventId));
   };
 
-  const toggleFavorite = (eventId) => {
-    let savedFavorites = [];
-    try { savedFavorites = JSON.parse(localStorage.getItem('eventx_favorites') || '[]'); } catch { /* corrupted */ }
-    const isFavorited = savedFavorites.includes(eventId);
-
-    if (isFavorited) {
-      removeFavorite(eventId);
-    }
-  };
-
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {

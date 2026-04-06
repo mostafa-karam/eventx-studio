@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -35,12 +35,10 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
   const [seatMap, setSeatMap] = useState(null);
   const [seatMapLoading, setSeatMapLoading] = useState(false);
   const [seatMapError, setSeatMapError] = useState('');
-//   const [bookingSuccess, setBookingSuccess] = useState('');
   const bookStickyRef = useRef(null);
   const [statsTop, setStatsTop] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
   const [hasTicketForEvent, setHasTicketForEvent] = useState(false);
-//   const [myTicketsLoading, setMyTicketsLoading] = useState(false);
   const [myTicketsError, setMyTicketsError] = useState('');
   const [myTicketsReloadKey, setMyTicketsReloadKey] = useState(0);
 
@@ -51,8 +49,9 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
 
   // payment removed per request
 
-  // eslint-disable-next-line no-unused-vars
-//   const { user, fetchCsrfToken } = useAuth();
+
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Image gallery state
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -137,7 +136,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
     if (showSeatSelection || (event && event._id)) loadSeatMap();
 
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?._id, showSeatSelection, bookingQuantity, reloadKey]);
 
   // Pre-check: does the current user already have a ticket for this event?
@@ -147,7 +146,6 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
       setHasTicketForEvent(false);
       setMyTicketsError('');
       if (!user || !event?._id) return;
-      setMyTicketsLoading(true);
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
         const res = await fetch(`${API_BASE_URL}/tickets/my-tickets?limit=100`, {
@@ -164,8 +162,6 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
         if (!aborted) setHasTicketForEvent(Boolean(has));
       } catch (err) {
         if (!aborted) setMyTicketsError(err.message || 'Failed to check tickets');
-      } finally {
-        if (!aborted) setMyTicketsLoading(false);
       }
     };
     run();
@@ -235,19 +231,9 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
     return (event.pricing?.amount ?? 0) * bookingQuantity;
   };
 
-   const getEventStatus = (ev) => {
-    const now = new Date();
-    const eventDate = new Date(ev.date || Date.now());
-    if (eventDate < now) return { status: 'past', label: 'Past Event', color: 'bg-gray-100 text-gray-600' };
-    if ((ev?.seating?.availableSeats ?? 0) === 0) return { status: 'sold-out', label: 'Sold Out', color: 'bg-red-100 text-red-600' };
-    if ((ev?.seating?.availableSeats ?? 0) < ((ev?.seating?.totalSeats ?? 0) * 0.1)) return { status: 'limited', label: 'Limited Seats', color: 'bg-orange-100 text-orange-600' };
-    return { status: 'available', label: 'Available', color: 'bg-green-100 text-green-600' };
-  };
-
   const eventStatus = computedEventStatus;
-  // eslint-disable-next-line no-unused-vars
+
   const canBook = eventStatus.status === 'available' || eventStatus.status === 'limited';
-   const canBookForUser = !!user && canBook && !hasTicketForEvent;
   // Build an effective seat map with fallbacks for display
   let displaySeatMap = seatMap ?? event?.seating?.seatMap ?? [];
   if ((!displaySeatMap || displaySeatMap.length === 0) && (event?.seating?.totalSeats > 0)) {
@@ -287,7 +273,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
 
     // Paid events must go through the secure booking flow
     if (event.pricing?.type === 'paid') {
-      window.location.href = `/booking/${event._id}`;
+      navigate(`/booking/${event._id}`);
       return;
     }
 
@@ -315,7 +301,6 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Booking failed');
 
-        setBookingSuccess('Booked — check My Tickets');
         toast.success('Booking confirmed — check My Tickets');
         onBookTicket?.(data.data);
         setReloadKey(k => k + 1);
@@ -337,7 +322,6 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Booking failed');
 
-        setBookingSuccess('Booked — check My Tickets');
         onBookTicket?.(data.data);
         setReloadKey(k => k + 1);
         setMyTicketsReloadKey(k => k + 1);
@@ -710,7 +694,7 @@ const EventDetails = ({ event = {}, onBack = () => { }, onBookTicket = () => { }
                     </div>
                     <p className="font-bold text-emerald-800 mb-1">You're Going!</p>
                     <p className="text-sm text-emerald-600 mb-4">You already have a ticket for this event.</p>
-                    <Button variant="outline" className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-100 rounded-xl" onClick={() => window.location.href = '/user/tickets'}>
+                    <Button variant="outline" className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-100 rounded-xl" onClick={() => navigate('/user/tickets')}>
                       View My Tickets
                     </Button>
                   </div>

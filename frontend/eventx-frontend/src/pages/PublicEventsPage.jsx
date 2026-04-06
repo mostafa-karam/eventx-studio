@@ -81,7 +81,7 @@ const EventCard = ({ event, onClick }) => {
 };
 
 const PublicEventsPage = () => {
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
     const [events, setEvents] = useState([]);
@@ -169,19 +169,22 @@ const PublicEventsPage = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
                 {/* Category pills */}
                 <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
-                    {CATEGORIES.map(({ value, label, icon: Icon }) => (
-                        <button
-                            key={value}
-                            onClick={() => { setCategory(value); setPage(1); }}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${category === value
-                                ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
-                                : 'bg-white border text-gray-600 hover:border-blue-300 hover:text-blue-600'
-                                }`}
-                        >
-                            <Icon className="w-3.5 h-3.5" />
-                            {label}
-                        </button>
-                    ))}
+                    {CATEGORIES.map(({ value, label, icon }) => {
+                        const CategoryIcon = icon;
+                        return (
+                            <button
+                                key={value}
+                                onClick={() => { setCategory(value); setPage(1); }}
+                                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${category === value
+                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                                    : 'bg-white border text-gray-600 hover:border-blue-300 hover:text-blue-600'
+                                    }`}
+                            >
+                                <CategoryIcon className="w-3.5 h-3.5" />
+                                {label}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Filter bar */}

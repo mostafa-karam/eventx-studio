@@ -18,7 +18,7 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
+  const isOnline = true;
   const [attemptsRemaining, setAttemptsRemaining] = useState(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');

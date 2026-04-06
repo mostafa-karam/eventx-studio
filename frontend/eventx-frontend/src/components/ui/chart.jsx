@@ -50,6 +50,23 @@ function ChartContainer({
   );
 }
 
+const sanitizeCssValue = (value) => {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  const trimmed = value.trim()
+  return /^[-\w\s#(),.%]+$/.test(trimmed) ? trimmed : ''
+}
+
+const sanitizeCssKey = (key) => {
+  if (typeof key !== 'string') {
+    return ''
+  }
+
+  return key.replace(/[^\w-]/g, '')
+}
+
 const ChartStyle = ({
   id,
   config
@@ -60,25 +77,30 @@ const ChartStyle = ({
     return null
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-.map(([key, itemConfig]) => {
-const color =
-  itemConfig.theme?.[theme] ||
-  itemConfig.color
-return color ? `  --color-${key}: ${color};` : null
-})
-.join("\n")}
-}
-`)
-          .join("\n"),
-      }} />
-  );
+  const cssText = Object.entries(THEMES)
+    .map(([theme, prefix]) => {
+      const lines = colorConfig
+        .map(([key, itemConfig]) => {
+          const safeKey = sanitizeCssKey(key)
+          const color =
+            sanitizeCssValue(itemConfig.theme?.[theme]) ||
+            sanitizeCssValue(itemConfig.color)
+
+          return color && safeKey ? `  --color-${safeKey}: ${color};` : null
+        })
+        .filter(Boolean)
+        .join('\n')
+
+      return lines ? `${prefix} [data-chart=${id}] {\n${lines}\n}` : null
+    })
+    .filter(Boolean)
+    .join('\n')
+
+  if (!cssText) {
+    return null
+  }
+
+  return <style>{cssText}</style>
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip
@@ -274,8 +296,8 @@ function getPayloadConfigFromPayload(
 
   const payloadPayload =
     "payload" in payload &&
-    typeof payload.payload === "object" &&
-    payload.payload !== null
+      typeof payload.payload === "object" &&
+      payload.payload !== null
       ? payload.payload
       : undefined
 

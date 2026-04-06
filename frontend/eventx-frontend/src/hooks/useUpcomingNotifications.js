@@ -22,7 +22,7 @@ export default function useUpcomingNotifications() {
 
                 if (!('Notification' in window)) return;
                 if (Notification.permission !== 'granted') {
-                    try { await Notification.requestPermission(); } catch (e) { return; }
+                    try { await Notification.requestPermission(); } catch { return; }
                 }
 
                 for (const ev of events) {

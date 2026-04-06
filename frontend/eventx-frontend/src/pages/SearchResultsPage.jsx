@@ -29,6 +29,7 @@ const SearchResultsPage = () => {
                 toast.error(data.message || 'Search failed');
             }
         } catch (error) {
+            console.error('Search error:', error);
             toast.error('Network error during search');
         } finally {
             setLoading(false);

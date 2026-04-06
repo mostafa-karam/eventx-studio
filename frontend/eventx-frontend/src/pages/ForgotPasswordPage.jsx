@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle, Send } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const ForgotPasswordPage = () => {
     const { forgotPassword } = useAuth();
-//     const navigate = useNavigate();
+    //     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);

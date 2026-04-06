@@ -58,7 +58,6 @@ const UserProfile = () => {
     const [recentActivity, setRecentActivity] = useState([]);
 
     // Loading states
-//     const [loadingStats, setLoadingStats] = useState(true);
 
     // 2FA state
     const [twoFactorSetup, setTwoFactorSetup] = useState(null);
@@ -197,7 +196,7 @@ const UserProfile = () => {
 
                 // Load recent activity
                 loadRecentActivity();
-            } catch {
+            } catch (error) {
                 console.error('Error loading account stats:', error);
                 // Set default values if everything fails
                 setAccountStats({
@@ -207,12 +206,12 @@ const UserProfile = () => {
                     memberSince: user?.createdAt || new Date()
                 });
             } finally {
-                setLoadingStats(false);
+                ;
             }
         };
 
         loadAccountStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     const handleSaveProfile = async (e) => {
@@ -235,7 +234,7 @@ const UserProfile = () => {
             localStorage.setItem('last_profile_update', new Date().toISOString());
             // Reload activity to show the new profile update
             loadRecentActivity();
-        } catch {
+        } catch (e) {
             console.error('Profile update error:', e);
             setProfileMsg(e.message || 'Profile update failed');
         } finally {
@@ -414,7 +413,7 @@ const UserProfile = () => {
             if (data.success) {
                 setSessions(data.data.sessions);
             }
-        } catch {
+        } catch (err) {
             console.error('Failed to load sessions', err);
         } finally {
             setLoadingSessions(false);
@@ -423,7 +422,7 @@ const UserProfile = () => {
 
     useEffect(() => {
         loadSessions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleRevokeSession = async (sessionId) => {
@@ -433,7 +432,7 @@ const UserProfile = () => {
                 credentials: 'include'
             });
             setSessions(sessions.filter(s => s.sessionId !== sessionId));
-        } catch {
+        } catch (err) {
             console.error('Failed to revoke session', err);
         }
     };
@@ -445,7 +444,7 @@ const UserProfile = () => {
                 credentials: 'include'
             });
             loadSessions();
-        } catch {
+        } catch (err) {
             console.error('Failed to revoke all sessions', err);
         }
     };
@@ -474,7 +473,7 @@ const UserProfile = () => {
             } else {
                 toast.error(data.message || 'Failed to delete account');
             }
-        } catch {
+        } catch (err) {
             console.error('Delete account error:', err);
             toast.error('An error occurred while deleting your account.');
         } finally {

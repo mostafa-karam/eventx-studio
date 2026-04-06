@@ -111,7 +111,7 @@ const Marketing = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-             <span className="text-gray-900">Marketing Center</span>
+            <span className="text-gray-900">Marketing Center</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">Create, manage and analyze marketing campaigns</p>
         </div>
@@ -131,11 +131,11 @@ const Marketing = () => {
           { title: 'Avg Open Rate', value: `${stats.avgOpenRate || 0}%`, icon: Eye, color: 'from-teal-400 to-emerald-600', lightBg: 'bg-teal-50 text-teal-600' },
           { title: 'Revenue Generated', value: `$${stats.revenue?.toLocaleString() || '0'}`, icon: TrendingUp, color: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50 text-amber-600' }
         ].map((stat, i) => {
-          // const Icon = stat.icon;
+          const Icon = stat.icon;
           return (
             <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
               <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.color} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
-              
+
               <div className="relative z-10 flex justify-between items-center">
                 <div className="flex-1 pr-3">
                   <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1.5">{stat.title}</p>
@@ -145,7 +145,7 @@ const Marketing = () => {
                   <Icon className="w-5 h-5" />
                 </div>
               </div>
-              
+
               <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
             </div>
           );
@@ -153,31 +153,34 @@ const Marketing = () => {
       </div>
 
       {/* Tabs - only Campaigns since analytics/templates have no real data */}
-      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit border">
-        {[{ key: 'campaigns', label: 'Campaigns', icon: Target }].map(({ key, label, icon: Icon }) => (
-          <Button
-            key={key}
-            variant={activeTab === key ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setActiveTab(key)}
-            className={`flex items-center space-x-2 ${activeTab === key
+      <div className="space-x-1 bg-gray-100 p-1 rounded-lg w-fit border">
+        {[{ key: 'campaigns', label: 'Campaigns', icon: Target }].map(({ key, label, icon }) => {
+          const TabIcon = icon;
+          return (
+            <Button
+              key={key}
+              variant={activeTab === key ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab(key)}
+              className={`flex items-center space-x-2 ${activeTab === key
                 ? 'bg-white shadow-md border border-gray-200 text-gray-900'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-              }`}
-          >
-            <Icon className="w-4 h-4" />
-            <span>{label}</span>
-          </Button>
-        ))}
+                }`}
+            >
+              <TabIcon className="w-4 h-4" />
+              <span>{label}</span>
+            </Button>
+          );
+        })}
       </div>
 
       {/* Campaigns List */}
       {activeTab === 'campaigns' && (
         <div className="space-y-6">
           <WhiteCard className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 lg:p-5 bg-gray-50/50">
-            <div className="flex items-center space-x-3 mb-2 sm:mb-0 hidden md:flex">
-                <Target className="w-5 h-5 text-gray-700" />
-                <h2 className="text-xl font-extrabold text-gray-900">Campaign Management</h2>
+            <div className="hidden md:flex items-center space-x-3 mb-2 sm:mb-0">
+              <Target className="w-5 h-5 text-gray-700" />
+              <h2 className="text-xl font-extrabold text-gray-900">Campaign Management</h2>
             </div>
             <div className="flex items-center space-x-3 w-full sm:w-auto">
               <div className="relative flex-1 sm:w-64">
@@ -201,7 +204,7 @@ const Marketing = () => {
             <WhiteCard>
               <div className="py-16 text-center flex flex-col items-center">
                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
-                    <Target className="h-10 w-10 text-gray-300" />
+                  <Target className="h-10 w-10 text-gray-300" />
                 </div>
                 <h3 className="text-xl font-extrabold text-gray-900 mb-2">No campaigns yet</h3>
                 <p className="text-gray-500 font-medium mb-6">Create your first marketing campaign to get started</p>

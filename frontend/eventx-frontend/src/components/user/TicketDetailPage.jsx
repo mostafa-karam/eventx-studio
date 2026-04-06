@@ -222,15 +222,14 @@ const TicketDetailPage = () => {
             </div>
 
             {/* CSS injected for printing */}
-            <style dangerouslySetInnerHTML={{
-                __html: `
+            <style>{`
         @media print {
           body * { visibility: hidden; }
           .print-styles, .print-styles * { visibility: visible; }
           .print-styles { position: absolute; left: 0; top: 0; width: 100%; border: none; box-shadow: none; }
           .no-print { display: none; }
         }
-      `}} />
+      `}</style>
         </div>
     );
 };
