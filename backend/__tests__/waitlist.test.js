@@ -27,7 +27,7 @@ beforeAll(async () => {
     user = await User.create({
         name: 'Waitlist User',
         email: 'waitlist_user@example.com',
-        password: 'Password123!',
+        password: 'UniqueTestPass!2026',
         role: 'user',
         isActive: true
     });
@@ -36,7 +36,7 @@ beforeAll(async () => {
     organizer = await User.create({
         name: 'Organizer',
         email: 'org_waitlist@example.com',
-        password: 'Password123!',
+        password: 'UniqueTestPass!2026',
         role: 'organizer',
         isActive: true
     });

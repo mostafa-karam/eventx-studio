@@ -6,6 +6,7 @@ const { escapeRegex } = require('../utils/helpers');
 const auditService = require('../services/auditService');
 const eventsService = require('../services/eventsService');
 const eventLifecycleService = require('../services/eventLifecycleService');
+const { enforceOwnership } = require('../utils/authorization');
 
 // @desc    Get all events (public with optional auth)
 // @access  Public
@@ -114,9 +115,7 @@ exports.deleteEvent = async (req, res) => {
 // @access  Public
 exports.getSeats = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.id).select('seating title date venue.name');
-        if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-
+        const event = await eventsService.getSeats(req.params.id);
         res.json({
             success: true,
             data: {
@@ -130,7 +129,7 @@ exports.getSeats = async (req, res) => {
         });
     } catch (error) {
         logger.error('Get seats error:', error);
-        if (error.name === 'CastError') return res.status(404).json({ success: false, message: 'Event not found' });
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         res.status(500).json({ success: false, message: 'Server error while fetching seats' });
     }
 };
@@ -139,18 +138,12 @@ exports.getSeats = async (req, res) => {
 // @access  Private
 exports.joinWaitlist = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.id);
-        if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-        if (event.status !== 'published') return res.status(400).json({ success: false, message: 'Event is not active' });
-        if (event.seating && event.seating.availableSeats > 0) return res.status(400).json({ success: false, message: 'Tickets are still available for this event' });
-
-        const waitlistEntry = new Waitlist({ event: event._id, user: req.user._id, status: 'pending' });
-        await waitlistEntry.save();
-
+        const waitlistEntry = await eventsService.joinWaitlist(req.params.id, req.user);
         res.status(201).json({ success: true, message: 'Successfully joined the waitlist', data: { waitlist: waitlistEntry } });
     } catch (error) {
         if (error.code === 11000) return res.status(400).json({ success: false, message: 'You are already on the waitlist for this event' });
         logger.error('Join waitlist error:', error);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         res.status(500).json({ success: false, message: 'Server error while joining waitlist' });
     }
 };
@@ -159,19 +152,11 @@ exports.joinWaitlist = async (req, res) => {
 // @access  Private (Admin/Organizer)
 exports.getWaitlist = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.id);
-        if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-        if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Not authorized to view waitlist' });
-        }
-
-        const waitlist = await Waitlist.find({ event: event._id })
-            .populate('user', 'name email phone')
-            .sort({ createdAt: 1 });
-
+        const waitlist = await eventsService.getWaitlist(req.params.id, req.user);
         res.json({ success: true, data: { waitlist } });
     } catch (error) {
         logger.error('Get waitlist error:', error);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         res.status(500).json({ success: false, message: 'Server error while fetching waitlist' });
     }
 };
@@ -180,27 +165,11 @@ exports.getWaitlist = async (req, res) => {
 // @access  Private (Admin/Organizer)
 exports.approveWaitlist = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.id);
-        if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-        if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Not authorized to approve waitlist' });
-        }
-
-        const waitlistEntry = await Waitlist.findOne({ _id: req.params.waitlistId, event: event._id });
-        if (!waitlistEntry) return res.status(404).json({ success: false, message: 'Waitlist entry not found' });
-        if (waitlistEntry.status !== 'pending') return res.status(400).json({ success: false, message: `Cannot approve entry in ${waitlistEntry.status} status` });
-
-        waitlistEntry.status = 'notified';
-        waitlistEntry.notifiedAt = new Date();
-        const expires = new Date();
-        expires.setHours(expires.getHours() + 24);
-        waitlistEntry.expiresAt = expires;
-
-        await waitlistEntry.save();
-
+        const waitlistEntry = await eventsService.approveWaitlist(req.params.id, req.params.waitlistId, req.user);
         res.json({ success: true, message: 'Waitlist entry approved. User has 24 hours to purchase.', data: { waitlist: waitlistEntry } });
     } catch (error) {
         logger.error('Approve waitlist error:', error);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         res.status(500).json({ success: false, message: 'Server error while approving waitlist' });
     }
 };
@@ -219,16 +188,7 @@ function escapeCSV(str) {
 // @access  Private (Admin/Organizer)
 exports.exportAttendees = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.id);
-        if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-        if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Not authorized to export attendees' });
-        }
-
-        const tickets = await Ticket.find({
-            event: event._id,
-            status: { $in: ['booked', 'used'] }
-        }).populate('user', 'name email phone').sort({ bookingDate: 1 });
+        const { event, tickets } = await eventsService.exportAttendees(req.params.id, req.user);
 
         let csvData = 'Ticket ID,Name,Email,Phone,Seat Number,Booking Date,Status,Payment Amount\n';
 
@@ -250,6 +210,7 @@ exports.exportAttendees = async (req, res) => {
         res.send(csvData);
     } catch (error) {
         logger.error('Export attendees error:', error);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         res.status(500).json({ success: false, message: 'Server error while exporting attendees' });
     }
 };
@@ -258,25 +219,11 @@ exports.exportAttendees = async (req, res) => {
 // @access  Private (organizer, admin)
 exports.publishEvent = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.id);
-        if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-
-        const isOwner = event.organizer.toString() === req.user._id.toString();
-        const isAdmin = req.user.role === 'admin';
-        if (!isOwner && !isAdmin) {
-            return res.status(403).json({ success: false, message: 'Not authorized to publish this event' });
-        }
-
-        if (event.status === 'published') {
-            return res.status(400).json({ success: false, message: 'Event is already published' });
-        }
-
-        event.status = 'published';
-        await event.save();
-
+        const event = await eventsService.publishEvent(req.params.id, req.user);
         res.json({ success: true, message: 'Event published successfully', data: { event } });
     } catch (error) {
         logger.error('Publish event error:', error);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         res.status(500).json({ success: false, message: 'Server error while publishing event' });
     }
 };
@@ -285,10 +232,7 @@ exports.publishEvent = async (req, res) => {
 // @access  Private
 exports.getMyWaitlists = async (req, res) => {
     try {
-        const waitlists = await Waitlist.find({ user: req.user._id })
-            .populate('event', 'title date venue images category pricing')
-            .sort({ createdAt: -1 });
-
+        const waitlists = await eventsService.getMyWaitlists(req.user);
         res.json({ success: true, data: { waitlists } });
     } catch (error) {
         logger.error('Get my waitlists error:', error);

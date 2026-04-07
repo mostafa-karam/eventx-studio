@@ -38,7 +38,7 @@ describe('Halls Endpoints', () => {
         await User.create({
             name: 'Admin User',
             email: 'admin@example.com',
-            password: 'Password123!',
+            password: 'UniqueTestPass!2026',
             role: 'admin',
             emailVerified: true
         });
@@ -47,7 +47,7 @@ describe('Halls Endpoints', () => {
             .post('/api/auth/login')
             .send({
                 email: 'admin@example.com',
-                password: 'Password123!'
+                password: 'UniqueTestPass!2026'
             });
 
         const cookies = loginRes.headers['set-cookie'];

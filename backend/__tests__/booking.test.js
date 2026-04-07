@@ -40,7 +40,7 @@ describe('Booking Endpoints', () => {
             .send({
                 name: 'Test User',
                 email: 'test@example.com',
-                password: 'Password123!',
+                password: 'UniqueTestPass!2026',
                 role: 'organizer'
             });
 
@@ -51,7 +51,7 @@ describe('Booking Endpoints', () => {
             .post('/api/auth/login')
             .send({
                 email: 'test@example.com',
-                password: 'Password123!'
+                password: 'UniqueTestPass!2026'
             });
 
         // Get token from cookie
@@ -145,7 +145,7 @@ describe('Booking Endpoints', () => {
             .post('/api/booking/initiate')
             .set('Authorization', `Bearer ${authToken}`)
             .send({ eventId: testEventId, quantity: 1 });
-        
+
         await request(app)
             .post('/api/booking/confirm')
             .set('Authorization', `Bearer ${authToken}`)
@@ -165,5 +165,79 @@ describe('Booking Endpoints', () => {
         expect(getRes.body.success).toBe(true);
         expect(Array.isArray(getRes.body.data.tickets)).toBe(true);
         expect(getRes.body.data.tickets.length).toBeGreaterThan(0);
+    });
+
+    it('should book multiple paid tickets with a verified payment token', async () => {
+        // Create a paid event
+        const paidEventRes = await request(app)
+            .post('/api/events')
+            .set('Authorization', `Bearer ${authToken}`)
+            .send({
+                title: 'Paid Test Event',
+                description: 'Paid event description',
+                date: new Date(Date.now() + 86400000).toISOString(),
+                venue: {
+                    name: 'Paid Venue',
+                    address: '456 Paid St',
+                    city: 'Paid City',
+                    country: 'USA',
+                    capacity: 100
+                },
+                pricing: {
+                    type: 'paid',
+                    amount: 50,
+                    currency: 'USD'
+                },
+                seating: {
+                    totalSeats: 10,
+                    availableSeats: 10,
+                    seatMap: []
+                },
+                category: 'conference',
+                tags: ['paid']
+            });
+
+        const paidEventId = paidEventRes.body.data.event._id;
+
+        await request(app)
+            .post(`/api/events/${paidEventId}/publish`)
+            .set('Authorization', `Bearer ${authToken}`);
+
+        const paymentRes = await request(app)
+            .post('/api/payments/process')
+            .set('Authorization', `Bearer ${authToken}`)
+            .send({
+                amount: 100,
+                currency: 'USD',
+                quantity: 2,
+                paymentMethod: 'credit_card',
+                eventId: paidEventId
+            });
+
+        expect(paymentRes.statusCode).toBe(200);
+        expect(paymentRes.body.success).toBe(true);
+        const { paymentId, token } = paymentRes.body.data;
+
+        const bookRes = await request(app)
+            .post('/api/tickets/book-multi')
+            .set('Authorization', `Bearer ${authToken}`)
+            .send({
+                eventId: paidEventId,
+                quantity: 2,
+                paymentMethod: 'credit_card',
+                transactionId: paymentId,
+                paymentToken: token
+            });
+
+        expect(bookRes.statusCode).toBe(201);
+        expect(bookRes.body.success).toBe(true);
+        expect(Array.isArray(bookRes.body.data.tickets)).toBe(true);
+        expect(bookRes.body.data.tickets).toHaveLength(2);
+        bookRes.body.data.tickets.forEach(ticket => {
+            expect(ticket.payment.amount).toBe(50);
+            expect(ticket.payment.currency).toBe('USD');
+            expect(ticket.payment.transactionId).toBe(paymentId);
+            expect(ticket.user._id).toBeDefined();
+        });
     });
 });

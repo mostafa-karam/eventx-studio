@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const CONSTANTS = require('../config/constants');
+const { encrypt, decrypt } = require('../utils/encryption');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -99,11 +100,15 @@ const userSchema = new mongoose.Schema({
   activeSessions: [{
     sessionId: String,
     deviceInfo: {
-      userAgent: String,
-      ip: String,
-      device: String,
-      browser: String,
-      os: String
+      type: mongoose.Schema.Types.Mixed,
+      get: function(data) {
+          if (!data) return data;
+          return typeof data === 'string' && data.includes(':') ? decrypt(data) : data;
+      },
+      set: function(data) {
+          if (!data) return data;
+          return typeof data === 'object' ? encrypt(data) : encrypt(String(data));
+      }
     },
     lastActivity: {
       type: Date,
@@ -132,7 +137,9 @@ const userSchema = new mongoose.Schema({
     }
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { getters: true },
+  toObject: { getters: true }
 });
 
 // Hash password before saving
@@ -273,6 +280,11 @@ userSchema.methods.toJSON = function () {
   delete userObject.activeSessions;
   return userObject;
 };
+
+// Performance Indexes (email index handled by unique:true on field)
+userSchema.index({ role: 1 });
+userSchema.index({ isActive: 1 });
+userSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('User', userSchema);
 

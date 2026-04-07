@@ -148,13 +148,12 @@ ticketSchema.virtual('formattedTicketId').get(function() {
   return this.ticketId;
 });
 
-// Index for better query performance
+// Performance Indexes
 ticketSchema.index({ event: 1, user: 1 });
 ticketSchema.index({ status: 1 });
 ticketSchema.index({ bookingDate: -1 });
-
-// Compound index for user's tickets
 ticketSchema.index({ user: 1, status: 1, bookingDate: -1 });
+ticketSchema.index({ 'payment.status': 1 });
 
 module.exports = mongoose.model('Ticket', ticketSchema);
 

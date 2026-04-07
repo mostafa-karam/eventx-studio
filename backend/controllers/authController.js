@@ -178,7 +178,7 @@ exports.changePassword = async (req, res) => {
       return res.status(400).json({ success: false, message: 'New password is too weak', errors: pwErrors });
     }
 
-    const user = await User.findById(req.user._id).select('+password');
+    const user = await User.findById(req.user._id).select('+password +activeSessions +refreshToken');
     const isValid = await user.comparePassword(currentPassword);
     if (!isValid) return res.status(400).json({ success: false, message: 'Current password is incorrect' });
 
@@ -186,8 +186,18 @@ exports.changePassword = async (req, res) => {
     if (recentlyUsed) return res.status(400).json({ success: false, message: 'Cannot reuse a recently used password' });
 
     user.password = newPassword;
+    
+    // SECURITY (Phase 2.5): Invalidate sessions on password change
+    // Keep only the current session active, invalidate all others 
+    user.activeSessions = user.activeSessions.filter(s => s.sessionId === req.sessionId);
+    // Force rotation of refresh token on next refresh
+    user.refreshToken = undefined;
+    user.refreshTokenExpires = undefined;
+
     await user.save();
-    res.json({ success: true, message: 'Password changed successfully' });
+    
+    createAuditLog(req, user, 'auth.password_changed', 'User', user._id);
+    res.json({ success: true, message: 'Password changed successfully. Other devices have been logged out.' });
   } catch (error) {
     logger.error('Change password error: ' + error.message);
     res.status(500).json({ success: false, message: 'Server error during password change' });
@@ -224,14 +234,15 @@ exports.resendVerification = async (req, res) => {
     if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
 
     const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) return res.json({ success: true, message: 'If the account exists, a verification email has been sent.' });
-    if (user.emailVerified) return res.status(400).json({ success: false, message: 'Email is already verified' });
+    
+    // SECURITY (Phase 2.4): Always return the same message to prevent enumeration
+    if (user && !user.emailVerified) {
+      const verificationToken = user.generateEmailVerificationToken();
+      await user.save();
+      sendVerificationEmail(user.email, verificationToken);
+    }
 
-    const verificationToken = user.generateEmailVerificationToken();
-    await user.save();
-    sendVerificationEmail(user.email, verificationToken);
-
-    res.json({ success: true, message: 'Verification email sent. Check your inbox (or the dev email log).' });
+    res.json({ success: true, message: 'If the account exists and requires verification, a link has been sent to your email.' });
   } catch (error) {
     logger.error('Resend verification error: ' + error.message);
     res.status(500).json({ success: false, message: 'Server error' });

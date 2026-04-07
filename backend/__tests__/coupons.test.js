@@ -26,7 +26,7 @@ beforeAll(async () => {
     admin = await User.create({
         name: 'Admin',
         email: 'admin_coupons@example.com',
-        password: 'Password123!',
+        password: 'UniqueTestPass!2026',
         role: 'admin',
         isActive: true
     });
@@ -35,7 +35,7 @@ beforeAll(async () => {
     user = await User.create({
         name: 'User',
         email: 'user_coupons@example.com',
-        password: 'Password123!',
+        password: 'UniqueTestPass!2026',
         role: 'user',
         isActive: true
     });

@@ -43,7 +43,7 @@ describe('Event Lifecycle & Immutability', () => {
             .send({
                 name: 'Organizer User',
                 email: 'org@example.com',
-                password: 'Password123!',
+                password: 'UniqueTestPass!2026',
                 role: 'organizer'
             });
 
@@ -54,7 +54,7 @@ describe('Event Lifecycle & Immutability', () => {
             .post('/api/auth/login')
             .send({
                 email: 'org@example.com',
-                password: 'Password123!'
+                password: 'UniqueTestPass!2026'
             });
 
         // Get token from cookie

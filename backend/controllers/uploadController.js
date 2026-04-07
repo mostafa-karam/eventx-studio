@@ -40,11 +40,28 @@ exports.uploadFiles = async (req, res) => {
             try {
                 const buffer = fs.readFileSync(file.path);
                 const detected = await fileTypeFromBuffer(buffer);
+                
                 if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
                     fs.unlink(file.path, () => { });
                     rejectedFiles.push(`${file.originalname} (detected: ${detected?.mime || 'unknown'})`);
                     continue;
                 }
+
+                // SECURITY: Validate extension matches the true file type (prevents polyglot/mismatch attacks)
+                const trueExt = `.${detected.ext}`.toLowerCase();
+                // We map 'jpg' to 'jpeg' for consistency
+                const normalizedTrueExt = trueExt === '.jpg' ? '.jpeg' : trueExt;
+                const normalizedFileExt = ext === '.jpg' ? '.jpeg' : ext;
+
+                if (normalizedTrueExt !== normalizedFileExt) {
+                    logger.warn(`Extension mismatch attack detected: ${file.originalname} claims to be ${ext} but is actually ${trueExt}`);
+                    fs.unlink(file.path, () => { });
+                    rejectedFiles.push(`${file.originalname} (extension mismatch)`);
+                    continue;
+                }
+                
+                // Sanitize originalname for alt text (prevent XSS in alt attributes)
+                file.sanitizedAlt = file.originalname.replace(/[^a-zA-Z0-9-_\s]/g, '').trim().substring(0, 100);
             } catch (err) {
                 logger.warn(`MIME detection error for ${file.originalname}: ${err.message}`);
                 fs.unlink(file.path, () => { });
@@ -66,7 +83,7 @@ exports.uploadFiles = async (req, res) => {
 
         const urls = validatedFiles.map(file => ({
             url: `${baseUrl}/uploads/${file.filename}`,
-            alt: file.originalname.replace(/\.[^.]+$/, ''),
+            alt: file.sanitizedAlt || 'Uploaded image',
             filename: file.filename,
         }));
 

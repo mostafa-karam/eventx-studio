@@ -125,7 +125,7 @@ describe('User Management Endpoints', () => {
         const victim = await User.create({
             name: 'Victim',
             email: 'victim@example.com',
-            password: 'Password123!',
+            password: 'UniqueTestPass!2026',
             isActive: true
         });
 

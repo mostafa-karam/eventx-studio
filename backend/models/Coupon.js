@@ -38,6 +38,7 @@ couponSchema.virtual('isValid').get(function () {
     return true;
 });
 
+// Performance Indexes (code index handled by unique:true on field)
 couponSchema.index({ isActive: 1, expiresAt: 1 });
 
 module.exports = mongoose.model('Coupon', couponSchema);

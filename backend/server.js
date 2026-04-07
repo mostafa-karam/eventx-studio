@@ -21,17 +21,13 @@ const xssCleaner = require('./middleware/xssCleaner');
 
 dotenv.config();
 
-// ─── Startup Environment Validation ────────────────────────────────
-const REQUIRED_ENV = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'MONGODB_URI', 'CSRF_SECRET'];
-const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]);
-if (missingEnv.length > 0) {
-  console.error(`[FATAL] Missing required environment variables: ${missingEnv.join(', ')}`);
-  console.error('[FATAL] Server will not start. Please check your .env file.');
-  process.exit(1);
-}
+const validateEnv = require('./config/validateEnv');
+validateEnv();
+
+const config = require('./config');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = config.port;
 
 // Trust reverse proxies only when explicitly configured
 if (process.env.TRUST_PROXY) {
@@ -39,6 +35,11 @@ if (process.env.TRUST_PROXY) {
 }
 
 // ─── Security Middleware ────────────────────────────────────────────
+const requestId = require('./middleware/requestId');
+
+// Attach request ID tracking
+app.use(requestId);
+
 // CSP nonce generation — attach a unique nonce per request
 app.use((_req, res, next) => {
   res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
@@ -67,17 +68,52 @@ app.use(cookieParser(process.env.CSRF_SECRET || process.env.JWT_SECRET));
 // Global rate limiter
 app.use(globalLimiter);
 // ─── CORS ────────────────────────────────────────────────────────────
-const allowedOrigins = (process.env.FRONTEND_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5173')
-  .split(',')
-  .map(o => o.trim());
+// In production, strictly use the configured origins. In dev, allow localhost fallback.
+const validateOriginUrl = (origin) => {
+  try {
+    const parsed = new URL(origin);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('Origin must use http or https');
+    }
+    if (parsed.host.includes('*') || origin.includes('*')) {
+      throw new Error('Origin must not contain wildcard characters');
+    }
+    return parsed.origin;
+  } catch (err) {
+    throw new Error(`Invalid FRONTEND origin: ${origin} (${err.message})`);
+  }
+};
+
+const getAllowedOrigins = () => {
+  const envOrigins = process.env.FRONTEND_ORIGIN || process.env.FRONTEND_URL;
+  if (envOrigins) {
+    const origins = envOrigins.split(',').map(o => o.trim()).filter(Boolean);
+    return origins.map(validateOriginUrl);
+  }
+  if (process.env.NODE_ENV !== 'production') {
+    return ['http://localhost:5173', 'http://localhost:3000'];
+  }
+  return [];
+};
+
+const allowedOrigins = getAllowedOrigins();
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS policy: Origin ${origin} is not allowed`), false);
+    if (!origin) {
+      if (process.env.NODE_ENV === 'production') {
+        logger.warn('Rejected request without Origin header in production');
+        return callback(new Error('Origin header is required'), false);
+      }
+      return callback(null, true);
     }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    logger.warn(`Rejected CORS origin: ${origin}`);
+    return callback(new Error(`CORS policy: Origin ${origin} is not allowed`), false);
   },
   credentials: true,
 }));
@@ -105,15 +141,15 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
   cookieName: '__csrf',
   cookieOptions: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    secure: config.env === 'production',
+    sameSite: config.env === 'production' ? 'strict' : 'lax',
     path: '/',
   },
   getTokenFromRequest: (req) => req.headers['x-csrf-token'],
 });
 
 // Apply CSRF protection to all /api routes (except in test mode)
-if (process.env.NODE_ENV !== 'test') {
+if (config.env !== 'test') {
   app.use('/api', doubleCsrfProtection);
 } else {
   logger.warn('⚠️  CSRF protection is DISABLED (test mode)');
@@ -149,7 +185,7 @@ setupSwagger(app);
 // ─── DB ──────────────────────────────────────────────────────────────
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/eventx-studio';
+    const mongoURI = config.mongoUri || 'mongodb://localhost:27017/eventx-studio';
     await mongoose.connect(mongoURI);
     logger.info('MongoDB connected successfully');
   } catch (error) {

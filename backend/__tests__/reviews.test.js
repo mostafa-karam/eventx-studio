@@ -44,7 +44,7 @@ describe('Review Soft-Delete & Unique Index', () => {
             .send({
                 name: 'Reviewer User',
                 email: 'reviewer@example.com',
-                password: 'Password123!',
+                password: 'UniqueTestPass!2026',
                 role: 'user'
             });
 
@@ -56,7 +56,7 @@ describe('Review Soft-Delete & Unique Index', () => {
             .post('/api/auth/login')
             .send({
                 email: 'reviewer@example.com',
-                password: 'Password123!'
+                password: 'UniqueTestPass!2026'
             });
 
         const cookies = loginRes.headers['set-cookie'];

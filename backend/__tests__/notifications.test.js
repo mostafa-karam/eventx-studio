@@ -23,7 +23,7 @@ beforeAll(async () => {
     testUser = await User.create({
         name: 'Test Notif User',
         email: 'notif@example.com',
-        password: 'Password123!',
+        password: 'UniqueTestPass!2026',
         role: 'user',
         isActive: true
     });

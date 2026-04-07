@@ -1,6 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const { authLimiter, passwordResetLimiter } = require('../middleware/rateLimiter');
+const { authLimiter, passwordResetLimiter, refreshTokenLimiter } = require('../middleware/rateLimiter');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { registerValidator, loginValidator, updateProfileValidator, changePasswordValidator } = require('../middleware/validators');
 const authController = require('../controllers/authController');
@@ -70,7 +70,7 @@ router.post('/register', registerValidator, authController.register);
  *         description: Invalid credentials
  */
 router.post('/login', loginValidator, authController.login);
-router.post('/refresh', authController.refreshToken);
+router.post('/refresh', refreshTokenLimiter, authController.refreshToken);
 router.get('/me', authenticate, authController.getCurrentUser);
 router.post('/logout', authenticate, authController.logout);
 router.put('/profile', authenticate, updateProfileValidator, authController.updateProfile);

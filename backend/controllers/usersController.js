@@ -1,7 +1,7 @@
 const logger = require('../utils/logger');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
-const { escapeRegex } = require('../utils/helpers');
+const { sanitizeSearchInput, createSafeRegex } = require('../utils/helpers');
 const { ACTIONS, RESOURCES } = require('../utils/auditConstants');
 
 // @desc    Get all users (Admin only)
@@ -15,12 +15,11 @@ exports.getUsers = async (req, res) => {
         // Build query
         let query = {};
 
-        // Search filter
         if (req.query.search) {
-            const safeSearch = escapeRegex(req.query.search);
+            const searchRegex = createSafeRegex(sanitizeSearchInput(req.query.search));
             query.$or = [
-                { name: { $regex: safeSearch, $options: 'i' } },
-                { email: { $regex: safeSearch, $options: 'i' } }
+                { name: searchRegex },
+                { email: searchRegex }
             ];
         }
 

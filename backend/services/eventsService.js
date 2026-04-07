@@ -1,7 +1,8 @@
 const Event = require('../models/Event');
 const Waitlist = require('../models/Waitlist');
 const Ticket = require('../models/Ticket');
-const { escapeRegex } = require('../utils/helpers');
+const { sanitizeSearchInput, createSafeRegex } = require('../utils/helpers');
+const { enforceOwnership } = require('../utils/authorization');
 
 class EventsService {
     buildEventQuery(queryParams) {
@@ -12,16 +13,16 @@ class EventsService {
         if (category) query.category = category;
 
         if (search) {
-            const safeSearch = escapeRegex(search);
+            const searchRegex = createSafeRegex(sanitizeSearchInput(search));
             query.$or = [
-                { title: { $regex: safeSearch, $options: 'i' } },
-                { description: { $regex: safeSearch, $options: 'i' } },
-                { 'venue.name': { $regex: safeSearch, $options: 'i' } },
-                { 'venue.city': { $regex: safeSearch, $options: 'i' } }
+                { title: searchRegex },
+                { description: searchRegex },
+                { 'venue.name': searchRegex },
+                { 'venue.city': searchRegex }
             ];
         }
 
-        if (city) query['venue.city'] = { $regex: escapeRegex(city), $options: 'i' };
+        if (city) query['venue.city'] = createSafeRegex(sanitizeSearchInput(city));
 
         if (dateFrom || dateTo) {
             query.date = {};
@@ -85,12 +86,12 @@ class EventsService {
 
         const query = user.role === 'admin' ? {} : { organizer: user._id };
         if (queryParams.search) {
-            const safeSearch = escapeRegex(queryParams.search);
+            const searchRegex = createSafeRegex(sanitizeSearchInput(queryParams.search));
             query.$or = [
-                { title: { $regex: safeSearch, $options: 'i' } },
-                { description: { $regex: safeSearch, $options: 'i' } },
-                { 'venue.name': { $regex: safeSearch, $options: 'i' } },
-                { 'venue.city': { $regex: safeSearch, $options: 'i' } }
+                { title: searchRegex },
+                { description: searchRegex },
+                { 'venue.name': searchRegex },
+                { 'venue.city': searchRegex }
             ];
         }
         if (queryParams.category) query.category = queryParams.category;
@@ -116,9 +117,11 @@ class EventsService {
         if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
 
         if (event.status !== 'published') {
-            const isOwner = user && event.organizer._id.toString() === user._id.toString();
-            const isAdmin = user && user.role === 'admin';
-            if (!isOwner && !isAdmin) throw Object.assign(new Error('Event not found'), { status: 404 });
+            try {
+                enforceOwnership(event, user, 'organizer', 'view unpublished');
+            } catch (authErr) {
+                throw Object.assign(new Error('Event not found'), { status: 404 });
+            }
         }
 
         await Event.findByIdAndUpdate(eventId, { $inc: { 'analytics.views': 1 } });
@@ -140,9 +143,7 @@ class EventsService {
         const originalEvent = await Event.findById(eventId);
         if (!originalEvent) throw Object.assign(new Error('Event not found'), { status: 404 });
 
-        if (originalEvent.organizer.toString() !== user._id.toString() && user.role !== 'admin') {
-            throw Object.assign(new Error('Not authorized to clone this event'), { status: 403 });
-        }
+        enforceOwnership(originalEvent, user, 'organizer', 'clone');
 
         const eventData = originalEvent.toObject();
         delete eventData._id;
@@ -179,9 +180,7 @@ class EventsService {
         const event = await Event.findById(eventId);
         if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
 
-        if (event.organizer.toString() !== user._id.toString() && user.role !== 'admin') {
-            throw Object.assign(new Error('Not authorized to update this event'), { status: 403 });
-        }
+        enforceOwnership(event, user, 'organizer', 'update');
 
         // Check for critical changes in published events with bookings
         if (event.status === 'published') {
@@ -216,12 +215,93 @@ class EventsService {
         const event = await Event.findById(eventId);
         if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
 
-        if (event.organizer.toString() !== user._id.toString() && user.role !== 'admin') {
-            throw Object.assign(new Error('Not authorized to delete this event'), { status: 403 });
-        }
+        enforceOwnership(event, user, 'organizer', 'delete');
 
         await Event.findByIdAndDelete(eventId);
         return true;
+    }
+
+    async getSeats(eventId) {
+        const event = await Event.findById(eventId).select('seating title date venue.name');
+        if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
+        return event;
+    }
+
+    async joinWaitlist(eventId, user) {
+        const event = await Event.findById(eventId);
+        if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
+        if (event.status !== 'published') throw Object.assign(new Error('Event is not active'), { status: 400 });
+        if (event.seating && event.seating.availableSeats > 0) throw Object.assign(new Error('Tickets are still available for this event'), { status: 400 });
+
+        const Waitlist = require('../models/Waitlist');
+        const waitlistEntry = new Waitlist({ event: event._id, user: user._id, status: 'pending' });
+        await waitlistEntry.save();
+        return waitlistEntry;
+    }
+
+    async getWaitlist(eventId, user) {
+        const event = await Event.findById(eventId);
+        if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
+        enforceOwnership(event, user, 'organizer', 'view waitlist');
+
+        const Waitlist = require('../models/Waitlist');
+        return await Waitlist.find({ event: event._id })
+            .populate('user', 'name email phone')
+            .sort({ createdAt: 1 });
+    }
+
+    async approveWaitlist(eventId, waitlistId, user) {
+        const event = await Event.findById(eventId);
+        if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
+        enforceOwnership(event, user, 'organizer', 'approve waitlist');
+
+        const Waitlist = require('../models/Waitlist');
+        const waitlistEntry = await Waitlist.findOne({ _id: waitlistId, event: event._id });
+        if (!waitlistEntry) throw Object.assign(new Error('Waitlist entry not found'), { status: 404 });
+        if (waitlistEntry.status !== 'pending') throw Object.assign(new Error(`Cannot approve entry in ${waitlistEntry.status} status`), { status: 400 });
+
+        waitlistEntry.status = 'notified';
+        waitlistEntry.notifiedAt = new Date();
+        const expires = new Date();
+        expires.setHours(expires.getHours() + 24);
+        waitlistEntry.expiresAt = expires;
+        await waitlistEntry.save();
+
+        return waitlistEntry;
+    }
+
+    async exportAttendees(eventId, user) {
+        const event = await Event.findById(eventId);
+        if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
+        enforceOwnership(event, user, 'organizer', 'export attendees');
+
+        const Ticket = require('../models/Ticket');
+        const tickets = await Ticket.find({
+            event: event._id,
+            status: { $in: ['booked', 'used'] }
+        }).populate('user', 'name email phone').sort({ bookingDate: 1 });
+
+        return { event, tickets };
+    }
+
+    async publishEvent(eventId, user) {
+        const event = await Event.findById(eventId);
+        if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
+        enforceOwnership(event, user, 'organizer', 'publish');
+
+        if (event.status === 'published') {
+            throw Object.assign(new Error('Event is already published'), { status: 400 });
+        }
+        event.status = 'published';
+        await event.save();
+        return event;
+    }
+
+    async getMyWaitlists(user) {
+        const Waitlist = require('../models/Waitlist');
+        return await Waitlist.find({ user: user._id })
+            .populate('event', 'title date venue images category pricing')
+            .sort({ createdAt: -1 });
     }
 }
 

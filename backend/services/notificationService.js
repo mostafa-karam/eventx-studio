@@ -82,3 +82,39 @@ exports.markAllAsRead = async (userId) => {
     { read: true }
   );
 };
+
+/**
+ * Get all notifications for a user (latest 20).
+ */
+exports.getNotifications = async (userId) => {
+  return Notification.find({ userId })
+    .sort({ createdAt: -1 })
+    .limit(20);
+};
+
+/**
+ * Delete a notification for a user.
+ * Returns the deleted notification or null if not found.
+ */
+exports.deleteNotification = async (notificationId, userId) => {
+  const mongoose = require('mongoose');
+  if (mongoose.Types.ObjectId.isValid(notificationId)) {
+    return Notification.findOneAndDelete({ _id: notificationId, userId });
+  }
+  return null;
+};
+
+/**
+ * Create a user-initiated notification.
+ */
+exports.createUserNotification = async (userId, { title, message, type, priority, actionUrl, metadata }) => {
+  return Notification.create({
+    userId,
+    title,
+    message,
+    type,
+    priority: priority || 'medium',
+    actionUrl,
+    metadata,
+  });
+};

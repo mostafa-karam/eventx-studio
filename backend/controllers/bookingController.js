@@ -5,11 +5,11 @@
  */
 
 const logger = require('../utils/logger');
-const jwt = require('jsonwebtoken');
 const Event = require('../models/Event');
 const bookingService = require('../services/bookingService');
 const auditService = require('../services/auditService');
 const { validationResult } = require('express-validator');
+const { verifyPaymentToken } = require('../utils/paymentTokens');
 
 // @desc    Initiates a booking session
 // @access  Private
@@ -60,12 +60,22 @@ exports.confirmBooking = async (req, res) => {
                 isActive: true,
                 expiresAt: { $gt: new Date() },
             });
-            if (coupon && coupon.isValid) {
-                if (coupon.discountType === 'percentage') {
-                    expectedAmount = expectedAmount - (expectedAmount * (coupon.discountValue / 100));
-                } else {
-                    expectedAmount = Math.max(0, expectedAmount - coupon.discountValue);
+            if (!coupon) {
+                return res.status(400).json({ success: false, message: 'Coupon is invalid or expired' });
+            }
+            if (!coupon.isValid) {
+                return res.status(400).json({ success: false, message: 'Coupon is not valid or has expired' });
+            }
+            if (coupon.applicableEvents && coupon.applicableEvents.length > 0) {
+                const matchesEvent = coupon.applicableEvents.some((id) => id.toString() === event._id.toString());
+                if (!matchesEvent) {
+                    return res.status(400).json({ success: false, message: 'Coupon is not applicable to this event' });
                 }
+            }
+            if (coupon.discountType === 'percentage') {
+                expectedAmount = expectedAmount - (expectedAmount * (coupon.discountValue / 100));
+            } else {
+                expectedAmount = Math.max(0, expectedAmount - coupon.discountValue);
             }
         }
 
@@ -75,13 +85,14 @@ exports.confirmBooking = async (req, res) => {
                 return res.status(400).json({ success: false, message: 'Payment token is required for paid events' });
             }
             try {
-                const secret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET;
-                const verifiedPayment = jwt.verify(paymentToken, secret);
+                const verifiedPayment = verifyPaymentToken(paymentToken);
                 // Ensure token matches user, event, and amount
                 if (verifiedPayment.userId.toString() !== req.user._id.toString() ||
                     verifiedPayment.eventId !== eventId ||
-                    verifiedPayment.amount !== expectedAmount) {
-                    return res.status(400).json({ success: false, message: 'Invalid payment token - amount or event mismatch' });
+                    Number(verifiedPayment.amount) !== Number(expectedAmount) ||
+                    Number(verifiedPayment.quantity) !== 1 ||
+                    verifiedPayment.currency !== (event.pricing?.currency || 'USD')) {
+                    return res.status(400).json({ success: false, message: 'Invalid payment token - amount, quantity, or event mismatch' });
                 }
             } catch (err) {
                 logger.warn('Payment token verification failed: ' + err.message);

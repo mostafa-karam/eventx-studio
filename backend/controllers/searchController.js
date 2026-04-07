@@ -1,7 +1,7 @@
 const Event = require('../models/Event');
 const Hall = require('../models/Hall');
 const logger = require('../utils/logger');
-const { escapeRegex } = require('../utils/helpers');
+const { sanitizeSearchInput, createSafeRegex, MAX_SEARCH_LENGTH } = require('../utils/helpers');
 
 // @desc    Global Search across Events and Halls
 // @access  Public
@@ -16,7 +16,14 @@ exports.globalSearch = async (req, res) => {
             });
         }
 
-        const regex = new RegExp(escapeRegex(q.trim()), 'i');
+        if (q.length > MAX_SEARCH_LENGTH) {
+            return res.status(400).json({
+                success: false,
+                message: `Search query cannot exceed ${MAX_SEARCH_LENGTH} characters`,
+            });
+        }
+
+        const regex = createSafeRegex(q);
         const results = { events: [], halls: [] };
 
         if (type === 'all' || type === 'events') {

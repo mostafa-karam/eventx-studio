@@ -1,4 +1,5 @@
 const { body, param, validationResult } = require('express-validator');
+const { validatePasswordStrength } = require('../utils/authUtils');
 
 // Generic validation result checker middleware
 const validate = (req, res, next) => {
@@ -17,7 +18,15 @@ const validate = (req, res, next) => {
 const registerValidator = [
     body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 50 }).withMessage('Name cannot exceed 50 characters'),
     body('email').trim().notEmpty().withMessage('Email is required').isEmail().withMessage('Please provide a valid email').normalizeEmail({ gmail_remove_dots: false }),
-    body('password').notEmpty().withMessage('Password is required').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+    body('password').notEmpty().withMessage('Password is required')
+        .isLength({ min: 12 }).withMessage('Password must be at least 12 characters')
+        .custom((value) => {
+            const errors = validatePasswordStrength(value);
+            if (errors.length > 0) {
+                throw new Error('Password does not meet requirements: ' + errors.join(', '));
+            }
+            return true;
+        }),
     body('role').optional().isIn(['user', 'organizer']).withMessage('Role must be user or organizer'),
     body('age').optional().isInt({ min: 13, max: 120 }).withMessage('Age must be between 13 and 120'),
     validate
@@ -38,7 +47,15 @@ const updateProfileValidator = [
 
 const changePasswordValidator = [
     body('currentPassword').notEmpty().withMessage('Current password is required'),
-    body('newPassword').notEmpty().withMessage('New password is required').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+    body('newPassword').notEmpty().withMessage('New password is required')
+        .isLength({ min: 12 }).withMessage('Password must be at least 12 characters')
+        .custom((value) => {
+            const errors = validatePasswordStrength(value);
+            if (errors.length > 0) {
+                throw new Error('Password does not meet requirements: ' + errors.join(', '));
+            }
+            return true;
+        }),
     validate
 ];
 

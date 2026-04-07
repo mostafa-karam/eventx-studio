@@ -1,28 +1,15 @@
-const Event = require('../models/Event');
-const Ticket = require('../models/Ticket');
-const User = require('../models/User');
-const Notification = require('../models/Notification'); // Ensure we require this since it's used inside
-const mongoose = require('mongoose');
 const logger = require('../utils/logger');
+const notificationService = require('../services/notificationService');
 
 // @desc    Get all notifications for the authenticated user
 // @access  Private
 exports.getNotifications = async (req, res) => {
     try {
-        const notifications = await Notification.find({ userId: req.user._id })
-            .sort({ createdAt: -1 })
-            .limit(20);
-
-        res.json({
-            success: true,
-            data: { notifications }
-        });
+        const notifications = await notificationService.getNotifications(req.user._id);
+        res.json({ success: true, data: { notifications } });
     } catch (error) {
         logger.error('Error fetching notifications:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch notifications'
-        });
+        res.status(500).json({ success: false, message: 'Failed to fetch notifications' });
     }
 };
 
@@ -30,24 +17,14 @@ exports.getNotifications = async (req, res) => {
 // @access  Private
 exports.markAsRead = async (req, res) => {
     try {
-        const { id } = req.params;
-        if (mongoose.Types.ObjectId.isValid(id)) {
-            const notification = await Notification.findOneAndUpdate(
-                { _id: id, userId: req.user._id },
-                { read: true },
-                { new: true }
-            );
-            if (notification) {
-                return res.json({ success: true, notification });
-            }
+        const notification = await notificationService.markAsRead(req.params.id, req.user._id);
+        if (notification) {
+            return res.json({ success: true, notification });
         }
         return res.json({ success: true, message: 'Marked read' });
     } catch (error) {
         logger.error('Error marking notification as read:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to mark notification as read'
-        });
+        res.status(500).json({ success: false, message: 'Failed to mark notification as read' });
     }
 };
 
@@ -55,14 +32,11 @@ exports.markAsRead = async (req, res) => {
 // @access  Private
 exports.markAllAsRead = async (req, res) => {
     try {
-        await Notification.updateMany({ userId: req.user._id }, { read: true });
+        await notificationService.markAllAsRead(req.user._id);
         return res.json({ success: true, message: 'All marked as read' });
     } catch (error) {
         logger.error('Error marking all notifications as read:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to mark all notifications as read'
-        });
+        res.status(500).json({ success: false, message: 'Failed to mark all notifications as read' });
     }
 };
 
@@ -70,23 +44,15 @@ exports.markAllAsRead = async (req, res) => {
 // @access  Private
 exports.deleteNotification = async (req, res) => {
     try {
-        const { id } = req.params;
-        if (mongoose.Types.ObjectId.isValid(id)) {
-            const notification = await Notification.findOneAndDelete(
-                { _id: id, userId: req.user._id }
-            );
-            if (notification) {
-                return res.json({ success: true, message: 'Notification deleted' });
-            }
+        const notification = await notificationService.deleteNotification(req.params.id, req.user._id);
+        if (notification) {
+            return res.json({ success: true, message: 'Notification deleted' });
         }
         // Synthetic notifications — accept silently
         return res.json({ success: true, message: 'Notification removed' });
     } catch (error) {
         logger.error('Error deleting notification:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to delete notification'
-        });
+        res.status(500).json({ success: false, message: 'Failed to delete notification' });
     }
 };
 
@@ -94,19 +60,7 @@ exports.deleteNotification = async (req, res) => {
 // @access  Private
 exports.createNotification = async (req, res) => {
     try {
-        const { title, message, type, priority, actionUrl, metadata } = req.body;
-
-        const notification = new Notification({
-            title,
-            message,
-            type,
-            priority: priority || 'medium',
-            userId: req.user._id,
-            actionUrl,
-            metadata
-        });
-
-        await notification.save();
+        const notification = await notificationService.createUserNotification(req.user._id, req.body);
 
         res.status(201).json({
             success: true,
@@ -120,36 +74,18 @@ exports.createNotification = async (req, res) => {
                 read: notification.read,
                 timestamp: notification.createdAt,
                 actionUrl: notification.actionUrl,
-                metadata: notification.metadata
-            }
+                metadata: notification.metadata,
+            },
         });
     } catch (error) {
         logger.error('Error creating notification:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to create notification'
-        });
+        res.status(500).json({ success: false, message: 'Failed to create notification' });
     }
 };
 
 // @desc    Helper function to create system notifications
 const createSystemNotification = async (userId, title, message, type = 'system', priority = 'medium', actionUrl = null, metadata = null) => {
-    try {
-        const notification = new Notification({
-            title,
-            message,
-            type,
-            priority,
-            userId,
-            actionUrl,
-            metadata
-        });
-        await notification.save();
-        return notification;
-    } catch (error) {
-        logger.error('Error creating system notification:', error);
-        return null;
-    }
+    return notificationService.notify(userId, { title, message, type, priority, actionUrl, metadata });
 };
 
 exports.createSystemNotification = createSystemNotification;
@@ -158,8 +94,7 @@ exports.createSystemNotification = createSystemNotification;
 // @access  Private
 exports.sendBookingConfirmation = async (req, res) => {
     try {
-        const { bookingId, eventId, userId } = req.body || {};
-        // Always use the authenticated user — prevent arbitrary userId injection
+        const { bookingId, eventId } = req.body || {};
         await createSystemNotification(
             req.user._id,
             'Booking Confirmed',

@@ -24,7 +24,7 @@ beforeAll(async () => {
     const admin = await User.create({
         name: 'Admin',
         email: 'admin_analytics@example.com',
-        password: 'Password123!',
+        password: 'UniqueTestPass!2026',
         role: 'admin',
         isActive: true
     });
@@ -33,7 +33,7 @@ beforeAll(async () => {
     const user = await User.create({
         name: 'User',
         email: 'user_analytics@example.com',
-        password: 'Password123!',
+        password: 'UniqueTestPass!2026',
         role: 'user',
         isActive: true
     });
@@ -41,7 +41,7 @@ beforeAll(async () => {
     const organizerUser = await User.create({
         name: 'Organizer',
         email: 'org_analytics@example.com',
-        password: 'Password123!',
+        password: 'UniqueTestPass!2026',
         role: 'organizer',
         isActive: true
     });
@@ -142,7 +142,7 @@ describe('Analytics Endpoints', () => {
         const otherOrg = await User.create({
             name: 'Other Org',
             email: 'other@example.com',
-            password: 'Password123!',
+            password: 'UniqueTestPass!2026',
             role: 'organizer',
             isActive: true
         });

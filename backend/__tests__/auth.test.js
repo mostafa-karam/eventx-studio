@@ -36,7 +36,7 @@ describe('Auth Endpoints', () => {
             .send({
                 name: 'Test user',
                 email: 'test@example.com',
-                password: 'Password123!',
+                password: 'UniqueTestPass!2026',
                 role: 'user'
             });
 
@@ -64,7 +64,7 @@ describe('Auth Endpoints', () => {
         await request(app).post('/api/auth/register').send({
             name: 'Login user',
             email: 'login@example.com',
-            password: 'StrongPassword1!'
+            password: 'UniqueTestPass!2026'
         });
 
         // Login
@@ -72,7 +72,7 @@ describe('Auth Endpoints', () => {
             .post('/api/auth/login')
             .send({
                 email: 'login@example.com',
-                password: 'StrongPassword1!'
+                password: 'UniqueTestPass!2026'
             });
 
         // Because email verification is required and we did not mock it to skip, 

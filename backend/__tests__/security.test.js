@@ -47,7 +47,7 @@ describe('Security Hardening Tests', () => {
         .send({
           name: '<script>alert("xss")</script>John Doe',
           email: 'johndoe_' + Date.now() + '@example.com',
-          password: 'Password123!',
+          password: 'UniqueTestPass!2026',
           role: 'user'
         });
 

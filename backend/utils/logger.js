@@ -10,16 +10,26 @@ if (!fs.existsSync(logsDir)) {
 
 const { combine, timestamp, printf, colorize, errors } = winston.format;
 
+const appendRequestId = winston.format((info) => {
+  if (info.req && info.req.id) {
+    info.requestId = info.req.id;
+  }
+  return info;
+});
+
 const devFormat = combine(
+    appendRequestId(),
     colorize({ all: true }),
     timestamp({ format: 'HH:mm:ss' }),
     errors({ stack: true }),
-    printf(({ level, message, timestamp, stack }) =>
-        `${timestamp} [${level}] ${stack || message}`
-    )
+    printf(({ level, message, timestamp, stack, requestId }) => {
+        const reqStr = requestId ? ` [ReqID: ${requestId}]` : '';
+        return `${timestamp} [${level}]${reqStr} ${stack || message}`;
+    })
 );
 
 const prodFormat = combine(
+    appendRequestId(),
     timestamp(),
     errors({ stack: true }),
     winston.format.json()

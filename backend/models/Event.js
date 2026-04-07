@@ -240,10 +240,11 @@ eventSchema.methods.cancelSeat = function (seatNumber) {
   return seat;
 };
 
-// Index for better query performance
+// Performance Indexes
 eventSchema.index({ date: 1, status: 1 });
 eventSchema.index({ organizer: 1 });
 eventSchema.index({ category: 1 });
+eventSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Event', eventSchema);
 

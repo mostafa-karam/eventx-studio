@@ -5,8 +5,12 @@
  * Single place for seat booking / cancellation logic to fix the
  * data ownership violation where multiple controllers directly
  * mutated the Event model.
+ *
+ * SECURITY: All seat mutations use atomic findOneAndUpdate to prevent
+ * race-condition overselling (Phase 1.1).
  */
 
+const mongoose = require('mongoose');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const Coupon = require('../models/Coupon');
@@ -14,100 +18,261 @@ const Waitlist = require('../models/Waitlist');
 const notificationService = require('./notificationService');
 const logger = require('../utils/logger');
 
+const calculateCouponDiscount = (coupon, baseAmount) => {
+  if (!coupon) return 0;
+  const amount = Number(baseAmount) || 0;
+  if (coupon.discountType === 'percentage') {
+    return Math.min(amount, (amount * (coupon.discountValue / 100)) || 0);
+  }
+  return Math.min(amount, coupon.discountValue || 0);
+};
+
+const getCouponForEvent = async (couponCode, eventId, sessionOptions) => {
+  if (!couponCode) return null;
+
+  const normalizedCode = couponCode.toUpperCase().trim();
+  const coupon = await Coupon.findOne({ code: normalizedCode, isActive: true }, null, sessionOptions);
+  if (!coupon) {
+    const err = new Error('Coupon code is invalid');
+    err.status = 400;
+    throw err;
+  }
+
+  if (coupon.expiresAt && new Date() > coupon.expiresAt) {
+    const err = new Error('Coupon has expired');
+    err.status = 400;
+    throw err;
+  }
+
+  if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
+    const err = new Error('Coupon usage limit reached');
+    err.status = 400;
+    throw err;
+  }
+
+  if (coupon.applicableEvents && coupon.applicableEvents.length > 0) {
+    const matchesEvent = coupon.applicableEvents.some((id) => id.toString() === eventId.toString());
+    if (!matchesEvent) {
+      const err = new Error('Coupon is not applicable to this event');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  return coupon;
+};
+
 /**
- * Book a seat for a user at an event
+ * Book a seat for a user at an event — ATOMIC, race-condition-safe.
  * @param {object} options
  * @param {string} options.eventId
  * @param {string} options.userId
  * @param {string} [options.seatNumber]
  * @param {object} [options.payment]
  * @param {string} [options.couponCode]
+ * @param {object} [options.metadata]
  * @returns {object} { ticket, event }
  */
-exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode }) => {
-  const event = await Event.findById(eventId);
-  if (!event) {
-    const err = new Error('Event not found');
-    err.status = 404;
-    throw err;
-  }
-
-  if (event.status !== 'published') {
-    const err = new Error('Event is not available for booking');
-    err.status = 400;
-    throw err;
-  }
-
-  // Check seat availability
-  if (event.seating && event.seating.availableSeats <= 0) {
-    const err = new Error('No seats available for this event');
-    err.status = 400;
-    throw err;
-  }
-
-  // Apply coupon if provided (for usage tracking, discount already applied in payment)
-  let appliedCoupon = null;
-  if (couponCode) {
-    appliedCoupon = await Coupon.findOne({
-      code: couponCode.toUpperCase(),
-      isActive: true,
-      expiresAt: { $gt: new Date() },
-    });
-
-    if (appliedCoupon && appliedCoupon.isValid) {
-      // Increment coupon usage
-      appliedCoupon.usedCount = (appliedCoupon.usedCount || 0) + 1;
-      await appliedCoupon.save();
+exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, metadata = {} }) => {
+  // Start a MongoDB session for transactional safety when the topology supports it
+  const session = await mongoose.startSession();
+  const topologyType = mongoose.connection.client.topology.description?.type || '';
+  let useSession = topologyType.includes('ReplicaSet');
+  if (!useSession) {
+    logger.warn('MongoDB topology does not support replica-set transactions; using non-transactional booking flow.');
+  } else {
+    try {
+      session.startTransaction();
+    } catch (err) {
+      useSession = false;
+      logger.warn('Unable to start transaction; falling back to non-transactional booking flow:', err.message);
     }
   }
 
-  // Payment amount is already final (discounted), so no further discount
-  const finalAmount = payment?.amount || 0;
+  const sessionOptions = useSession ? { session } : {};
 
-  // Book the seat on the Event model
-  // NOTE: analytics are updated atomically in ticketsController via findOneAndUpdate
-  // to prevent double-counting. Keep seat mutations only here.
-  if (seatNumber && event.seating?.seatMap) {
-    event.bookSeat(seatNumber, userId);
-  } else if (event.seating) {
-    event.seating.availableSeats = Math.max(0, event.seating.availableSeats - 1);
+  try {
+    const eventQuery = Event.findById(eventId);
+    if (useSession) eventQuery.session(session);
+    const event = await eventQuery;
+    if (!event) {
+      const err = new Error('Event not found');
+      err.status = 404;
+      throw err;
+    }
+
+    if (event.status !== 'published') {
+      const err = new Error('Event is not available for booking');
+      err.status = 400;
+      throw err;
+    }
+
+    // Check seat availability
+    if (event.seating && event.seating.availableSeats <= 0) {
+      const err = new Error('No seats available for this event');
+      err.status = 400;
+      throw err;
+    }
+
+    // Check if user already has a ticket for this event
+    const existingTicketQuery = Ticket.findOne({
+      event: eventId,
+      user: userId,
+      status: { $in: ['booked', 'used'] }
+    });
+    if (useSession) existingTicketQuery.session(session);
+    const existingTicket = await existingTicketQuery;
+
+    if (existingTicket) {
+      const err = new Error('You already have a ticket for this event');
+      err.status = 400;
+      throw err;
+    }
+
+    // Apply coupon if provided and validate it server-side
+    let appliedCoupon = null;
+    if (couponCode) {
+      appliedCoupon = await getCouponForEvent(couponCode, eventId, sessionOptions);
+      const baseAmount = event.pricing?.amount || 0;
+      const discount = calculateCouponDiscount(appliedCoupon, baseAmount);
+      const expectedAmount = Math.max(0, baseAmount - discount);
+
+      if (payment?.amount === undefined || Number(payment.amount) !== expectedAmount) {
+        const err = new Error('Payment amount does not match expected amount for the coupon');
+        err.status = 400;
+        throw err;
+      }
+
+      appliedCoupon = await Coupon.findOneAndUpdate(
+        {
+          _id: appliedCoupon._id,
+          isActive: true,
+          $or: [
+            { maxUses: null },
+            { $expr: { $lt: ['$usedCount', '$maxUses'] } }
+          ]
+        },
+        { $inc: { usedCount: 1 } },
+        { new: true, ...sessionOptions }
+      );
+
+      if (!appliedCoupon) {
+        const err = new Error('Coupon is invalid or exhausted');
+        err.status = 400;
+        throw err;
+      }
+    }
+
+    const finalAmount = payment?.amount ?? (event.pricing?.amount || 0);
+
+    // Determine seat number — pick first available if none specified
+    let selectedSeat = seatNumber;
+    if (!selectedSeat && event.seating?.seatMap?.length > 0) {
+      const firstAvailable = event.seating.seatMap.find(s => !s.isBooked);
+      if (firstAvailable) {
+        selectedSeat = firstAvailable.seatNumber;
+      }
+    }
+    if (!selectedSeat) {
+      selectedSeat = `GA-${Date.now()}`;
+    }
+
+    // ATOMIC seat booking via findOneAndUpdate — prevents race condition overselling
+    const revenueInc = event.pricing?.type === 'paid' ? (finalAmount || 0) : 0;
+
+    let updatedEvent;
+    if (event.seating?.seatMap?.length > 0) {
+      // Named seat booking — atomic check-and-set
+      updatedEvent = await Event.findOneAndUpdate(
+        {
+          _id: eventId,
+          'seating.seatMap.seatNumber': selectedSeat,
+          'seating.seatMap.isBooked': false,
+        },
+        {
+          $set: {
+            'seating.seatMap.$.isBooked': true,
+            'seating.seatMap.$.bookedBy': userId,
+          },
+          $inc: {
+            'seating.availableSeats': -1,
+            'analytics.bookings': 1,
+            'analytics.revenue': revenueInc,
+          },
+        },
+        { new: true, ...sessionOptions }
+      );
+    } else if (event.seating) {
+      // General admission — just decrement available seats atomically
+      updatedEvent = await Event.findOneAndUpdate(
+        {
+          _id: eventId,
+          'seating.availableSeats': { $gt: 0 },
+        },
+        {
+          $inc: {
+            'seating.availableSeats': -1,
+            'analytics.bookings': 1,
+            'analytics.revenue': revenueInc,
+          },
+        },
+        { new: true, ...sessionOptions }
+      );
+    }
+
+    if (!updatedEvent) {
+      const err = new Error('The requested seat is either unavailable or already booked.');
+      err.status = 400;
+      throw err;
+    }
+
+    // Create ticket within the same transaction
+    const ticket = new Ticket({
+      event: event._id,
+      user: userId,
+      seatNumber: selectedSeat,
+      status: 'booked',
+      payment: {
+        amount: finalAmount,
+        paymentMethod: payment?.method || 'free',
+        status: 'completed',
+        paymentDate: new Date(),
+        transactionId: payment?.transactionId || undefined,
+      },
+      metadata: metadata || {},
+      bookingDate: new Date(),
+    });
+
+    await ticket.save(useSession ? { session } : undefined);
+
+    if (useSession) {
+      // Commit the transaction — all-or-nothing
+      await session.commitTransaction();
+    }
+
+    // Notify user (fire-and-forget, outside transaction)
+    notificationService.notify(userId, {
+      title: 'Booking Confirmed!',
+      message: `Your ticket for "${event.title}" has been confirmed.`,
+      type: 'booking',
+      priority: 'high',
+      actionUrl: `/user/tickets/${ticket._id}`,
+      metadata: { eventId: event._id, ticketId: ticket._id },
+    });
+
+    return { ticket, event: updatedEvent };
+  } catch (error) {
+    if (useSession) {
+      await session.abortTransaction();
+    }
+    throw error;
+  } finally {
+    session.endSession();
   }
-
-  await event.save();
-
-  // Create ticket
-  const ticket = new Ticket({
-    event: event._id,
-    user: userId,
-    seatNumber: seatNumber || `GA-${Date.now()}`,
-    status: 'booked',
-    payment: {
-      amount: finalAmount,
-      paymentMethod: payment?.method || 'free',
-      status: 'completed',
-      paymentDate: new Date(),
-      transactionId: payment?.transactionId || undefined,
-    },
-    bookingDate: new Date(),
-  });
-
-  await ticket.save();
-
-  // Notify user
-  notificationService.notify(userId, {
-    title: 'Booking Confirmed!',
-    message: `Your ticket for "${event.title}" has been confirmed.`,
-    type: 'booking',
-    priority: 'high',
-    actionUrl: `/user/tickets/${ticket._id}`,
-    metadata: { eventId: event._id, ticketId: ticket._id },
-  });
-
-  return { ticket, event };
 };
 
 /**
- * Cancel a booking
+ * Cancel a booking — ATOMIC seat release with waitlist notification.
  * @param {string} ticketId
  * @param {string} userId
  * @returns {object} { ticket, event }
@@ -139,11 +304,11 @@ exports.cancelBooking = async (ticketId, userId) => {
     throw err;
   }
 
-  // Update event analytically and unlock seat atomically
+  // Atomic seat release and analytics update
   const updateQuery = { _id: ticket.event };
   const updatePayload = {
-    $inc: { 
-      'analytics.bookings': -1 
+    $inc: {
+      'analytics.bookings': -1
     }
   };
 

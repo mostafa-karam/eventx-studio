@@ -1,30 +1,12 @@
-const Coupon = require('../models/Coupon');
-const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
-const { ACTIONS, RESOURCES } = require('../utils/auditConstants');
+const couponsService = require('../services/couponsService');
 
 // @desc    List all coupons (admin)
 // @access  Private/Admin
 exports.getCoupons = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-        
-        const coupons = await Coupon.find()
-            .populate('createdBy', 'name email')
-            .sort({ createdAt: -1 })
-            .skip((page - 1) * limit)
-            .limit(limit);
-        
-        const total = await Coupon.countDocuments();
-            
-        res.json({ 
-            success: true, 
-            data: { 
-                coupons,
-                pagination: { current: page, pages: Math.ceil(total / limit), total } 
-            } 
-        });
+        const result = await couponsService.getCoupons(req.query);
+        res.json({ success: true, data: result });
     } catch (error) {
         logger.error('Get coupons error: ' + error.message);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -35,44 +17,11 @@ exports.getCoupons = async (req, res) => {
 // @access  Private
 exports.validateCoupon = async (req, res) => {
     try {
-        const { code, eventId, amount } = req.body;
-        if (!code) return res.status(400).json({ success: false, message: 'Coupon code is required' });
-
-        const coupon = await Coupon.findOne({ code: code.toUpperCase().trim() });
-        if (!coupon || !coupon.isValid) {
-            return res.status(400).json({ success: false, message: 'Invalid or expired coupon code' });
-        }
-
-        // Check event restriction
-        if (coupon.applicableEvents.length > 0 && eventId) {
-            const applicable = coupon.applicableEvents.map(id => id.toString()).includes(eventId);
-            if (!applicable) {
-                return res.status(400).json({ success: false, message: 'This coupon is not valid for this event' });
-            }
-        }
-
-        // Calculate discount
-        let discountAmount = 0;
-        const purchaseAmount = Number(amount) || 0;
-        if (coupon.discountType === 'percentage') {
-            discountAmount = Math.min((purchaseAmount * coupon.discountValue) / 100, purchaseAmount);
-        } else {
-            discountAmount = Math.min(coupon.discountValue, purchaseAmount);
-        }
-
-        res.json({
-            success: true,
-            data: {
-                couponId: coupon._id,
-                code: coupon.code,
-                discountType: coupon.discountType,
-                discountValue: coupon.discountValue,
-                discountAmount: Math.round(discountAmount * 100) / 100,
-                finalAmount: Math.round((purchaseAmount - discountAmount) * 100) / 100,
-            }
-        });
+        const result = await couponsService.validateCoupon(req.body.code, req.body.eventId, req.body.amount);
+        res.json({ success: true, data: result });
     } catch (error) {
         logger.error('Validate coupon error: ' + error.message);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
@@ -81,35 +30,12 @@ exports.validateCoupon = async (req, res) => {
 // @access  Private/Admin
 exports.createCoupon = async (req, res) => {
     try {
-        const { code, description, discountType, discountValue, maxUses, expiresAt, applicableEvents } = req.body;
-
-        if (!code || !discountType || discountValue === undefined) {
-            return res.status(400).json({ success: false, message: 'code, discountType, and discountValue are required' });
-        }
-
-        const coupon = await Coupon.create({
-            code: code.toUpperCase().trim(),
-            description,
-            discountType,
-            discountValue,
-            maxUses: maxUses || null,
-            expiresAt: expiresAt || null,
-            applicableEvents: applicableEvents || [],
-            createdBy: req.user._id,
-        });
-
-        await AuditLog.create({ 
-            actor: req.user._id, 
-            action: ACTIONS.COUPON_CREATE, 
-            resource: RESOURCES.COUPON, 
-            resourceId: coupon._id, 
-            details: { code: coupon.code } 
-        });
-
+        const coupon = await couponsService.createCoupon(req.body, req.user._id);
         res.status(201).json({ success: true, message: 'Coupon created', data: { coupon } });
     } catch (error) {
         if (error.code === 11000) return res.status(400).json({ success: false, message: 'Coupon code already exists' });
         logger.error('Create coupon error: ' + error.message);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
@@ -118,16 +44,11 @@ exports.createCoupon = async (req, res) => {
 // @access  Private/Admin
 exports.updateCoupon = async (req, res) => {
     try {
-        const coupon = await Coupon.findById(req.params.id);
-        if (!coupon) return res.status(404).json({ success: false, message: 'Coupon not found' });
-
-        const allowed = ['description', 'discountType', 'discountValue', 'maxUses', 'expiresAt', 'isActive', 'applicableEvents'];
-        allowed.forEach(field => { if (req.body[field] !== undefined) coupon[field] = req.body[field]; });
-
-        await coupon.save();
+        const coupon = await couponsService.updateCoupon(req.params.id, req.body);
         res.json({ success: true, message: 'Coupon updated', data: { coupon } });
     } catch (error) {
         logger.error('Update coupon error: ' + error.message);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
@@ -136,12 +57,11 @@ exports.updateCoupon = async (req, res) => {
 // @access  Private/Admin
 exports.deleteCoupon = async (req, res) => {
     try {
-        const coupon = await Coupon.findById(req.params.id);
-        if (!coupon) return res.status(404).json({ success: false, message: 'Coupon not found' });
-        await coupon.deleteOne();
+        await couponsService.deleteCoupon(req.params.id);
         res.json({ success: true, message: 'Coupon deleted' });
     } catch (error) {
         logger.error('Delete coupon error: ' + error.message);
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
