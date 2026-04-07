@@ -4,10 +4,12 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
 const User = require('../models/User');
 const Hall = require('../models/Hall');
+const { createTestClient } = require('../test-utils/testClient');
 
 let mongoServer;
 let authToken;
 let testHallId;
+let client;
 
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
@@ -35,6 +37,7 @@ afterEach(async () => {
 
 describe('Halls Endpoints', () => {
     beforeEach(async () => {
+        client = createTestClient(app);
         await User.create({
             name: 'Admin User',
             email: 'admin@example.com',
@@ -43,12 +46,10 @@ describe('Halls Endpoints', () => {
             emailVerified: true
         });
 
-        const loginRes = await request(app)
-            .post('/api/auth/login')
-            .send({
-                email: 'admin@example.com',
-                password: 'UniqueTestPass!2026'
-            });
+        const loginRes = await client.csrfRequest('post', '/api/auth/login', {
+            email: 'admin@example.com',
+            password: 'UniqueTestPass!2026'
+        });
 
         const cookies = loginRes.headers['set-cookie'];
         const accessTokenCookie = cookies.find(cookie => cookie.startsWith('accessToken='));

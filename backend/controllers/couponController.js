@@ -30,7 +30,7 @@ exports.validateCoupon = async (req, res) => {
 // @access  Private/Admin
 exports.createCoupon = async (req, res) => {
     try {
-        const coupon = await couponsService.createCoupon(req.body, req.user._id);
+        const coupon = await couponsService.createCoupon(req.body, req.user._id, req);
         res.status(201).json({ success: true, message: 'Coupon created', data: { coupon } });
     } catch (error) {
         if (error.code === 11000) return res.status(400).json({ success: false, message: 'Coupon code already exists' });

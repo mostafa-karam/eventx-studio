@@ -1,135 +1,601 @@
-const { body, param, validationResult } = require('express-validator');
+const {
+  body,
+  param,
+  query,
+  validationResult,
+  matchedData,
+} = require('express-validator');
 const { validatePasswordStrength } = require('../utils/authUtils');
 
-// Generic validation result checker middleware
+const roles = ['user', 'organizer', 'venue_admin', 'admin'];
+const publicRegistrationRoles = ['user', 'organizer'];
+
+const isPlainObject = (value) =>
+  Object.prototype.toString.call(value) === '[object Object]';
+
 const validate = (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({
-            success: false,
-            message: 'Validation failed',
-            errors: errors.array().map(err => err.msg)
-        });
-    }
-    next();
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: errors.array().map((error) => error.msg),
+    });
+  }
+
+  req.validatedBody = matchedData(req, {
+    locations: ['body'],
+    includeOptionals: true,
+  });
+  req.validatedParams = matchedData(req, {
+    locations: ['params'],
+    includeOptionals: true,
+  });
+  req.validatedQuery = matchedData(req, {
+    locations: ['query'],
+    includeOptionals: true,
+  });
+
+  return next();
 };
 
-// ─── Auth Validators ───────────────────────────────────────────────────
+const stringField = (field, label, options = {}) => {
+  const validator = options.optional ? body(field).optional() : body(field).exists({ values: 'falsy' }).withMessage(`${label} is required`);
+  const chain = validator
+    .bail()
+    .isString()
+    .withMessage(`${label} must be a string`)
+    .trim();
+
+  if (options.max) {
+    chain.isLength({ max: options.max }).withMessage(`${label} cannot exceed ${options.max} characters`);
+  }
+
+  if (options.min) {
+    chain.isLength({ min: options.min }).withMessage(`${label} must be at least ${options.min} characters`);
+  }
+
+  return chain;
+};
+
+const mongoIdField = (field, label, options = {}) => {
+  const validator = options.optional ? body(field).optional() : body(field).exists({ values: 'falsy' }).withMessage(`${label} is required`);
+  return validator
+    .bail()
+    .isString()
+    .withMessage(`${label} must be a string`)
+    .bail()
+    .isMongoId()
+    .withMessage(`${label} must be a valid identifier`);
+};
+
+const mongoIdParamValidator = (field = 'id', label = 'Identifier') => [
+  param(field)
+    .isString()
+    .withMessage(`${label} must be a string`)
+    .bail()
+    .isMongoId()
+    .withMessage(`${label} must be a valid identifier`),
+  validate,
+];
+
 const registerValidator = [
-    body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 50 }).withMessage('Name cannot exceed 50 characters'),
-    body('email').trim().notEmpty().withMessage('Email is required').isEmail().withMessage('Please provide a valid email').normalizeEmail({ gmail_remove_dots: false }),
-    body('password').notEmpty().withMessage('Password is required')
-        .isLength({ min: 12 }).withMessage('Password must be at least 12 characters')
-        .custom((value) => {
-            const errors = validatePasswordStrength(value);
-            if (errors.length > 0) {
-                throw new Error('Password does not meet requirements: ' + errors.join(', '));
-            }
-            return true;
-        }),
-    body('role').optional().isIn(['user', 'organizer']).withMessage('Role must be user or organizer'),
-    body('age').optional().isInt({ min: 13, max: 120 }).withMessage('Age must be between 13 and 120'),
-    validate
+  stringField('name', 'Name', { max: 50 }),
+  body('email')
+    .exists({ values: 'falsy' })
+    .withMessage('Email is required')
+    .bail()
+    .isString()
+    .withMessage('Email must be a string')
+    .bail()
+    .trim()
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+  body('password')
+    .exists({ values: 'falsy' })
+    .withMessage('Password is required')
+    .bail()
+    .isString()
+    .withMessage('Password must be a string')
+    .bail()
+    .isLength({ min: 12 })
+    .withMessage('Password must be at least 12 characters')
+    .custom((value) => {
+      const errors = validatePasswordStrength(value);
+      if (errors.length > 0) {
+        throw new Error(`Password does not meet requirements: ${errors.join(', ')}`);
+      }
+      return true;
+    }),
+  body('role')
+    .optional()
+    .isString()
+    .withMessage('Role must be a string')
+    .bail()
+    .isIn(publicRegistrationRoles)
+    .withMessage('Role must be user or organizer'),
+  body('age')
+    .optional()
+    .isInt({ min: 13, max: 120 })
+    .withMessage('Age must be between 13 and 120'),
+  validate,
 ];
 
 const loginValidator = [
-    body('email').trim().notEmpty().withMessage('Email is required').isEmail().withMessage('Please provide a valid email').normalizeEmail({ gmail_remove_dots: false }),
-    body('password').notEmpty().withMessage('Password is required'),
-    validate
+  body('email')
+    .exists({ values: 'falsy' })
+    .withMessage('Email is required')
+    .bail()
+    .isString()
+    .withMessage('Email must be a string')
+    .bail()
+    .trim()
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+  body('password')
+    .exists({ values: 'falsy' })
+    .withMessage('Password is required')
+    .bail()
+    .isString()
+    .withMessage('Password must be a string'),
+  body('twoFactorCode')
+    .optional()
+    .isString()
+    .withMessage('Two-factor code must be a string')
+    .trim()
+    .isLength({ min: 6, max: 10 })
+    .withMessage('Two-factor code must be between 6 and 10 characters'),
+  validate,
 ];
 
 const updateProfileValidator = [
-    body('name').optional().trim().isLength({ max: 50 }).withMessage('Name cannot exceed 50 characters'),
-    body('age').optional().isInt({ min: 13, max: 120 }).withMessage('Age must be between 13 and 120'),
-    body('gender').optional().isIn(['male', 'female', 'other', 'prefer-not-to-say']),
-    validate
+  stringField('name', 'Name', { optional: true, max: 50 }),
+  stringField('phone', 'Phone', { optional: true, max: 25 }),
+  body('age')
+    .optional()
+    .isInt({ min: 13, max: 120 })
+    .withMessage('Age must be between 13 and 120'),
+  body('gender')
+    .optional()
+    .isString()
+    .withMessage('Gender must be a string')
+    .bail()
+    .isIn(['male', 'female', 'other', 'prefer-not-to-say'])
+    .withMessage('Invalid gender value'),
+  body('interests')
+    .optional()
+    .isArray({ max: 20 })
+    .withMessage('Interests must be an array with at most 20 items'),
+  body('interests.*')
+    .optional()
+    .isString()
+    .withMessage('Each interest must be a string')
+    .trim()
+    .isLength({ max: 40 })
+    .withMessage('Each interest must be at most 40 characters'),
+  body('avatar')
+    .optional()
+    .isString()
+    .withMessage('Avatar must be a string')
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Avatar URL cannot exceed 500 characters'),
+  body('location')
+    .optional()
+    .custom((value) => isPlainObject(value))
+    .withMessage('Location must be an object'),
+  stringField('location.city', 'Location city', { optional: true, max: 100 }),
+  stringField('location.state', 'Location state', { optional: true, max: 100 }),
+  stringField('location.country', 'Location country', { optional: true, max: 100 }),
+  stringField('location.timezone', 'Location timezone', { optional: true, max: 100 }),
+  validate,
 ];
 
 const changePasswordValidator = [
-    body('currentPassword').notEmpty().withMessage('Current password is required'),
-    body('newPassword').notEmpty().withMessage('New password is required')
-        .isLength({ min: 12 }).withMessage('Password must be at least 12 characters')
-        .custom((value) => {
-            const errors = validatePasswordStrength(value);
-            if (errors.length > 0) {
-                throw new Error('Password does not meet requirements: ' + errors.join(', '));
-            }
-            return true;
-        }),
-    validate
+  body('currentPassword')
+    .exists({ values: 'falsy' })
+    .withMessage('Current password is required')
+    .bail()
+    .isString()
+    .withMessage('Current password must be a string'),
+  body('newPassword')
+    .exists({ values: 'falsy' })
+    .withMessage('New password is required')
+    .bail()
+    .isString()
+    .withMessage('New password must be a string')
+    .bail()
+    .isLength({ min: 12 })
+    .withMessage('Password must be at least 12 characters')
+    .custom((value) => {
+      const errors = validatePasswordStrength(value);
+      if (errors.length > 0) {
+        throw new Error(`Password does not meet requirements: ${errors.join(', ')}`);
+      }
+      return true;
+    }),
+  validate,
 ];
 
-// ─── Event Validators ──────────────────────────────────────────────────
 const createEventValidator = [
-    body('title').trim().notEmpty().withMessage('Event title is required').isLength({ max: 100 }).withMessage('Title cannot exceed 100 characters'),
-    body('description').trim().notEmpty().withMessage('Event description is required').isLength({ max: 2000 }),
-    body('category').isIn(['conference', 'workshop', 'seminar', 'concert', 'sports', 'exhibition', 'networking', 'other']).withMessage('Invalid category'),
-    body('date').isISO8601().toDate().withMessage('Valid start date is required'),
-    body('endDate').optional().isISO8601().toDate().custom((value, { req }) => {
-        if (value && req.body.date && new Date(value) <= new Date(req.body.date)) {
-            throw new Error('End date must be after start date');
-        }
-        return true;
+  stringField('title', 'Event title', { max: 100 }),
+  stringField('description', 'Event description', { max: 2000 }),
+  body('category')
+    .exists({ values: 'falsy' })
+    .withMessage('Category is required')
+    .bail()
+    .isString()
+    .withMessage('Category must be a string')
+    .bail()
+    .isIn(['conference', 'workshop', 'seminar', 'concert', 'sports', 'exhibition', 'networking', 'other'])
+    .withMessage('Invalid category'),
+  body('date')
+    .exists({ values: 'falsy' })
+    .withMessage('Valid start date is required')
+    .bail()
+    .isISO8601()
+    .withMessage('Valid start date is required')
+    .toDate(),
+  body('endDate')
+    .optional()
+    .isISO8601()
+    .withMessage('End date must be a valid ISO date')
+    .toDate()
+    .custom((value, { req }) => {
+      if (value && req.body.date && new Date(value) <= new Date(req.body.date)) {
+        throw new Error('End date must be after start date');
+      }
+      return true;
     }),
-    body('venue.name').trim().notEmpty().withMessage('Venue name is required'),
-    body('venue.address').trim().notEmpty().withMessage('Venue address is required'),
-    body('venue.city').trim().notEmpty().withMessage('Venue city is required'),
-    body('venue.country').trim().notEmpty().withMessage('Venue country is required'),
-    body('venue.capacity').isInt({ min: 1 }).withMessage('Capacity must be at least 1'),
-    body('seating.totalSeats').isInt({ min: 1 }).withMessage('Total seats must be at least 1'),
-    body('pricing.type').optional().isIn(['free', 'paid']),
-    body('pricing.amount').optional().isFloat({ min: 0 }).withMessage('Price cannot be negative'),
-    validate
+  body('venue')
+    .custom((value) => isPlainObject(value))
+    .withMessage('Venue must be an object'),
+  stringField('venue.name', 'Venue name', { max: 100 }),
+  stringField('venue.address', 'Venue address', { max: 200 }),
+  stringField('venue.city', 'Venue city', { max: 100 }),
+  stringField('venue.country', 'Venue country', { max: 100 }),
+  stringField('venue.state', 'Venue state', { optional: true, max: 100 }),
+  body('venue.capacity')
+    .exists({ values: 'falsy' })
+    .withMessage('Venue capacity is required')
+    .bail()
+    .isInt({ min: 1 })
+    .withMessage('Capacity must be at least 1'),
+  body('seating')
+    .custom((value) => isPlainObject(value))
+    .withMessage('Seating must be an object'),
+  body('seating.totalSeats')
+    .exists({ values: 'falsy' })
+    .withMessage('Total seats is required')
+    .bail()
+    .isInt({ min: 1 })
+    .withMessage('Total seats must be at least 1'),
+  body('seating.availableSeats')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Available seats must be 0 or greater'),
+  body('pricing')
+    .optional()
+    .custom((value) => value === undefined || isPlainObject(value))
+    .withMessage('Pricing must be an object'),
+  body('pricing.type')
+    .optional()
+    .isString()
+    .withMessage('Pricing type must be a string')
+    .bail()
+    .isIn(['free', 'paid'])
+    .withMessage('Pricing type must be free or paid'),
+  body('pricing.amount')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Price cannot be negative'),
+  body('pricing.currency')
+    .optional()
+    .isString()
+    .withMessage('Currency must be a string')
+    .trim()
+    .isLength({ min: 3, max: 3 })
+    .withMessage('Currency must be a 3-letter code'),
+  body('tags')
+    .optional()
+    .isArray({ max: 15 })
+    .withMessage('Tags must be an array with at most 15 items'),
+  body('tags.*')
+    .optional()
+    .isString()
+    .withMessage('Each tag must be a string')
+    .trim()
+    .isLength({ max: 30 })
+    .withMessage('Each tag must be at most 30 characters'),
+  validate,
 ];
 
 const updateEventValidator = [
-    body('title').optional().trim().notEmpty().isLength({ max: 100 }),
-    body('date').optional().isISO8601().toDate(),
-    body('seating.totalSeats').optional().isInt({ min: 1 }),
-    // Apply similar optional rules for other fields...
-    validate
+  stringField('title', 'Event title', { optional: true, max: 100 }),
+  stringField('description', 'Event description', { optional: true, max: 2000 }),
+  body('category')
+    .optional()
+    .isString()
+    .withMessage('Category must be a string')
+    .bail()
+    .isIn(['conference', 'workshop', 'seminar', 'concert', 'sports', 'exhibition', 'networking', 'other'])
+    .withMessage('Invalid category'),
+  body('date')
+    .optional()
+    .isISO8601()
+    .withMessage('Date must be a valid ISO date')
+    .toDate(),
+  body('endDate')
+    .optional()
+    .isISO8601()
+    .withMessage('End date must be a valid ISO date')
+    .toDate(),
+  body('venue')
+    .optional()
+    .custom((value) => isPlainObject(value))
+    .withMessage('Venue must be an object'),
+  stringField('venue.name', 'Venue name', { optional: true, max: 100 }),
+  stringField('venue.address', 'Venue address', { optional: true, max: 200 }),
+  stringField('venue.city', 'Venue city', { optional: true, max: 100 }),
+  stringField('venue.country', 'Venue country', { optional: true, max: 100 }),
+  body('venue.capacity')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Capacity must be at least 1'),
+  body('seating')
+    .optional()
+    .custom((value) => isPlainObject(value))
+    .withMessage('Seating must be an object'),
+  body('seating.totalSeats')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Total seats must be at least 1'),
+  body('seating.availableSeats')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Available seats must be 0 or greater'),
+  body('pricing')
+    .optional()
+    .custom((value) => isPlainObject(value))
+    .withMessage('Pricing must be an object'),
+  body('pricing.type')
+    .optional()
+    .isString()
+    .withMessage('Pricing type must be a string')
+    .bail()
+    .isIn(['free', 'paid'])
+    .withMessage('Pricing type must be free or paid'),
+  body('pricing.amount')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Price cannot be negative'),
+  body('tags')
+    .optional()
+    .isArray({ max: 15 })
+    .withMessage('Tags must be an array with at most 15 items'),
+  body('tags.*')
+    .optional()
+    .isString()
+    .withMessage('Each tag must be a string')
+    .trim()
+    .isLength({ max: 30 })
+    .withMessage('Each tag must be at most 30 characters'),
+  validate,
 ];
 
-// ─── Hall Validators ───────────────────────────────────────────────────
 const createHallValidator = [
-    body('name').trim().notEmpty().withMessage('Hall name is required').isLength({ max: 100 }),
-    body('capacity').isInt({ min: 1 }).withMessage('Capacity must be at least 1'),
-    body('hourlyRate').isFloat({ min: 0 }).withMessage('Hourly rate cannot be negative'),
-    validate
+  stringField('name', 'Hall name', { max: 100 }),
+  body('capacity')
+    .exists({ values: 'falsy' })
+    .withMessage('Capacity is required')
+    .bail()
+    .isInt({ min: 1 })
+    .withMessage('Capacity must be at least 1'),
+  body('hourlyRate')
+    .exists({ values: 'falsy' })
+    .withMessage('Hourly rate is required')
+    .bail()
+    .isFloat({ min: 0 })
+    .withMessage('Hourly rate cannot be negative'),
+  validate,
 ];
 
 const updateHallValidator = [
-    body('name').optional().trim().notEmpty().withMessage('Hall name is required').isLength({ max: 100 }),
-    body('capacity').optional().isInt({ min: 1 }).withMessage('Capacity must be at least 1'),
-    body('hourlyRate').optional().isFloat({ min: 0 }).withMessage('Hourly rate cannot be negative'),
-    validate
+  stringField('name', 'Hall name', { optional: true, max: 100 }),
+  body('capacity')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Capacity must be at least 1'),
+  body('hourlyRate')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Hourly rate cannot be negative'),
+  validate,
 ];
 
-// ─── Booking Validators ────────────────────────────────────────────────
 const createBookingValidator = [
-    body('hall').trim().notEmpty().withMessage('Hall ID is required'),
-    body('startDate').isISO8601().toDate().withMessage('Valid start date is required'),
-    body('endDate').isISO8601().toDate().withMessage('Valid end date is required').custom((value, { req }) => {
-        if (value && req.body.startDate && new Date(value) <= new Date(req.body.startDate)) {
-            throw new Error('End date must be after start date');
-        }
-        return true;
+  mongoIdField('hall', 'Hall ID'),
+  body('startDate')
+    .exists({ values: 'falsy' })
+    .withMessage('Valid start date is required')
+    .bail()
+    .isISO8601()
+    .withMessage('Valid start date is required')
+    .toDate(),
+  body('endDate')
+    .exists({ values: 'falsy' })
+    .withMessage('Valid end date is required')
+    .bail()
+    .isISO8601()
+    .withMessage('Valid end date is required')
+    .toDate()
+    .custom((value, { req }) => {
+      if (value && req.body.startDate && new Date(value) <= new Date(req.body.startDate)) {
+        throw new Error('End date must be after start date');
+      }
+      return true;
     }),
-    body('notes').optional().isString().trim(),
-    body('event').optional().isMongoId().withMessage('Event must be a valid ID'),
-    validate
+  stringField('notes', 'Notes', { optional: true, max: 500 }),
+  body('event')
+    .optional()
+    .isString()
+    .withMessage('Event must be a string')
+    .bail()
+    .isMongoId()
+    .withMessage('Event must be a valid ID'),
+  validate,
 ];
 
-// ─── Export ────────────────────────────────────────────────────────────
+const confirmBookingValidator = [
+  mongoIdField('eventId', 'Event ID'),
+  stringField('paymentId', 'Payment ID', { max: 120 }),
+  stringField('bookingId', 'Booking ID', { optional: true, max: 120 }),
+  stringField('paymentMethod', 'Payment method', { optional: true, max: 50 }),
+  stringField('couponCode', 'Coupon code', { optional: true, max: 40 }),
+  body('paymentToken')
+    .optional()
+    .isString()
+    .withMessage('Payment token must be a string'),
+  validate,
+];
+
+const roleUpgradeRequestValidator = [
+  stringField('reason', 'Reason', { max: 500 }),
+  stringField('organizationName', 'Organization name', { max: 150 }),
+  validate,
+];
+
+const roleUpgradeDecisionValidator = [
+  param('userId')
+    .isString()
+    .withMessage('User ID must be a string')
+    .bail()
+    .isMongoId()
+    .withMessage('User ID must be a valid identifier'),
+  body('action')
+    .exists({ values: 'falsy' })
+    .withMessage('Action is required')
+    .bail()
+    .isString()
+    .withMessage('Action must be a string')
+    .bail()
+    .isIn(['approve', 'deny'])
+    .withMessage('Action must be "approve" or "deny"'),
+  validate,
+];
+
+const adminUserUpdateValidator = [
+  param('id')
+    .isString()
+    .withMessage('User ID must be a string')
+    .bail()
+    .isMongoId()
+    .withMessage('User ID must be a valid identifier'),
+  stringField('name', 'Name', { optional: true, max: 50 }),
+  body('email')
+    .optional()
+    .isString()
+    .withMessage('Email must be a string')
+    .bail()
+    .trim()
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+  stringField('phone', 'Phone', { optional: true, max: 25 }),
+  body('age')
+    .optional()
+    .isInt({ min: 13, max: 120 })
+    .withMessage('Age must be between 13 and 120'),
+  body('gender')
+    .optional()
+    .isString()
+    .withMessage('Gender must be a string')
+    .bail()
+    .isIn(['male', 'female', 'other', 'prefer-not-to-say'])
+    .withMessage('Invalid gender value'),
+  body('role')
+    .optional()
+    .isString()
+    .withMessage('Role must be a string')
+    .bail()
+    .isIn(roles)
+    .withMessage('Invalid role'),
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .withMessage('isActive must be a boolean')
+    .toBoolean(),
+  body('interests')
+    .optional()
+    .isArray({ max: 20 })
+    .withMessage('Interests must be an array with at most 20 items'),
+  body('interests.*')
+    .optional()
+    .isString()
+    .withMessage('Each interest must be a string')
+    .trim()
+    .isLength({ max: 40 })
+    .withMessage('Each interest must be at most 40 characters'),
+  body('location')
+    .optional()
+    .custom((value) => isPlainObject(value))
+    .withMessage('Location must be an object'),
+  stringField('avatar', 'Avatar', { optional: true, max: 500 }),
+  validate,
+];
+
+const userStatusValidator = [
+  param('id')
+    .isString()
+    .withMessage('User ID must be a string')
+    .bail()
+    .isMongoId()
+    .withMessage('User ID must be a valid identifier'),
+  body('status')
+    .exists({ values: 'falsy' })
+    .withMessage('Status is required')
+    .bail()
+    .isString()
+    .withMessage('Status must be a string')
+    .bail()
+    .isIn(['active', 'inactive', 'suspended'])
+    .withMessage('Invalid status. Must be active, inactive, or suspended'),
+  validate,
+];
+
+const paginationQueryValidator = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Page must be a positive integer')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Limit must be between 1 and 100')
+    .toInt(),
+  validate,
+];
+
 module.exports = {
-    validate,
-    registerValidator,
-    loginValidator,
-    updateProfileValidator,
-    changePasswordValidator,
-    createEventValidator,
-    updateEventValidator,
-    createHallValidator,
-    updateHallValidator,
-    createBookingValidator
+  validate,
+  registerValidator,
+  loginValidator,
+  updateProfileValidator,
+  changePasswordValidator,
+  createEventValidator,
+  updateEventValidator,
+  createHallValidator,
+  updateHallValidator,
+  createBookingValidator,
+  confirmBookingValidator,
+  roleUpgradeRequestValidator,
+  roleUpgradeDecisionValidator,
+  adminUserUpdateValidator,
+  userStatusValidator,
+  mongoIdParamValidator,
+  paginationQueryValidator,
 };

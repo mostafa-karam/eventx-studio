@@ -2,6 +2,7 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
+const { createTestClient } = require('../test-utils/testClient');
 
 let mongoServer;
 
@@ -31,14 +32,13 @@ afterEach(async () => {
 
 describe('Auth Endpoints', () => {
     it('should register a new user successfully', async () => {
-        const res = await request(app)
-            .post('/api/auth/register')
-            .send({
-                name: 'Test user',
-                email: 'test@example.com',
-                password: 'UniqueTestPass!2026',
-                role: 'user'
-            });
+        const client = createTestClient(app);
+        const res = await client.csrfRequest('post', '/api/auth/register', {
+            name: 'Test user',
+            email: 'test@example.com',
+            password: 'UniqueTestPass!2026',
+            role: 'user'
+        });
 
         expect(res.statusCode).toBe(201);
         expect(res.body.success).toBe(true);
@@ -46,34 +46,30 @@ describe('Auth Endpoints', () => {
     });
 
     it('should reject a weak password', async () => {
-        const res = await request(app)
-            .post('/api/auth/register')
-            .send({
-                name: 'Weak user',
-                email: 'weak@example.com',
-                password: 'password', // weak
-                role: 'user'
-            });
+        const client = createTestClient(app);
+        const res = await client.csrfRequest('post', '/api/auth/register', {
+            name: 'Weak user',
+            email: 'weak@example.com',
+            password: 'password',
+            role: 'user'
+        });
 
         expect(res.statusCode).toBe(400);
         expect(res.body.success).toBe(false);
     });
 
     it('should login an existing user', async () => {
-        // Register
-        await request(app).post('/api/auth/register').send({
+        const client = createTestClient(app);
+        await client.csrfRequest('post', '/api/auth/register', {
             name: 'Login user',
             email: 'login@example.com',
             password: 'UniqueTestPass!2026'
         });
 
-        // Login
-        const res = await request(app)
-            .post('/api/auth/login')
-            .send({
-                email: 'login@example.com',
-                password: 'UniqueTestPass!2026'
-            });
+        const res = await client.csrfRequest('post', '/api/auth/login', {
+            email: 'login@example.com',
+            password: 'UniqueTestPass!2026'
+        });
 
         // Because email verification is required and we did not mock it to skip, 
         // it will return 403 Email verification required for now.

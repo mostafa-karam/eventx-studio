@@ -6,11 +6,13 @@ const User = require('../models/User');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const Review = require('../models/Review');
+const { createTestClient } = require('../test-utils/testClient');
 
 let mongoServer;
 let authToken;
 let testEventId;
 let testUserId;
+let client;
 
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
@@ -38,26 +40,22 @@ afterEach(async () => {
 
 describe('Review Soft-Delete & Unique Index', () => {
     beforeEach(async () => {
-        // Register and verify email
-        await request(app)
-            .post('/api/auth/register')
-            .send({
-                name: 'Reviewer User',
-                email: 'reviewer@example.com',
-                password: 'UniqueTestPass!2026',
-                role: 'user'
-            });
+        client = createTestClient(app);
+        await client.csrfRequest('post', '/api/auth/register', {
+            name: 'Reviewer User',
+            email: 'reviewer@example.com',
+            password: 'UniqueTestPass!2026',
+            role: 'user'
+        });
 
         const user = await User.findOne({ email: 'reviewer@example.com' });
         testUserId = user._id;
         await User.updateOne({ _id: testUserId }, { emailVerified: true });
 
-        const loginRes = await request(app)
-            .post('/api/auth/login')
-            .send({
-                email: 'reviewer@example.com',
-                password: 'UniqueTestPass!2026'
-            });
+        const loginRes = await client.csrfRequest('post', '/api/auth/login', {
+            email: 'reviewer@example.com',
+            password: 'UniqueTestPass!2026'
+        });
 
         const cookies = loginRes.headers['set-cookie'];
         const accessTokenCookie = cookies.find(cookie => cookie.startsWith('accessToken='));

@@ -6,10 +6,12 @@ const User = require('../models/User');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const Notification = require('../models/Notification');
+const { createTestClient } = require('../test-utils/testClient');
 
 let mongoServer;
 let authToken;
 let testEventId;
+let client;
 
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
@@ -37,25 +39,21 @@ afterEach(async () => {
 
 describe('Event Lifecycle & Immutability', () => {
     beforeEach(async () => {
-        // Register and verify email
-        await request(app)
-            .post('/api/auth/register')
-            .send({
-                name: 'Organizer User',
-                email: 'org@example.com',
-                password: 'UniqueTestPass!2026',
-                role: 'organizer'
-            });
+        client = createTestClient(app);
+        await client.csrfRequest('post', '/api/auth/register', {
+            name: 'Organizer User',
+            email: 'org@example.com',
+            password: 'UniqueTestPass!2026',
+            role: 'organizer'
+        });
 
         // Manually verify email for test
         await User.updateOne({ email: 'org@example.com' }, { emailVerified: true, role: 'organizer' });
 
-        const loginRes = await request(app)
-            .post('/api/auth/login')
-            .send({
-                email: 'org@example.com',
-                password: 'UniqueTestPass!2026'
-            });
+        const loginRes = await client.csrfRequest('post', '/api/auth/login', {
+            email: 'org@example.com',
+            password: 'UniqueTestPass!2026'
+        });
 
         // Get token from cookie
         const cookies = loginRes.headers['set-cookie'];

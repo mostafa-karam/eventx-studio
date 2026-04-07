@@ -10,6 +10,21 @@ if (!fs.existsSync(logsDir)) {
 
 const { combine, timestamp, printf, colorize, errors } = winston.format;
 
+const safeStringify = (value) => {
+  const seen = new WeakSet();
+
+  return JSON.stringify(value, (key, nestedValue) => {
+    if (typeof nestedValue === 'object' && nestedValue !== null) {
+      if (seen.has(nestedValue)) {
+        return '[Circular]';
+      }
+      seen.add(nestedValue);
+    }
+
+    return nestedValue;
+  });
+};
+
 const appendRequestId = winston.format((info) => {
   if (info.req && info.req.id) {
     info.requestId = info.req.id;
@@ -22,9 +37,10 @@ const devFormat = combine(
     colorize({ all: true }),
     timestamp({ format: 'HH:mm:ss' }),
     errors({ stack: true }),
-    printf(({ level, message, timestamp, stack, requestId }) => {
+    printf(({ level, message, timestamp, stack, requestId, ...meta }) => {
         const reqStr = requestId ? ` [ReqID: ${requestId}]` : '';
-        return `${timestamp} [${level}]${reqStr} ${stack || message}`;
+        const metadata = Object.keys(meta).length > 0 ? ` ${safeStringify(meta)}` : '';
+        return `${timestamp} [${level}]${reqStr} ${stack || message}${metadata}`;
     })
 );
 

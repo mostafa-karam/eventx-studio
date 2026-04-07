@@ -1,77 +1,137 @@
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
+const config = require('../config');
+const logger = require('../utils/logger');
+
 const ipKeyGenerator = rateLimit.ipKeyGenerator || ((req) => req.ip);
 
-const jwt = require('jsonwebtoken');
+const getTestKeyOverride = (req) =>
+  config.env === 'test' ? req.headers['x-test-rate-limit-key'] : undefined;
 
-// Global rate limiter — 200 requests per 15 minutes per IP
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  message: { success: false, message: 'Too many requests, please try again later.' },
+const normalizeEmail = (email) => {
+  if (typeof email !== 'string') return 'anonymous';
+  return email.trim().toLowerCase();
+};
+
+const resolveKey = (req, resolver) => {
+  const override = getTestKeyOverride(req);
+  if (override) return String(override);
+
+  return resolver(req);
+};
+
+const defaultHandler = (message) => (req, res, _next, options) => {
+  logger.warn('Rate limit exceeded', {
+    route: req.originalUrl,
+    method: req.method,
+    limiter: message,
+    ipAddress: req.ip,
+  });
+
+  res.status(options.statusCode).json({
+    success: false,
+    message,
+    retryAfter: Number(res.getHeader('Retry-After')) || undefined,
+  });
+};
+
+const createLimiter = ({
+  windowMs,
+  max,
+  message,
+  keyGenerator,
+  skipSuccessfulRequests = false,
+  skipFailedRequests = false,
+}) => rateLimit({
+  windowMs,
+  max,
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests,
+  skipFailedRequests,
+  keyGenerator,
+  handler: defaultHandler(message),
 });
 
-// Stricter rate limiter for auth routes — 15 requests per 15 minutes
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 15,
-  message: { success: false, message: 'Too many authentication attempts, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
+const globalLimiter = createLimiter({
+  windowMs: config.security.rateLimit.windowMs,
+  max: config.security.rateLimit.max,
+  message: 'Too many requests, please try again later.',
+  keyGenerator: (req) => resolveKey(req, (currentReq) => `global:${ipKeyGenerator(currentReq)}`),
 });
 
-// Stricter rate limiter for password reset — 5 requests per 15 minutes
-const passwordResetLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { success: false, message: 'Too many password reset attempts, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
+const loginLimiter = createLimiter({
+  windowMs: config.security.rateLimit.authWindowMs,
+  max: config.security.rateLimit.loginMax,
+  message: 'Too many failed login attempts. Please try again later.',
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => resolveKey(
+    req,
+    (currentReq) => `auth:login:${ipKeyGenerator(currentReq)}:${normalizeEmail(currentReq.body?.email)}`,
+  ),
 });
 
-// Refresh token limiter - 5 requests per 15 minutes, keyed by user ID
-const refreshTokenLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { success: false, message: 'Too many token refresh attempts, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    // Try to extract user ID from the refresh token
-    const token = req.body.refreshToken || req.cookies?.refreshToken;
-    if (token) {
+const registerLimiter = createLimiter({
+  windowMs: config.security.rateLimit.authWindowMs,
+  max: config.security.rateLimit.registerMax,
+  message: 'Too many registration attempts. Please try again later.',
+  keyGenerator: (req) => resolveKey(
+    req,
+    (currentReq) => `auth:register:${ipKeyGenerator(currentReq)}:${normalizeEmail(currentReq.body?.email)}`,
+  ),
+});
+
+const passwordResetLimiter = createLimiter({
+  windowMs: config.security.rateLimit.authWindowMs,
+  max: config.security.rateLimit.passwordResetMax,
+  message: 'Too many password reset attempts. Please try again later.',
+  keyGenerator: (req) => resolveKey(
+    req,
+    (currentReq) => `auth:password-reset:${ipKeyGenerator(currentReq)}:${normalizeEmail(currentReq.body?.email)}`,
+  ),
+});
+
+const refreshTokenLimiter = createLimiter({
+  windowMs: config.security.rateLimit.authWindowMs,
+  max: config.security.rateLimit.refreshMax,
+  message: 'Too many token refresh attempts. Please try again later.',
+  keyGenerator: (req) => resolveKey(req, (currentReq) => {
+    const incomingToken = currentReq.body?.refreshToken || currentReq.cookies?.refreshToken;
+
+    if (incomingToken) {
       try {
-        const decoded = jwt.decode(token);
-        if (decoded && decoded.id) {
-          return decoded.id; // Key by user ID
+        const decoded = jwt.decode(incomingToken);
+        if (decoded?.sessionId) {
+          return `auth:refresh:${decoded.sessionId}`;
         }
-      } catch (e) {
-        // Ignore decoding errors here
+        if (decoded?.id) {
+          return `auth:refresh:${decoded.id}`;
+        }
+      } catch (error) {
+        logger.warn(`Failed to decode refresh token for rate limiting: ${error.message}`);
       }
     }
-    // Fallback to an IPv6-safe request key generator
-    return ipKeyGenerator(req);
-  }
+
+    return `auth:refresh:${ipKeyGenerator(currentReq)}`;
+  }),
 });
 
-// Payment token limiter - 10 requests per 15 minutes, keyed by user ID
-const paymentLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { success: false, message: 'Too many payment requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    // payment routes use authenticate middleware, so req.user exists
-    return req.user ? req.user._id.toString() : ipKeyGenerator(req);
-  }
+const paymentLimiter = createLimiter({
+  windowMs: config.security.rateLimit.authWindowMs,
+  max: config.security.rateLimit.paymentMax,
+  message: 'Too many payment requests. Please try again later.',
+  keyGenerator: (req) => resolveKey(
+    req,
+    (currentReq) => `payment:${currentReq.user?._id?.toString() || ipKeyGenerator(currentReq)}`,
+  ),
 });
 
 module.exports = {
   globalLimiter,
-  authLimiter,
+  loginLimiter,
+  registerLimiter,
   passwordResetLimiter,
   refreshTokenLimiter,
-  paymentLimiter
+  paymentLimiter,
+  createLimiter,
 };

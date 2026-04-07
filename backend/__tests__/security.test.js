@@ -1,8 +1,10 @@
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 const request = require('supertest');
 const app = require('../server');
-const mongoose = require('mongoose');
-
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const User = require('../models/User');
+const { createTestClient } = require('../test-utils/testClient');
 
 let mongoServer;
 
@@ -12,82 +14,117 @@ describe('Security Hardening Tests', () => {
     const mongoUri = mongoServer.getUri();
 
     if (mongoose.connection.readyState !== 0) {
-        await mongoose.disconnect();
+      await mongoose.disconnect();
     }
+
     await mongoose.connect(mongoUri);
   });
 
   afterAll(async () => {
     await mongoose.disconnect();
     if (mongoServer) {
-        await mongoServer.stop();
+      await mongoServer.stop();
+    }
+  });
+
+  afterEach(async () => {
+    const collections = mongoose.connection.collections;
+    for (const key of Object.keys(collections)) {
+      await collections[key].deleteMany();
     }
   });
 
   describe('1. NoSQL Injection Protection', () => {
-    it('should block NoSQL injection payloads in body', async () => {
-      const res = await request(app)
-        .post('/api/auth/login')
-        .send({
-          email: { "$gt": "" },
-          password: "password123"
-        });
+    it('rejects object-based login payloads before they reach Mongo queries', async () => {
+      const client = createTestClient(app);
+      const response = await client.csrfRequest('post', '/api/auth/login', {
+        email: { $gt: '' },
+        password: 'password123',
+      });
 
-      // It might pass as a 400 Validation Error or 401 if parsed literally, but shouldn't be 500 or 200
-      expect(res.statusCode).not.toBe(200);
-      expect(res.statusCode).not.toBe(500);
+      expect(response.statusCode).toBe(400);
+      expect(response.body.message).toMatch(/invalid request payload|validation failed/i);
+    });
+
+    it('rejects suspicious Mongo operators in query strings', async () => {
+      const response = await request(app).get('/api/events?title[$ne]=hack');
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body.message).toMatch(/invalid request payload/i);
     });
   });
 
   describe('2. XSS Payload Handling', () => {
-    it('should sanitize HTML tags from request body', async () => {
-      // Send a payload containing HTML
-      const res = await request(app)
-        .post('/api/auth/register') // A route that echoes back validation or accepts data
-        .send({
-          name: '<script>alert("xss")</script>John Doe',
-          email: 'johndoe_' + Date.now() + '@example.com',
-          password: 'UniqueTestPass!2026',
-          role: 'user'
-        });
+    it('sanitizes HTML/script payloads before persistence', async () => {
+      const client = createTestClient(app);
+      const response = await client.csrfRequest('post', '/api/auth/register', {
+        name: '<script>alert("xss")</script>John Doe',
+        email: `johndoe_${Date.now()}@example.com`,
+        password: 'UniqueTestPass!2026',
+        role: 'user',
+      });
 
-      // Verification heavily depends on the router, but we check that the DB input/validation
-      // process was either rejected or stripped the <script> tag.
-      // E.g., if validation error occurs on name length or if it was accepted:
-      if (res.body.success && res.body.data && res.body.data.user) {
-         expect(res.body.data.user.name).not.toContain('<script>');
-      } else {
-         // Either validation caught it or it was cleanly stripped and passed
-         expect(res.text).not.toContain('<script>alert("xss")</script>');
-      }
+      expect(response.statusCode).toBe(201);
+      expect(response.body.data.user.name).not.toContain('<script>');
+      expect(response.body.data.user.name).not.toContain('</script>');
     });
   });
 
-  describe('3. Broken Access Control (BAC)', () => {
-    it('should prevent unauthenticated user from accessing admin route', async () => {
-      const res = await request(app)
-        .get('/api/auth/users')
-        .set('Authorization', 'Bearer invalid_token');
+  describe('3. Broken Access Control', () => {
+    it('blocks a regular user from reaching admin-only user management routes', async () => {
+      const user = await User.create({
+        name: 'Regular User',
+        email: 'regular-security@example.com',
+        password: 'UniqueTestPass!2026',
+        role: 'user',
+        emailVerified: true,
+      });
 
-      expect(res.statusCode).toBe(401);
+      const userToken = jwt.sign(
+        { id: user._id },
+        process.env.JWT_SECRET || 'test_secret_for_ci',
+        { expiresIn: '1h' },
+      );
+
+      const response = await request(app)
+        .get('/api/users')
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(response.statusCode).toBe(403);
+      expect(response.body.message).toMatch(/admin privileges required/i);
     });
   });
 
   describe('4. Rate Limiting', () => {
-     it('should return 429 Too Many Requests if brute forcing /api/auth/login', async () => {
-        // Our authLimiter is set to max 15 requests per 15 minutes.
-        // We will make 16 requests.
-        let status;
-        for(let i = 0; i < 16; i++) {
-           const res = await request(app)
-             .post('/api/auth/login')
-             .send({ email: 'fake@test.com', password: 'fake' });
-           status = res.statusCode;
-        }
-        
-        // The 16th request should be 429
-        expect(status).toBe(429);
-     });
+    it('returns 429 after repeated failed login attempts from the same key', async () => {
+      const client = createTestClient(app, { rateLimitKey: 'security-rate-limit-login' });
+      let lastResponse;
+
+      for (let attempt = 0; attempt < 9; attempt += 1) {
+        lastResponse = await client.csrfRequest('post', '/api/auth/login', {
+          email: 'fake@test.com',
+          password: 'wrong-password',
+        });
+      }
+
+      expect(lastResponse.statusCode).toBe(429);
+      expect(lastResponse.body.message).toMatch(/too many failed login attempts/i);
+    });
   });
 
+  describe('5. CSRF Enforcement', () => {
+    it('rejects auth mutations that omit the CSRF token', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .set('x-test-rate-limit-key', 'csrf-missing-token')
+        .send({
+          name: 'No Csrf',
+          email: 'nocsrf@example.com',
+          password: 'UniqueTestPass!2026',
+        });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.body.message).toMatch(/csrf/i);
+    });
+  });
 });

@@ -8,14 +8,13 @@ const logger = require('../utils/logger');
 const Event = require('../models/Event');
 const bookingService = require('../services/bookingService');
 const auditService = require('../services/auditService');
-const { validationResult } = require('express-validator');
 const { verifyPaymentToken } = require('../utils/paymentTokens');
 
 // @desc    Initiates a booking session
 // @access  Private
 exports.initiateBooking = async (req, res) => {
     try {
-        const { eventId } = req.body || {};
+        const { eventId } = req.validatedBody || req.body || {};
         if (!eventId) return res.status(400).json({ success: false, message: 'eventId is required' });
 
         const event = await Event.findById(eventId).select('title pricing date venue seating status');
@@ -32,6 +31,19 @@ exports.initiateBooking = async (req, res) => {
             expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
         };
 
+        await auditService.log({
+            req,
+            actor: req.user,
+            action: 'booking.initiate',
+            resource: 'Booking',
+            resourceId: bookingSession._id,
+            details: {
+                eventId,
+                totalAmount: bookingSession.totalAmount,
+                expiresAt: bookingSession.expiresAt,
+            },
+        });
+
         return res.json({ success: true, data: { bookingSession } });
     } catch (error) {
         logger.error('Booking initiate error:', error);
@@ -42,10 +54,14 @@ exports.initiateBooking = async (req, res) => {
 // @desc    Confirms a booking by creating a ticket
 // @access  Private
 exports.confirmBooking = async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
-
-    const { eventId, paymentId, bookingId, paymentMethod = 'credit_card', couponCode, paymentToken } = req.body || {};
+    const {
+        eventId,
+        paymentId,
+        bookingId,
+        paymentMethod = 'credit_card',
+        couponCode,
+        paymentToken,
+    } = req.validatedBody || req.body || {};
 
     try {
         const event = await Event.findById(eventId);
@@ -131,8 +147,12 @@ exports.confirmBooking = async (req, res) => {
 
         // Audit log
         await auditService.log({
-            req, actor: req.user, action: 'ticket.purchase', resource: 'Ticket', resourceId: ticket._id,
-            details: { eventId, paymentMethod, amount: expectedAmount }
+            req,
+            actor: req.user,
+            action: 'booking.confirm',
+            resource: 'Ticket',
+            resourceId: ticket._id,
+            details: { eventId, bookingId, paymentMethod, amount: expectedAmount }
         });
 
         return res.json({

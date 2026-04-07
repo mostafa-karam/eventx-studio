@@ -117,7 +117,15 @@ const userSchema = new mongoose.Schema({
     createdAt: {
       type: Date,
       default: Date.now
-    }
+    },
+    refreshTokenHash: {
+      type: String,
+      select: false
+    },
+    refreshTokenExpiresAt: Date,
+    revokedAt: Date,
+    lastRotatedAt: Date,
+    ipAddress: String
   }],
   // Refresh token
   refreshToken: {
@@ -125,6 +133,7 @@ const userSchema = new mongoose.Schema({
     select: false
   },
   refreshTokenExpires: Date,
+  deletedAt: Date,
   // Role upgrade requests
   roleUpgradeRequest: {
     reason: String,
@@ -246,6 +255,7 @@ userSchema.methods.addSession = function (sessionId, deviceInfo) {
   this.activeSessions.push({
     sessionId,
     deviceInfo,
+    ipAddress: deviceInfo?.ipAddress || deviceInfo?.ip,
     lastActivity: new Date(),
     createdAt: new Date()
   });
@@ -259,6 +269,40 @@ userSchema.methods.addSession = function (sessionId, deviceInfo) {
 // Remove session
 userSchema.methods.removeSession = function (sessionId) {
   this.activeSessions = this.activeSessions.filter(s => s.sessionId !== sessionId);
+};
+
+userSchema.methods.getSession = function (sessionId) {
+  return this.activeSessions?.find((session) => session.sessionId === sessionId);
+};
+
+userSchema.methods.setSessionRefreshToken = function (sessionId, refreshTokenHash, refreshTokenExpiresAt) {
+  const session = this.getSession(sessionId);
+  if (!session) return false;
+
+  session.refreshTokenHash = refreshTokenHash;
+  session.refreshTokenExpiresAt = refreshTokenExpiresAt;
+  session.lastRotatedAt = new Date();
+  session.revokedAt = undefined;
+  return true;
+};
+
+userSchema.methods.clearSessionRefreshToken = function (sessionId) {
+  const session = this.getSession(sessionId);
+  if (!session) return false;
+
+  session.refreshTokenHash = undefined;
+  session.refreshTokenExpiresAt = undefined;
+  session.revokedAt = new Date();
+  return true;
+};
+
+userSchema.methods.clearAllSessionRefreshTokens = function () {
+  this.activeSessions = (this.activeSessions || []).map((session) => {
+    session.refreshTokenHash = undefined;
+    session.refreshTokenExpiresAt = undefined;
+    session.revokedAt = new Date();
+    return session;
+  });
 };
 
 // Update session activity

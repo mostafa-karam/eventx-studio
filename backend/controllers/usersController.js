@@ -1,6 +1,6 @@
 const logger = require('../utils/logger');
 const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
+const auditService = require('../services/auditService');
 const { sanitizeSearchInput, createSafeRegex } = require('../utils/helpers');
 const { ACTIONS, RESOURCES } = require('../utils/auditConstants');
 
@@ -126,25 +126,35 @@ exports.updateUser = async (req, res) => {
             'name', 'email', 'phone', 'age', 'gender', 'interests',
             'location', 'role', 'isActive', 'avatar'
         ];
+        const payload = req.validatedBody || req.body;
+        const before = {
+            role: user.role,
+            isActive: user.isActive,
+        };
+
         ADMIN_ALLOWED_FIELDS.forEach(field => {
-            if (req.body[field] !== undefined) {
-                user[field] = req.body[field];
+            if (payload[field] !== undefined) {
+                user[field] = payload[field];
             }
         });
 
         await user.save();
 
-        // Audit role/status changes
-        const sensitiveChanged = ['role', 'isActive'].some(f => req.body[f] !== undefined);
-        if (sensitiveChanged) {
-            await AuditLog.create({
-                actor: req.user._id,
-                action: ACTIONS.USER_UPDATE,
-                resource: RESOURCES.USER,
-                resourceId: user._id,
-                details: { changedFields: Object.keys(req.body).filter(f => ['role', 'isActive', 'email', 'name'].includes(f)) },
-            }).catch(e => logger.warn('AuditLog write failed: ' + e.message));
-        }
+        const changedFields = Object.keys(payload).filter((field) => ADMIN_ALLOWED_FIELDS.includes(field));
+        await auditService.log({
+            req,
+            actor: req.user,
+            action: payload.role && payload.role !== before.role ? ACTIONS.USER_ROLE_CHANGE : ACTIONS.USER_UPDATE,
+            resource: RESOURCES.USER,
+            resourceId: user._id,
+            details: {
+                changedFields,
+                previousRole: before.role,
+                newRole: user.role,
+                previousStatus: before.isActive,
+                newStatus: user.isActive,
+            },
+        });
 
         const updatedUser = await User.findById(user._id).select('-password');
 
@@ -185,7 +195,7 @@ exports.updateUser = async (req, res) => {
 // @access  Private/Admin
 exports.updateUserStatus = async (req, res) => {
     try {
-        const { status } = req.body;
+        const { status } = req.validatedBody || req.body;
 
         if (!['active', 'inactive', 'suspended'].includes(status)) {
             return res.status(400).json({
@@ -205,6 +215,14 @@ exports.updateUserStatus = async (req, res) => {
 
         user.isActive = status === 'active';
         await user.save();
+        await auditService.log({
+            req,
+            actor: req.user,
+            action: user.isActive ? ACTIONS.USER_ACTIVATE : ACTIONS.USER_DEACTIVATE,
+            resource: RESOURCES.USER,
+            resourceId: user._id,
+            details: { status },
+        });
 
         const updatedUser = await User.findById(user._id).select('-password');
 
@@ -254,6 +272,14 @@ exports.deleteUser = async (req, res) => {
         }
 
         await User.findByIdAndDelete(req.params.id);
+        await auditService.log({
+            req,
+            actor: req.user,
+            action: ACTIONS.USER_UPDATE,
+            resource: RESOURCES.USER,
+            resourceId: req.params.id,
+            details: { operation: 'delete' },
+        });
 
         res.json({
             success: true,

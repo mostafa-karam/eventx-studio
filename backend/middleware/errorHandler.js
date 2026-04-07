@@ -22,6 +22,31 @@ const errorHandler = (err, req, res, _next) => {
   const statusCode = err.statusCode || err.status || 500;
   const isProduction = config.env === 'production';
 
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: Object.values(err.errors).map((error) => error.message),
+      requestId: req.id,
+    });
+  }
+
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid ${err.path}`,
+      requestId: req.id,
+    });
+  }
+
+  if (err.code === 11000) {
+    return res.status(409).json({
+      success: false,
+      message: 'A record with that value already exists.',
+      requestId: req.id,
+    });
+  }
+
   // Log the full error on the server side mapped to the request ID
   logger.error(
     `[${req.id || 'NO-ID'}] ${statusCode} — ${err.message} — ${req.method} ${req.originalUrl}\n${err.stack}`

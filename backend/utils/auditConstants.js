@@ -32,6 +32,8 @@ module.exports = {
     TICKET_PURCHASE: 'ticket.purchase',
     TICKET_CANCEL: 'ticket.cancel',
     TICKET_REFUND: 'ticket.refund',
+    BOOKING_INITIATE: 'booking.initiate',
+    BOOKING_CONFIRM: 'booking.confirm',
     
     // Coupon actions (New)
     COUPON_CREATE: 'coupon.create',
@@ -42,6 +44,7 @@ module.exports = {
     AUTH_LOGIN: 'auth.login',
     AUTH_LOGOUT: 'auth.logout',
     AUTH_PASSWORD_RESET: 'auth.password_reset',
+    AUTH_PASSWORD_CHANGED: 'auth.password_changed',
     AUTH_ROLE_UPGRADE_APPROVE: 'auth.role_upgrade_approve',
     AUTH_ACCOUNT_DELETED: 'auth.account_deleted',
   },
@@ -53,6 +56,7 @@ module.exports = {
     HALL_BOOKING: 'HallBooking',
     TICKET: 'Ticket',
     COUPON: 'Coupon',
-    AUTH: 'Auth'
+    AUTH: 'Auth',
+    BOOKING: 'Booking',
   }
 };

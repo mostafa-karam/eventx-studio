@@ -1,14 +1,22 @@
 const express = require('express');
-const rateLimit = require('express-rate-limit');
-const { authLimiter, passwordResetLimiter, refreshTokenLimiter } = require('../middleware/rateLimiter');
+const {
+  loginLimiter,
+  registerLimiter,
+  passwordResetLimiter,
+  refreshTokenLimiter,
+} = require('../middleware/rateLimiter');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { registerValidator, loginValidator, updateProfileValidator, changePasswordValidator } = require('../middleware/validators');
+const {
+  registerValidator,
+  loginValidator,
+  updateProfileValidator,
+  changePasswordValidator,
+  roleUpgradeRequestValidator,
+  roleUpgradeDecisionValidator,
+} = require('../middleware/validators');
 const authController = require('../controllers/authController');
 
 const router = express.Router();
-
-// Apply authLimiter to all auth routes
-router.use(authLimiter);
 
 /**
  * @swagger
@@ -42,7 +50,7 @@ router.use(authLimiter);
  *       400:
  *         description: Validation error
  */
-router.post('/register', registerValidator, authController.register);
+router.post('/register', registerLimiter, registerValidator, authController.register);
 /**
  * @swagger
  * /api/auth/login:
@@ -69,7 +77,7 @@ router.post('/register', registerValidator, authController.register);
  *       401:
  *         description: Invalid credentials
  */
-router.post('/login', loginValidator, authController.login);
+router.post('/login', loginLimiter, loginValidator, authController.login);
 router.post('/refresh', refreshTokenLimiter, authController.refreshToken);
 router.get('/me', authenticate, authController.getCurrentUser);
 router.post('/logout', authenticate, authController.logout);
@@ -86,9 +94,9 @@ router.get('/sessions', authenticate, authController.getSessions);
 router.delete('/sessions/:sessionId', authenticate, authController.deleteSession);
 router.delete('/sessions', authenticate, authController.deleteOtherSessions);
 router.get('/users', authenticate, requireAdmin, authController.getAllUsers);
-router.post('/role-upgrade', authenticate, authController.requestRoleUpgrade);
+router.post('/role-upgrade', authenticate, roleUpgradeRequestValidator, authController.requestRoleUpgrade);
 router.get('/role-upgrade-requests', authenticate, requireAdmin, authController.getRoleUpgradeRequests);
-router.put('/role-upgrade-requests/:userId', authenticate, requireAdmin, authController.updateRoleUpgradeRequest);
+router.put('/role-upgrade-requests/:userId', authenticate, requireAdmin, roleUpgradeDecisionValidator, authController.updateRoleUpgradeRequest);
 router.delete('/account', authenticate, authController.deleteAccount);
 
 module.exports = router;

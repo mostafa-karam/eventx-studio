@@ -1,64 +1,97 @@
-/**
- * Audit Service
- * 
- * Single writer to the AuditLog collection.
- * Consolidates the audit() helper from authController and direct
- * AuditLog.create() calls across the codebase.
- */
-
 const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
 
-/**
- * Create an audit log entry
- * @param {object} options
- * @param {object} options.req - Express request (for IP / user-agent)
- * @param {object|string} options.actor - User object or userId
- * @param {string} options.action - One of the AuditLog action enum values
- * @param {string} options.resource - Resource type (e.g. 'User', 'Event')
- * @param {string} options.resourceId - ObjectId of the resource
- * @param {object} [options.details] - Extra structured data
- */
+const normalizeActor = (actor) => {
+  if (!actor) {
+    return {
+      userId: undefined,
+      actorName: 'System',
+      actorRole: 'system',
+    };
+  }
+
+  if (typeof actor === 'string') {
+    return {
+      userId: actor,
+      actorName: 'System',
+      actorRole: 'system',
+    };
+  }
+
+  return {
+    userId: actor._id || actor.id,
+    actorName: actor.name || 'System',
+    actorRole: actor.role || 'system',
+  };
+};
+
+const buildEntry = ({ req, actor, action, resource, resourceId, details = {} }) => {
+  const normalizedActor = normalizeActor(actor);
+
+  return {
+    ...normalizedActor,
+    action,
+    resource,
+    resourceId,
+    details,
+    ipAddress: req?.ip || req?.headers?.['x-forwarded-for'] || 'unknown',
+    userAgent: req?.headers?.['user-agent'] || 'unknown',
+    requestId: req?.id,
+    timestamp: new Date(),
+  };
+};
+
 exports.log = async ({ req, actor, action, resource, resourceId, details = {} }) => {
   try {
-    await AuditLog.create({
-      actor: actor._id || actor,
-      actorName: actor.name || 'System',
-      actorRole: actor.role || 'system',
-      action,
-      resource,
-      resourceId,
-      details,
-      ip: req?.ip || 'unknown',
-      userAgent: req?.headers?.['user-agent'] || 'unknown',
+    const entry = buildEntry({ req, actor, action, resource, resourceId, details });
+    await AuditLog.create(entry);
+
+    logger.info('audit.log.created', {
+      audit: entry,
     });
-  } catch (err) {
-    // Audit failures should never crash the parent operation
-    logger.error(`AuditService error: ${err.message}`);
+  } catch (error) {
+    logger.error(`AuditService error: ${error.message}`);
   }
 };
 
-/**
- * Query audit logs with pagination
- */
-exports.query = async ({ page = 1, limit = 50, action, resource, actor, startDate, endDate } = {}) => {
+exports.query = async ({
+  page = 1,
+  limit = 50,
+  action,
+  resource,
+  actor,
+  startDate,
+  endDate,
+} = {}) => {
+  const numericPage = Math.max(1, Number.parseInt(page, 10) || 1);
+  const numericLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 50, 1), 100);
   const filter = {};
+
   if (action) filter.action = action;
   if (resource) filter.resource = resource;
-  if (actor) filter.actor = actor;
+  if (actor) filter.userId = actor;
   if (startDate || endDate) {
-    filter.createdAt = {};
-    if (startDate) filter.createdAt.$gte = new Date(startDate);
-    if (endDate) filter.createdAt.$lte = new Date(endDate);
+    filter.timestamp = {};
+    if (startDate) filter.timestamp.$gte = new Date(startDate);
+    if (endDate) filter.timestamp.$lte = new Date(endDate);
   }
 
   const [logs, total] = await Promise.all([
     AuditLog.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit),
+      .populate('userId', 'name email role')
+      .sort({ timestamp: -1 })
+      .skip((numericPage - 1) * numericLimit)
+      .limit(numericLimit)
+      .lean(),
     AuditLog.countDocuments(filter),
   ]);
 
-  return { logs, pagination: { current: page, pages: Math.ceil(total / limit), total } };
+  return {
+    logs,
+    pagination: {
+      current: numericPage,
+      pages: Math.ceil(total / numericLimit),
+      total,
+    },
+  };
 };

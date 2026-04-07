@@ -4,20 +4,20 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
-const { doubleCsrf } = require('csrf-csrf');
-const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
-const crypto = require('crypto');
 const path = require('path');
 const morgan = require('morgan');
 const hpp = require('hpp');
 const responseTime = require('response-time');
 const logger = require('./utils/logger');
-const AppError = require('./utils/AppError');
 const errorHandler = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
-const xssCleaner = require('./middleware/xssCleaner');
+const sanitizeRequest = require('./middleware/requestSanitizer');
+const {
+  csrfProtection,
+  issueCsrfToken,
+} = require('./middleware/csrfProtection');
 
 dotenv.config();
 
@@ -29,6 +29,8 @@ const config = require('./config');
 const app = express();
 const PORT = config.port;
 
+app.disable('x-powered-by');
+
 // Trust reverse proxies only when explicitly configured
 if (process.env.TRUST_PROXY) {
   app.set('trust proxy', parseInt(process.env.TRUST_PROXY) || 1);
@@ -37,29 +39,28 @@ if (process.env.TRUST_PROXY) {
 // ─── Security Middleware ────────────────────────────────────────────
 const requestId = require('./middleware/requestId');
 
-// Attach request ID tracking
 app.use(requestId);
 
-// CSP nonce generation — attach a unique nonce per request
-app.use((_req, res, next) => {
-  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
-  next();
-});
-
-app.use(helmet());
-
-// Content Security Policy — strict, nonce-based
-app.use(helmet.contentSecurityPolicy({
-  directives: {
-    defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
-    styleSrc: ["'self'", 'https://fonts.googleapis.com', (req, res) => `'nonce-${res.locals.cspNonce}'`],
-    imgSrc: ["'self'", 'data:', 'https:'],
-    connectSrc: ["'self'", 'https:', 'ws:'],
-    fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
-    objectSrc: ["'none'"],
-    upgradeInsecureRequests: [],
-  }
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      objectSrc: ["'none'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      fontSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'https:'],
+      ...(config.env === 'production' ? { upgradeInsecureRequests: [] } : {}),
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  referrerPolicy: { policy: 'no-referrer' },
+  hsts: config.env === 'production'
+    ? { maxAge: 15552000, includeSubDomains: true, preload: true }
+    : false,
 }));
 
 // Parse cookies for httpOnly token support
@@ -119,45 +120,20 @@ app.use(cors({
 }));
 
 // ─── Body Parsing & Sanitization ────────────────────────────────────
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-// Data sanitization against NoSQL query injection
+app.use(express.json({ limit: config.security.request.jsonLimit }));
+app.use(express.urlencoded({ extended: true, limit: config.security.request.jsonLimit }));
+app.use(sanitizeRequest);
 app.use(mongoSanitize());
-// Data sanitization against XSS
-app.use(xssCleaner());
 app.use(compression());
 app.use(hpp()); // Prevent HTTP Parameter Pollution
 app.use(responseTime()); // Add X-Response-Time header
 
 // ─── CSRF Protection (csrf-csrf double-submit cookie) ───────────────
-const csrfSecret = process.env.CSRF_SECRET || process.env.JWT_SECRET;
-
-const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
-  getSecret: () => csrfSecret,
-  getSessionIdentifier: (req) => {
-    // Use the accessToken cookie as session identifier, or fallback for pre-auth requests
-    return req.cookies?.accessToken || req.ip || 'anonymous';
-  },
-  cookieName: '__csrf',
-  cookieOptions: {
-    httpOnly: true,
-    secure: config.env === 'production',
-    sameSite: config.env === 'production' ? 'strict' : 'lax',
-    path: '/',
-  },
-  getTokenFromRequest: (req) => req.headers['x-csrf-token'],
-});
-
-// Apply CSRF protection to all /api routes (except in test mode)
-if (config.env !== 'test') {
-  app.use('/api', doubleCsrfProtection);
-} else {
-  logger.warn('⚠️  CSRF protection is DISABLED (test mode)');
-}
+app.use('/api', csrfProtection);
 
 // CSRF Token Provider Endpoint
 app.get('/api/auth/csrf-token', (req, res) => {
-  const token = generateCsrfToken(req, res);
+  const token = issueCsrfToken(req, res);
   res.json({ success: true, csrfToken: token });
 });
 

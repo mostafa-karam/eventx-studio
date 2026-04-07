@@ -3,10 +3,12 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
 const User = require('../models/User');
+const { createTestClient } = require('../test-utils/testClient');
 
 let mongoServer;
 let authToken;
 let testEventId;
+let client;
 
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
@@ -34,25 +36,22 @@ afterEach(async () => {
 
 describe('Booking Endpoints', () => {
     beforeEach(async () => {
+        client = createTestClient(app);
         // Register and verify email
-        await request(app)
-            .post('/api/auth/register')
-            .send({
-                name: 'Test User',
-                email: 'test@example.com',
-                password: 'UniqueTestPass!2026',
-                role: 'organizer'
-            });
+        await client.csrfRequest('post', '/api/auth/register', {
+            name: 'Test User',
+            email: 'test@example.com',
+            password: 'UniqueTestPass!2026',
+            role: 'organizer'
+        });
 
         // Manually verify email for test
         await User.updateOne({ email: 'test@example.com' }, { emailVerified: true, role: 'organizer' });
 
-        const loginRes = await request(app)
-            .post('/api/auth/login')
-            .send({
-                email: 'test@example.com',
-                password: 'UniqueTestPass!2026'
-            });
+        const loginRes = await client.csrfRequest('post', '/api/auth/login', {
+            email: 'test@example.com',
+            password: 'UniqueTestPass!2026'
+        });
 
         // Get token from cookie
         const cookies = loginRes.headers['set-cookie'];

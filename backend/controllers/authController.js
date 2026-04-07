@@ -1,17 +1,16 @@
 const crypto = require('crypto');
 const User = require('../models/User');
 const authService = require('../services/authService');
+const auditService = require('../services/auditService');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/emailService');
 const logger = require('../utils/logger');
 const {
   validatePasswordStrength,
-  generateAccessToken,
-  generateRefreshToken,
-  COOKIE_OPTIONS,
+  ACCESS_COOKIE_OPTIONS,
+  REFRESH_COOKIE_OPTIONS,
   ACCESS_TOKEN_MAX_AGE,
   REFRESH_TOKEN_MAX_AGE,
   getDeviceInfo,
-  createAuditLog,
 } = require('../utils/authUtils');
 
 // ─── Routes ──────────────────────────────────────────────────────────
@@ -19,16 +18,23 @@ const {
 // POST /api/auth/register
 exports.register = async (req, res) => {
   try {
-    // Removed dynamic require
-    const result = await authService.registerUser(req.body, getDeviceInfo(req));
+    const payload = req.validatedBody || req.body;
+    const result = await authService.registerUser(payload, getDeviceInfo(req));
 
-    createAuditLog(req, result.user, 'user.create', 'User', result.user._id, { role: result.role });
+    await auditService.log({
+      req,
+      actor: result.user,
+      action: 'user.create',
+      resource: 'User',
+      resourceId: result.user._id,
+      details: { role: result.role },
+    });
 
     if (result.accessToken) {
-      res.cookie('accessToken', result.accessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE });
+      res.cookie('accessToken', result.accessToken, { ...ACCESS_COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE });
     }
     if (result.refreshToken) {
-      res.cookie('refreshToken', result.refreshToken, { ...COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE });
+      res.cookie('refreshToken', result.refreshToken, { ...REFRESH_COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE });
     }
 
     res.status(201).json({
@@ -47,23 +53,29 @@ exports.register = async (req, res) => {
 // POST /api/auth/login
 exports.login = async (req, res) => {
   try {
-    const { email, password, twoFactorCode } = req.body;
+    const { email, password, twoFactorCode } = req.validatedBody || req.body;
     if (!email || !password) return res.status(400).json({ success: false, message: 'Please provide email and password' });
 
-    // Removed dynamic require
     const result = await authService.loginUser(email, password, twoFactorCode, getDeviceInfo(req));
 
     if (result.twoFactorRequired) {
       return res.status(200).json({ success: true, twoFactorRequired: true, message: result.message });
     }
 
-    createAuditLog(req, result.user, 'auth.login', 'Auth', result.user._id, { device: getDeviceInfo(req).device });
+    await auditService.log({
+      req,
+      actor: result.user,
+      action: 'auth.login',
+      resource: 'Auth',
+      resourceId: result.user._id,
+      details: { sessionId: result.sessionId, device: getDeviceInfo(req).device },
+    });
 
     if (result.accessToken) {
-      res.cookie('accessToken', result.accessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE });
+      res.cookie('accessToken', result.accessToken, { ...ACCESS_COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE });
     }
     if (result.refreshToken) {
-      res.cookie('refreshToken', result.refreshToken, { ...COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE });
+      res.cookie('refreshToken', result.refreshToken, { ...REFRESH_COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE });
     }
 
     res.json({
@@ -92,10 +104,10 @@ exports.refreshToken = async (req, res) => {
     const result = await authService.processRefreshToken(incomingRefresh, getDeviceInfo(req));
 
     if (result.newAccessToken) {
-      res.cookie('accessToken', result.newAccessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE });
+      res.cookie('accessToken', result.newAccessToken, { ...ACCESS_COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE });
     }
     if (result.newRefreshToken) {
-      res.cookie('refreshToken', result.newRefreshToken, { ...COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE });
+      res.cookie('refreshToken', result.newRefreshToken, { ...REFRESH_COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE });
     }
 
     res.json({ success: true, data: { message: 'Token refreshed' } });
@@ -114,23 +126,30 @@ exports.getCurrentUser = async (req, res) => {
 // POST /api/auth/logout
 exports.logout = async (req, res) => {
   try {
-    // Clear refresh token server-side
     const user = await User.findById(req.user._id).select('+refreshToken activeSessions');
     if (user) {
+      if (req.sessionId) {
+        user.clearSessionRefreshToken(req.sessionId);
+        user.removeSession(req.sessionId);
+      } else {
+        user.clearAllSessionRefreshTokens();
+      }
       user.refreshToken = undefined;
       user.refreshTokenExpires = undefined;
-      
-      // Revoke the current session ID actively so the token is invalidated
-      if (req.sessionId) {
-          user.activeSessions = user.activeSessions.filter(s => s.sessionId !== req.sessionId);
-      }
-      
       await user.save();
     }
 
-    // Clear cookies with the same options used to set them
-    res.clearCookie('accessToken', COOKIE_OPTIONS);
-    res.clearCookie('refreshToken', COOKIE_OPTIONS);
+    await auditService.log({
+      req,
+      actor: req.user,
+      action: 'auth.logout',
+      resource: 'Auth',
+      resourceId: req.user._id,
+      details: { sessionId: req.sessionId },
+    });
+
+    res.clearCookie('accessToken', ACCESS_COOKIE_OPTIONS);
+    res.clearCookie('refreshToken', REFRESH_COOKIE_OPTIONS);
 
     res.json({ success: true, message: 'Logged out' });
   } catch (error) {
@@ -142,7 +161,15 @@ exports.logout = async (req, res) => {
 // PUT /api/auth/profile
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone, age, gender, interests, location, avatar } = req.body;
+    const {
+      name,
+      phone,
+      age,
+      gender,
+      interests,
+      location,
+      avatar,
+    } = req.validatedBody || req.body;
     const user = await User.findById(req.user._id);
     if (name) user.name = name;
     if (phone !== undefined) user.phone = phone;
@@ -168,7 +195,7 @@ exports.updateProfile = async (req, res) => {
 // PUT /api/auth/change-password
 exports.changePassword = async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword } = req.validatedBody || req.body;
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ success: false, message: 'Please provide current and new password' });
     }
@@ -190,13 +217,20 @@ exports.changePassword = async (req, res) => {
     // SECURITY (Phase 2.5): Invalidate sessions on password change
     // Keep only the current session active, invalidate all others 
     user.activeSessions = user.activeSessions.filter(s => s.sessionId === req.sessionId);
-    // Force rotation of refresh token on next refresh
+    user.clearAllSessionRefreshTokens();
     user.refreshToken = undefined;
     user.refreshTokenExpires = undefined;
 
     await user.save();
-    
-    createAuditLog(req, user, 'auth.password_changed', 'User', user._id);
+
+    await auditService.log({
+      req,
+      actor: user,
+      action: 'auth.password_changed',
+      resource: 'User',
+      resourceId: user._id,
+      details: { sessionId: req.sessionId },
+    });
     res.json({ success: true, message: 'Password changed successfully. Other devices have been logged out.' });
   } catch (error) {
     logger.error('Change password error: ' + error.message);
@@ -230,7 +264,7 @@ exports.verifyEmail = async (req, res) => {
 // POST /api/auth/resend-verification
 exports.resendVerification = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email } = req.validatedBody || req.body;
     if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
 
     const user = await User.findOne({ email: email.toLowerCase() });
@@ -252,7 +286,7 @@ exports.resendVerification = async (req, res) => {
 // POST /api/auth/forgot-password
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email } = req.validatedBody || req.body;
     // Always return success to prevent email enumeration
     if (!email) return res.json({ success: true, message: 'If an account exists, a reset link has been sent.' });
 
@@ -273,7 +307,7 @@ exports.forgotPassword = async (req, res) => {
 // POST /api/auth/reset-password
 exports.resetPassword = async (req, res) => {
   try {
-    const { token, password } = req.body;
+    const { token, password } = req.validatedBody || req.body;
     if (!token || !password) return res.status(400).json({ success: false, message: 'Token and password are required' });
 
     const pwErrors = validatePasswordStrength(password);
@@ -294,7 +328,13 @@ exports.resetPassword = async (req, res) => {
     user.lockUntil = undefined;
     await user.save();
 
-    createAuditLog(req, user, 'auth.password_reset', 'Auth', user._id);
+    await auditService.log({
+      req,
+      actor: user,
+      action: 'auth.password_reset',
+      resource: 'Auth',
+      resourceId: user._id,
+    });
     res.json({ success: true, message: 'Password reset successfully. You can now log in.' });
   } catch (error) {
     logger.error('Reset password error: ' + error.message);
@@ -435,7 +475,7 @@ exports.getAllUsers = async (req, res) => {
 // POST /api/auth/role-upgrade — user requests organizer role
 exports.requestRoleUpgrade = async (req, res) => {
   try {
-    const { reason, organizationName } = req.body;
+    const { reason, organizationName } = req.validatedBody || req.body;
     if (req.user.role !== 'user') {
       return res.status(400).json({ success: false, message: 'Only regular users can request role upgrades' });
     }
@@ -464,16 +504,24 @@ exports.getRoleUpgradeRequests = async (req, res) => {
 // PUT /api/auth/role-upgrade-requests/:userId (Admin approve/deny)
 exports.updateRoleUpgradeRequest = async (req, res) => {
   try {
-    const { action } = req.body;
+    const { action } = req.validatedBody || req.body;
     if (!['approve', 'deny'].includes(action)) {
       return res.status(400).json({ success: false, message: 'Action must be "approve" or "deny"' });
     }
     const user = await User.findById(req.params.userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     if (action === 'approve') {
+      const previousRole = user.role;
       user.role = 'organizer';
       user.roleUpgradeRequest.status = 'approved';
-      createAuditLog(req, req.user, 'auth.role_upgrade_approve', 'User', user._id, { newRole: 'organizer' });
+      await auditService.log({
+        req,
+        actor: req.user,
+        action: 'auth.role_upgrade_approve',
+        resource: 'User',
+        resourceId: user._id,
+        details: { previousRole, newRole: 'organizer' },
+      });
     } else {
       user.roleUpgradeRequest.status = 'denied';
     }
@@ -488,7 +536,7 @@ exports.updateRoleUpgradeRequest = async (req, res) => {
 // ─── Account Deletion (GDPR) ─────────────────────────────────────────
 exports.deleteAccount = async (req, res) => {
   try {
-    const { password } = req.body;
+    const { password } = req.validatedBody || req.body;
     if (!password) {
       return res.status(400).json({ success: false, message: 'Password confirmation is required to delete your account' });
     }
@@ -516,11 +564,17 @@ exports.deleteAccount = async (req, res) => {
     await user.save();
 
     // Log the deletion
-    createAuditLog(req, req.user, 'auth.account_deleted', 'User', req.user._id, { anonymisedAs: anonymisedName });
+    await auditService.log({
+      req,
+      actor: req.user,
+      action: 'auth.account_deleted',
+      resource: 'User',
+      resourceId: req.user._id,
+      details: { anonymisedAs: anonymisedName },
+    });
 
-    // Clear cookies
-    res.clearCookie('accessToken', COOKIE_OPTIONS);
-    res.clearCookie('refreshToken', COOKIE_OPTIONS);
+    res.clearCookie('accessToken', ACCESS_COOKIE_OPTIONS);
+    res.clearCookie('refreshToken', REFRESH_COOKIE_OPTIONS);
 
     res.json({ success: true, message: 'Your account has been deleted. We\'re sorry to see you go.' });
   } catch (error) {

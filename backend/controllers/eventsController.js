@@ -8,6 +8,27 @@ const eventsService = require('../services/eventsService');
 const eventLifecycleService = require('../services/eventLifecycleService');
 const { enforceOwnership } = require('../utils/authorization');
 
+const isPlainObject = (value) =>
+    Object.prototype.toString.call(value) === '[object Object]';
+
+const stripEmptyObjects = (value) => {
+    if (Array.isArray(value)) {
+        return value.map(stripEmptyObjects);
+    }
+
+    if (!isPlainObject(value)) {
+        return value;
+    }
+
+    return Object.entries(value).reduce((accumulator, [key, nestedValue]) => {
+        const cleanedValue = stripEmptyObjects(nestedValue);
+        if (!(isPlainObject(cleanedValue) && Object.keys(cleanedValue).length === 0)) {
+            accumulator[key] = cleanedValue;
+        }
+        return accumulator;
+    }, {});
+};
+
 // @desc    Get all events (public with optional auth)
 // @access  Public
 exports.getEvents = async (req, res) => {
@@ -50,7 +71,8 @@ exports.getEventById = async (req, res) => {
 // @access  Private/Organizer
 exports.createEvent = async (req, res) => {
     try {
-        const event = await eventsService.createEvent(req.body, req.user._id);
+        const payload = stripEmptyObjects(req.body);
+        const event = await eventsService.createEvent(payload, req.user._id);
         await auditService.log({ req, actor: req.user, action: 'event.create', resource: 'Event', resourceId: event._id, details: { title: event.title } });
         res.status(201).json({ success: true, message: 'Event created successfully', data: { event } });
     } catch (error) {
@@ -81,8 +103,9 @@ exports.cloneEvent = async (req, res) => {
 // @access  Private/Organizer
 exports.updateEvent = async (req, res) => {
     try {
-        const event = await eventsService.updateEvent(req.params.id, req.body, req.user);
-        await auditService.log({ req, actor: req.user, action: 'event.update', resource: 'Event', resourceId: event._id, details: { updatedFields: Object.keys(req.body) } });
+        const payload = stripEmptyObjects(req.body);
+        const event = await eventsService.updateEvent(req.params.id, payload, req.user);
+        await auditService.log({ req, actor: req.user, action: 'event.update', resource: 'Event', resourceId: event._id, details: { updatedFields: Object.keys(payload) } });
         res.json({ success: true, message: 'Event updated successfully', data: { event } });
     } catch (error) {
         logger.error('Update event error:', error);
@@ -220,6 +243,7 @@ exports.exportAttendees = async (req, res) => {
 exports.publishEvent = async (req, res) => {
     try {
         const event = await eventsService.publishEvent(req.params.id, req.user);
+        await auditService.log({ req, actor: req.user, action: 'event.publish', resource: 'Event', resourceId: event._id, details: { status: event.status } });
         res.json({ success: true, message: 'Event published successfully', data: { event } });
     } catch (error) {
         logger.error('Publish event error:', error);
@@ -245,6 +269,14 @@ exports.cancelEvent = async (req, res) => {
     try {
         const { reason } = req.body;
         const result = await eventLifecycleService.cancelEvent(req.params.id, req.user, reason);
+        await auditService.log({
+            req,
+            actor: req.user,
+            action: 'event.cancel',
+            resource: 'Event',
+            resourceId: req.params.id,
+            details: { reason },
+        });
         
         res.json({ 
             success: true, 

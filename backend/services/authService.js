@@ -3,208 +3,258 @@
  * Core business logic for user registration, login, and token management.
  */
 
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { sendVerificationEmail } = require('../utils/emailService');
 const logger = require('../utils/logger');
+const config = require('../config');
 const {
   validatePasswordStrength,
   isDisposableEmail,
   generateAccessToken,
   generateRefreshToken,
-  getDeviceInfo,
+  hashToken,
+  REFRESH_TOKEN_MAX_AGE,
 } = require('../utils/authUtils');
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
 
-// ─── Register ────────────────────────────────────────────────────────
+const REFRESH_SECRET = config.secrets.jwtRefresh;
+
+const verifyRefreshToken = (token) => {
+  try {
+    const decoded = jwt.verify(token, REFRESH_SECRET);
+
+    if (decoded?.type && decoded.type !== 'refresh') {
+      const error = new Error('Invalid refresh token type');
+      error.status = 401;
+      throw error;
+    }
+
+    if (decoded?.iss && decoded.iss !== config.security.jwt.issuer) {
+      const error = new Error('Invalid refresh token issuer');
+      error.status = 401;
+      throw error;
+    }
+
+    if (decoded?.aud) {
+      const audiences = Array.isArray(decoded.aud) ? decoded.aud : [decoded.aud];
+      if (!audiences.includes(config.security.jwt.audience)) {
+        const error = new Error('Invalid refresh token audience');
+        error.status = 401;
+        throw error;
+      }
+    }
+
+    if (!decoded?.sessionId) {
+      const error = new Error('Invalid refresh token session');
+      error.status = 401;
+      throw error;
+    }
+
+    return decoded;
+  } catch (error) {
+    const authError = new Error('Invalid or expired refresh token');
+    authError.status = 401;
+    throw authError;
+  }
+};
+
+const attachRefreshTokenToSession = (user, sessionId, refreshToken) => {
+  const refreshTokenExpiry = new Date(Date.now() + REFRESH_TOKEN_MAX_AGE);
+
+  user.setSessionRefreshToken(sessionId, hashToken(refreshToken), refreshTokenExpiry);
+  user.refreshToken = hashToken(refreshToken);
+  user.refreshTokenExpires = refreshTokenExpiry;
+};
+
+const rotateSessionTokens = (user, sessionId) => {
+  const accessToken = generateAccessToken(user._id, sessionId);
+  const refreshToken = generateRefreshToken(user._id, sessionId);
+
+  attachRefreshTokenToSession(user, sessionId, refreshToken);
+
+  return { accessToken, refreshToken };
+};
+
+// Register
 exports.registerUser = async (userData, deviceInfo) => {
   const { name, email, password, role } = userData;
 
-  // 1 — Disposable email check
   if (isDisposableEmail(email)) {
-    const err = new Error('Disposable email addresses are not allowed.');
-    err.status = 400;
-    throw err;
+    const error = new Error('Disposable email addresses are not allowed.');
+    error.status = 400;
+    throw error;
   }
 
-  // 2 — Password strength
-  const pwErrors = validatePasswordStrength(password);
-  if (pwErrors.length > 0) {
-    const err = new Error('Password does not meet requirements: ' + pwErrors.join(', '));
-    err.status = 400;
-    throw err;
+  const passwordErrors = validatePasswordStrength(password);
+  if (passwordErrors.length > 0) {
+    const error = new Error(`Password does not meet requirements: ${passwordErrors.join(', ')}`);
+    error.status = 400;
+    throw error;
   }
 
-  // 3 — Check if email already exists
   const existingUser = await User.findOne({ email: email.toLowerCase() });
   if (existingUser) {
-    const err = new Error('An account with this email already exists');
-    err.status = 409;
-    throw err;
+    const error = new Error('An account with this email already exists');
+    error.status = 409;
+    throw error;
   }
 
-  // 4 — Only allow user role during self-registration; organizer access requires separate approval
   const allowedRoles = ['user'];
   const safeRole = allowedRoles.includes(role) ? role : 'user';
 
-  // 5 — Create user
-  const user = new User({ name, email: email.toLowerCase(), password, role: safeRole });
+  const user = new User({
+    name,
+    email: email.toLowerCase(),
+    password,
+    role: safeRole,
+  });
 
-  // 6 — Email verification token
   const verificationToken = user.generateEmailVerificationToken();
-  // 7 — Session tracking
   const sessionId = crypto.randomUUID();
   user.addSession(sessionId, deviceInfo);
 
+  const { accessToken, refreshToken } = rotateSessionTokens(user, sessionId);
   await user.save();
 
-  // 8 — Generate tokens
-  const accessToken = generateAccessToken(user._id, sessionId);
-  const refreshToken = generateRefreshToken(user._id);
-
-  // 9 — Store hashed refresh token
-  user.refreshToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-  user.refreshTokenExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  await user.save();
-
-  // 10 — Send verification email (fire-and-forget)
-  sendVerificationEmail(user.email, verificationToken).catch(err =>
-    logger.error('Failed to send verification email: ' + err.message)
+  sendVerificationEmail(user.email, verificationToken).catch((error) =>
+    logger.error(`Failed to send verification email: ${error.message}`),
   );
 
-  return { user, accessToken, refreshToken, role: safeRole };
+  return { user, accessToken, refreshToken, role: safeRole, sessionId };
 };
 
-// ─── Login ───────────────────────────────────────────────────────────
+// Login
 exports.loginUser = async (email, password, twoFactorCode, deviceInfo) => {
   if (!email || !password) {
-    const err = new Error('Please provide email and password');
-    err.status = 400;
-    throw err;
+    const error = new Error('Please provide email and password');
+    error.status = 400;
+    throw error;
   }
 
   const user = await User.findOne({ email: email.toLowerCase() })
     .select('+password +loginAttempts +lockUntil +twoFactorSecret +twoFactorEnabled +refreshToken');
 
   if (!user) {
-    const err = new Error('Invalid email or password');
-    err.status = 401;
-    throw err;
+    const error = new Error('Invalid email or password');
+    error.status = 401;
+    throw error;
   }
 
-  // Check if account is locked
   if (user.isLocked) {
     const lockTime = user.lockUntil ? Math.ceil((user.lockUntil - Date.now()) / 1000 / 60) : 0;
-    const err = new Error('Account is temporarily locked due to too many failed login attempts');
-    err.status = 423;
-    err.lockTimeRemaining = lockTime;
-    throw err;
+    const error = new Error('Account is temporarily locked due to too many failed login attempts');
+    error.status = 423;
+    error.lockTimeRemaining = lockTime;
+    throw error;
   }
 
-  // Check if account is active
   if (!user.isActive) {
-    const err = new Error('Account is deactivated. Please contact support.');
-    err.status = 403;
-    throw err;
+    const error = new Error('Account is deactivated. Please contact support.');
+    error.status = 403;
+    throw error;
   }
 
-  // Verify password
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
     await user.incLoginAttempts();
     const remaining = Math.max(0, 5 - (user.loginAttempts + 1));
-    const err = new Error('Invalid email or password');
-    err.status = 401;
-    err.attemptsRemaining = remaining;
-    throw err;
+    const error = new Error('Invalid email or password');
+    error.status = 401;
+    error.attemptsRemaining = remaining;
+    throw error;
   }
 
-  // Check email verification
   if (!user.emailVerified) {
-    const err = new Error('Please verify your email address before logging in');
-    err.status = 403;
-    err.emailVerificationRequired = true;
-    err.email = user.email;
-    throw err;
+    const error = new Error('Please verify your email address before logging in');
+    error.status = 403;
+    error.emailVerificationRequired = true;
+    error.email = user.email;
+    throw error;
   }
 
-  // 2FA check
   if (user.twoFactorEnabled) {
     if (!twoFactorCode) {
       return { twoFactorRequired: true, message: 'Two-factor authentication code required' };
     }
+
     const { authenticator } = require('otplib');
     const isValid = authenticator.check(twoFactorCode, user.twoFactorSecret);
     if (!isValid) {
-      const err = new Error('Invalid 2FA code');
-      err.status = 401;
-      throw err;
+      const error = new Error('Invalid 2FA code');
+      error.status = 401;
+      throw error;
     }
   }
 
-  // Reset login attempts on success
   if (user.loginAttempts > 0) {
     user.loginAttempts = 0;
     user.lockUntil = undefined;
   }
 
-  // Session management
   const sessionId = crypto.randomUUID();
   user.addSession(sessionId, deviceInfo);
-
   user.lastLogin = new Date();
-  const accessToken = generateAccessToken(user._id, sessionId);
-  const refreshToken = generateRefreshToken(user._id);
 
-  user.refreshToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-  user.refreshTokenExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const { accessToken, refreshToken } = rotateSessionTokens(user, sessionId);
   await user.save();
 
-  return { user, accessToken, refreshToken };
+  return { user, accessToken, refreshToken, sessionId };
 };
 
-// ─── Refresh Token ───────────────────────────────────────────────────
+// Refresh token
 exports.processRefreshToken = async (incomingRefresh, deviceInfo) => {
-  let decoded;
-  try {
-    decoded = jwt.verify(incomingRefresh, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + '_refresh');
-  } catch (err) {
-    const error = new Error('Invalid or expired refresh token');
-    error.status = 401;
-    throw error;
-  }
+  const decoded = verifyRefreshToken(incomingRefresh);
 
-  const user = await User.findById(decoded.id).select('+refreshToken +refreshTokenExpires');
+  const user = await User.findById(decoded.id).select('+refreshToken +refreshTokenExpires +activeSessions.refreshTokenHash');
   if (!user) {
     const error = new Error('User not found');
     error.status = 401;
     throw error;
   }
 
-  // Verify stored token against incoming hash
-  const hashedIncoming = crypto.createHash('sha256').update(incomingRefresh).digest('hex');
-  if (user.refreshToken !== hashedIncoming) {
-    // Possible token reuse — invalidate all sessions
-    user.refreshToken = undefined;
-    user.refreshTokenExpires = undefined;
-    user.activeSessions = [];
-    await user.save();
-    logger.warn(`Refresh token reuse detected for user ${user._id}`);
-    const error = new Error('Token reuse detected. All sessions have been invalidated.');
+  const sessionId = decoded.sessionId;
+  const session = user.getSession(sessionId);
+  if (!session || session.revokedAt) {
+    const error = new Error('Session has expired or been revoked');
     error.status = 401;
     throw error;
   }
 
-  // Rotate tokens
-  const sessionId = crypto.randomUUID();
-  user.addSession(sessionId, deviceInfo);
+  const hashedIncoming = hashToken(incomingRefresh);
+  if (!session.refreshTokenHash || session.refreshTokenHash !== hashedIncoming) {
+    user.clearSessionRefreshToken(sessionId);
+    user.removeSession(sessionId);
+    await user.save();
 
-  const newAccessToken = generateAccessToken(user._id, sessionId);
-  const newRefreshToken = generateRefreshToken(user._id);
+    logger.warn(`Refresh token reuse detected for user ${user._id} on session ${sessionId}`);
 
-  user.refreshToken = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
-  user.refreshTokenExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const error = new Error('Refresh token reuse detected. The session has been revoked.');
+    error.status = 401;
+    throw error;
+  }
+
+  if (session.refreshTokenExpiresAt && session.refreshTokenExpiresAt <= new Date()) {
+    user.clearSessionRefreshToken(sessionId);
+    user.removeSession(sessionId);
+    await user.save();
+
+    const error = new Error('Refresh token has expired');
+    error.status = 401;
+    throw error;
+  }
+
+  session.deviceInfo = deviceInfo;
+  session.ipAddress = deviceInfo?.ipAddress || deviceInfo?.ip;
+  session.lastActivity = new Date();
+
+  const { accessToken: newAccessToken, refreshToken: newRefreshToken } = rotateSessionTokens(user, sessionId);
   await user.save();
 
-  return { newAccessToken, newRefreshToken, user };
+  return {
+    newAccessToken,
+    newRefreshToken,
+    user,
+    sessionId,
+  };
 };

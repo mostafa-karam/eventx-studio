@@ -1,244 +1,217 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const logger = require('../utils/logger');
+const config = require('../config');
 
-// Middleware to verify JWT token
-const authenticate = async (req, res, next) => {
+const getTokenFromRequest = (req) => {
+  const headerToken = req.header('Authorization')?.replace('Bearer ', '');
+  const cookieToken = req.cookies?.accessToken || req.cookies?.token;
+  const token = headerToken || cookieToken;
+
+  if (!token || token === 'undefined' || token === 'null') {
+    return null;
+  }
+
+  return token;
+};
+
+const validateStandardClaims = (decoded, expectedType) => {
+  if (decoded?.type && decoded.type !== expectedType) {
+    const error = new Error('Invalid token type.');
+    error.name = 'JsonWebTokenError';
+    throw error;
+  }
+
+  if (decoded?.iss && decoded.iss !== config.security.jwt.issuer) {
+    const error = new Error('Invalid token issuer.');
+    error.name = 'JsonWebTokenError';
+    throw error;
+  }
+
+  if (decoded?.aud) {
+    const audiences = Array.isArray(decoded.aud) ? decoded.aud : [decoded.aud];
+    if (!audiences.includes(config.security.jwt.audience)) {
+      const error = new Error('Invalid token audience.');
+      error.name = 'JsonWebTokenError';
+      throw error;
+    }
+  }
+};
+
+const loadUserFromToken = async (req, { optional = false } = {}) => {
+  const token = getTokenFromRequest(req);
+  if (!token) {
+    if (optional) return null;
+    return { error: { status: 401, message: 'Access denied. No token provided.' } };
+  }
+
   try {
-    // Support Authorization header OR httpOnly cookie named `accessToken`
-    const headerToken = req.header('Authorization')?.replace('Bearer ', '');
-    const cookieToken = req.cookies?.accessToken || req.cookies?.token;
+    const decoded = jwt.verify(token, config.secrets.jwt);
+    validateStandardClaims(decoded, 'access');
 
-    // Filter out common "bad" strings that cause malformed errors
-    let token = headerToken || cookieToken;
-    if (token === 'undefined' || token === 'null' || !token) {
-      token = null;
-    }
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Access denied. No token provided.'
-      });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id).select('-password');
-
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token is not valid. User not found.'
-      });
+      if (optional) return null;
+      return { error: { status: 401, message: 'Token is not valid. User not found.' } };
     }
 
     if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is deactivated.'
-      });
+      if (optional) return null;
+      return { error: { status: 401, message: 'Account is deactivated.' } };
     }
 
-    // Check if account is locked
     if (user.isLocked) {
-      return res.status(423).json({
-        success: false,
-        message: 'Account is temporarily locked due to security reasons.'
-      });
+      if (optional) return null;
+      return { error: { status: 423, message: 'Account is temporarily locked due to security reasons.' } };
     }
 
-    // Add session ID to request if present
     if (decoded.sessionId) {
-      req.sessionId = decoded.sessionId;
-
-      // Check if the session still exists in user's active sessions
-      const session = user.activeSessions?.find(s => s.sessionId === decoded.sessionId);
-      if (!session) {
-        return res.status(401).json({
-          success: false,
-          message: 'Session has been revoked. Please log in again.'
-        });
+      const session = user.activeSessions?.find((entry) => entry.sessionId === decoded.sessionId);
+      if (!session || session.revokedAt) {
+        if (optional) return null;
+        return { error: { status: 401, message: 'Session has been revoked. Please log in again.' } };
       }
 
-      // Debounced session activity update: only save if last activity > 60s ago
+      req.sessionId = decoded.sessionId;
+
       const now = Date.now();
-      const DEBOUNCE_MS = 60 * 1000;
-      if (!session.lastActivity || (now - new Date(session.lastActivity).getTime()) > DEBOUNCE_MS) {
-        // Run updateOne asynchronously to avoid blocking the API request and bypassing heavy pre-save hooks
+      const debounceMs = 60 * 1000;
+      if (!session.lastActivity || (now - new Date(session.lastActivity).getTime()) > debounceMs) {
         User.updateOne(
           { _id: user._id, 'activeSessions.sessionId': decoded.sessionId },
-          { $set: { 'activeSessions.$.lastActivity': new Date() } }
-        ).catch(err => logger.error('Session update error:', err));
+          { $set: { 'activeSessions.$.lastActivity': new Date() } },
+        ).catch((error) => logger.error(`Session update error: ${error.message}`));
       }
     }
 
     req.user = user;
-    next();
+    return user;
   } catch (error) {
     logger.error('Authentication error:', error);
+    if (optional) return null;
 
     if (error.name === 'JsonWebTokenError') {
-      // Log part of the malformed token safely to help diagnosis (only first 10 chars)
-      const headerToken = req.header('Authorization')?.replace('Bearer ', '');
-      const cookieToken = req.cookies?.accessToken || req.cookies?.token;
-      const rawToken = headerToken || cookieToken;
-      const snippet = rawToken ? String(rawToken).substring(0, 10) + '...' : 'none';
-      logger.error(`Malformed token detected: ${snippet}`);
-
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token.'
-      });
+      return { error: { status: 401, message: 'Invalid token.' } };
     }
 
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token has expired.'
-      });
+      return { error: { status: 401, message: 'Token has expired.' } };
     }
 
-    res.status(500).json({
-      success: false,
-      message: 'Server error during authentication.'
-    });
+    return { error: { status: 500, message: 'Server error during authentication.' } };
   }
 };
 
-// Middleware to check if user is admin
+const authenticate = async (req, res, next) => {
+  const result = await loadUserFromToken(req);
+
+  if (result?.error) {
+    return res.status(result.error.status).json({
+      success: false,
+      message: result.error.message,
+    });
+  }
+
+  return next();
+};
+
 const requireAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
-      message: 'Authentication required.'
+      message: 'Authentication required.',
     });
   }
 
   if (req.user.role !== 'admin') {
     return res.status(403).json({
       success: false,
-      message: 'Access denied. Admin privileges required.'
+      message: 'Access denied. Admin privileges required.',
     });
   }
 
-  next();
+  return next();
 };
 
-// Middleware to check if user is admin or accessing their own data
 const requireAdminOrOwner = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
-      message: 'Authentication required.'
+      message: 'Authentication required.',
     });
   }
 
   const isAdmin = req.user.role === 'admin';
-  const isOwner = req.user._id.toString() === req.params.userId ||
-    req.user._id.toString() === req.params.id;
+  const isOwner = req.user._id.toString() === req.params.userId
+    || req.user._id.toString() === req.params.id;
 
   if (!isAdmin && !isOwner) {
     return res.status(403).json({
       success: false,
-      message: 'Access denied. Insufficient privileges.'
+      message: 'Access denied. Insufficient privileges.',
     });
   }
 
-  next();
+  return next();
 };
 
-// Middleware to check if user is an organizer (or admin)
 const requireOrganizer = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
-      message: 'Authentication required.'
+      message: 'Authentication required.',
     });
   }
 
   if (req.user.role !== 'organizer' && req.user.role !== 'admin') {
     return res.status(403).json({
       success: false,
-      message: 'Access denied. Organizer privileges required.'
+      message: 'Access denied. Organizer privileges required.',
     });
   }
 
-  next();
+  return next();
 };
 
-// Middleware to check if user is a venue admin (or admin)
 const requireVenueAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
-      message: 'Authentication required.'
+      message: 'Authentication required.',
     });
   }
 
   if (req.user.role !== 'venue_admin' && req.user.role !== 'admin') {
     return res.status(403).json({
       success: false,
-      message: 'Access denied. Venue admin privileges required.'
+      message: 'Access denied. Venue admin privileges required.',
     });
   }
 
-  next();
+  return next();
 };
 
-// Generic role-check factory — accepts array of allowed roles
-const requireRole = (roles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required.'
-      });
-    }
-
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: `Access denied. Requires one of: ${roles.join(', ')}`
-      });
-    }
-
-    next();
-  };
-};
-
-// Optional authentication - doesn't fail if no token
-const optionalAuth = async (req, res, next) => {
-  try {
-    const headerToken = req.header('Authorization')?.replace('Bearer ', '');
-    const cookieToken = req.cookies?.accessToken || req.cookies?.token;
-    let token = headerToken || cookieToken;
-    if (token === 'undefined' || token === 'null' || !token) {
-      token = null;
-    }
-
-    if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('-password');
-
-      if (user && user.isActive && !user.isLocked) {
-        // Mirror main authenticate: verify session is still active
-        if (decoded.sessionId) {
-          const session = user.activeSessions?.find(s => s.sessionId === decoded.sessionId);
-          if (!session) {
-            // Session was revoked — treat as unauthenticated
-            return next();
-          }
-          req.sessionId = decoded.sessionId;
-        }
-        req.user = user;
-      }
-    }
-
-    next();
-  } catch (error) {
-    // Continue without authentication if token is invalid
-    next();
+const requireRole = (roles) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required.',
+    });
   }
+
+  if (!roles.includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      message: `Access denied. Requires one of: ${roles.join(', ')}`,
+    });
+  }
+
+  return next();
+};
+
+const optionalAuth = async (req, _res, next) => {
+  await loadUserFromToken(req, { optional: true });
+  return next();
 };
 
 module.exports = {
@@ -248,6 +221,5 @@ module.exports = {
   requireOrganizer,
   requireVenueAdmin,
   requireRole,
-  optionalAuth
+  optionalAuth,
 };
-

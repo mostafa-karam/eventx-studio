@@ -7,7 +7,7 @@
  */
 
 const Coupon = require('../models/Coupon');
-const AuditLog = require('../models/AuditLog');
+const auditService = require('./auditService');
 const { ACTIONS, RESOURCES } = require('../utils/auditConstants');
 
 class CouponsService {
@@ -75,7 +75,7 @@ class CouponsService {
   /**
    * Create a new coupon.
    */
-  async createCoupon({ code, description, discountType, discountValue, maxUses, expiresAt, applicableEvents }, creatorId) {
+  async createCoupon({ code, description, discountType, discountValue, maxUses, expiresAt, applicableEvents }, creatorId, req) {
     if (!code || !discountType || discountValue === undefined) {
       throw Object.assign(new Error('code, discountType, and discountValue are required'), { status: 400 });
     }
@@ -91,7 +91,8 @@ class CouponsService {
       createdBy: creatorId,
     });
 
-    await AuditLog.create({
+    await auditService.log({
+      req,
       actor: creatorId,
       action: ACTIONS.COUPON_CREATE,
       resource: RESOURCES.COUPON,

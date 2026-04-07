@@ -1,13 +1,18 @@
 /**
  * Jest Global Setup
  * 
- * Suppresses noisy console output during test runs:
- * - dotenv injection logs
- * - Expected application warnings (CSRF disabled, no EMAIL_HOST)
+ * Test bootstrap:
+ * - Suppresses noisy console output during test runs
+ * - Provides safe default environment variables for isolated Jest execution
  */
 
 // Silence dotenv's chatty console.log messages
 process.env.DOTENV_CONFIG_QUIET = 'true';
+process.env.NODE_ENV = process.env.NODE_ENV || 'test';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test_secret_for_ci';
+process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'test_refresh_secret_for_ci';
+process.env.CSRF_SECRET = process.env.CSRF_SECRET || 'test_csrf_secret_for_ci';
+process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Store original console methods
 const originalConsoleLog = console.log;
@@ -23,9 +28,6 @@ console.log = (...args) => {
 // Suppress expected application warnings during tests
 console.warn = (...args) => {
   const msg = args[0];
-  if (typeof msg === 'string' && (
-    msg.includes('CSRF protection is DISABLED') ||
-    msg.includes('No EMAIL_HOST configured')
-  )) return;
+  if (typeof msg === 'string' && msg.includes('No EMAIL_HOST configured')) return;
   originalConsoleWarn.apply(console, args);
 };

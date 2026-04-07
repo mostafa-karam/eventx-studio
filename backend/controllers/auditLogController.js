@@ -1,32 +1,24 @@
-const AuditLog = require('../models/AuditLog');
+const auditService = require('../services/auditService');
 
 // @desc    Get paginated audit logs
 // @access  Private/Admin
 exports.getAuditLogs = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
-        const skip = (page - 1) * limit;
-
-        const filter = {};
-        if (req.query.action) filter.action = req.query.action;
-        if (req.query.resource) filter.resource = req.query.resource;
-        if (req.query.actor) filter.actor = req.query.actor;
-
-        const [logs, total] = await Promise.all([
-            AuditLog.find(filter)
-                .populate('actor', 'name email role')
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limit),
-            AuditLog.countDocuments(filter),
-        ]);
+        const result = await auditService.query({
+            page: req.query.page,
+            limit: req.query.limit,
+            action: req.query.action,
+            resource: req.query.resource,
+            actor: req.query.actor,
+            startDate: req.query.startDate,
+            endDate: req.query.endDate,
+        });
 
         res.json({
             success: true,
             data: {
-                logs,
-                pagination: { current: page, pages: Math.ceil(total / limit), total },
+                logs: result.logs,
+                pagination: result.pagination,
             },
         });
     } catch (error) {
