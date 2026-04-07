@@ -23,7 +23,11 @@ const eventSchema = new mongoose.Schema({
     required: [true, 'Event date is required'],
     validate: {
       validator: function (value) {
-        // Enforce future date on create, or when date is being changed
+        // Allow past dates for completed or cancelled events
+        if (this.status === 'completed' || this.status === 'cancelled') {
+          return true;
+        }
+        // Enforce future date on create for draft/published events
         if (this.isNew) return value > new Date();
         if (this.isModified('date')) return value > new Date();
         return true;

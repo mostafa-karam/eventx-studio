@@ -61,6 +61,8 @@ const auditLogSchema = new mongoose.Schema({
     type: String,
     alias: 'ip',
   },
+  requestMethod: String,
+  requestPath: String,
   userAgent: String,
   requestId: String,
   timestamp: {

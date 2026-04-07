@@ -44,6 +44,18 @@ const hallSchema = new mongoose.Schema({
         default: 'active'
     },
     location: {
+        address: {
+            type: String,
+            trim: true
+        },
+        city: {
+            type: String,
+            trim: true
+        },
+        country: {
+            type: String,
+            trim: true
+        },
         floor: {
             type: String,
             trim: true

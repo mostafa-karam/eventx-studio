@@ -20,7 +20,7 @@ const AuditLog = require('../models/AuditLog');
 
 const connectDB = async () => {
     try {
-        const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/eventx', {
+        const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/eventx', {
             useNewUrlParser: true,
             useUnifiedTopology: true
         });
@@ -29,6 +29,21 @@ const connectDB = async () => {
         console.error(`Error connecting to MongoDB: ${err.message}`);
         process.exit(1);
     }
+};
+
+// Helper function to generate seat map
+const generateSeatMap = (totalSeats) => {
+    const seatMap = [];
+    for (let i = 1; i <= totalSeats; i++) {
+        const row = String.fromCharCode(65 + Math.floor((i - 1) / 10)); // A, B, C, etc.
+        const seatNum = ((i - 1) % 10) + 1;
+        seatMap.push({
+            seatNumber: `${row}-${String(seatNum).padStart(2, '0')}`,
+            isBooked: false,
+            bookedBy: null
+        });
+    }
+    return seatMap;
 };
 
 const seedData = async () => {
@@ -55,8 +70,7 @@ const seedData = async () => {
 
         console.log('--- Inserting realistic mock data... ---');
 
-        const salt = await bcrypt.genSalt(10);
-        const password = await bcrypt.hash('password123', salt);
+        const password = 'password123';
 
         // 1. Create Core Users (Fixed logins for ease of access)
         const admin = await User.create({
@@ -99,6 +113,17 @@ const seedData = async () => {
             location: { city: 'New York', country: 'USA' }
         });
 
+        const demoUser = await User.create({
+            name: 'Demo User',
+            email: 'user@eventx.com',
+            password,
+            role: 'user',
+            emailVerified: true,
+            isActive: true,
+            location: { city: 'London', country: 'UK' },
+            interests: ['Music', 'Technology']
+        });
+
         // 2. Generate Realistic Attendees using Faker
         const attendees = [];
         const interestsPool = ['music', 'technology', 'sports', 'art', 'networking', 'business', 'food'];
@@ -113,9 +138,9 @@ const seedData = async () => {
                 isActive: true,
                 age: faker.number.int({ min: 18, max: 65 }),
                 gender: faker.helpers.arrayElement(['male', 'female', 'other']),
-                location: { 
-                    city: faker.location.city(), 
-                    country: faker.helpers.arrayElement(['UAE', 'UK', 'USA', 'Egypt', 'France']) 
+                location: {
+                    city: faker.location.city(),
+                    country: faker.helpers.arrayElement(['UAE', 'UK', 'USA', 'Egypt', 'France'])
                 },
                 interests: faker.helpers.arrayElements(interestsPool, { min: 2, max: 4 })
             }));
@@ -167,13 +192,16 @@ const seedData = async () => {
         });
 
         // 5. Hall Bookings (Organizers renting halls)
+        const hallBookingStart1 = faker.date.future();
+        const hallBookingStart2 = faker.date.past({ years: 1 });
+
         await HallBooking.create([
             {
                 hall: mainHall._id,
                 event: null, // Will map to an event logically
                 organizer: organizer1._id,
-                startDate: faker.date.future(),
-                endDate: faker.date.future(),
+                startDate: hallBookingStart1,
+                endDate: new Date(hallBookingStart1.getTime() + 8 * 60 * 60 * 1000), // 8 hours later
                 status: 'approved',
                 totalCost: 1500,
                 notes: 'Annual Tech Conference setup'
@@ -182,8 +210,8 @@ const seedData = async () => {
                 hall: musicArena._id,
                 event: null,
                 organizer: organizer2._id,
-                startDate: faker.date.past(),
-                endDate: faker.date.past(),
+                startDate: hallBookingStart2,
+                endDate: new Date(hallBookingStart2.getTime() + 6 * 60 * 60 * 1000), // 6 hours later
                 status: 'approved',
                 totalCost: 800,
                 notes: 'Summer festival main stage'
@@ -202,50 +230,62 @@ const seedData = async () => {
             endDate: new Date(futureEventDate.getTime() + 8 * 60 * 60 * 1000), // 8 hours later
             venue: {
                 name: mainHall.name,
+                address: mainHall.location.address,
                 city: mainHall.location.city,
                 country: mainHall.location.country,
                 capacity: mainHall.capacity
             },
             pricing: { type: 'paid', amount: 199.99, currency: 'USD' },
-            seating: { totalSeats: 500, availableSeats: 500 },
+            seating: {
+                totalSeats: 500,
+                availableSeats: 500,
+                seatMap: generateSeatMap(500)
+            },
             organizer: organizer1._id,
             status: 'published',
             hall: mainHall._id,
-            analytics: { views: faker.number.int({min: 200, max: 1000}), bookings: 0, revenue: 0 },
+            analytics: { views: faker.number.int({ min: 200, max: 1000 }), bookings: 0, revenue: 0 },
             tags: ['AI', 'Tech', 'Web3', 'Future']
         });
 
         const eventMusic = await Event.create({
             title: 'Electric Summer SoundFest',
             description: `<p>${faker.lorem.paragraphs(2)}</p>`,
-            category: 'music',
+            category: 'concert',
             date: pastEventDate,
-            endDate: new Date(pastEventDate.getTime() + 6 * 60 * 60 * 1000), 
+            endDate: new Date(pastEventDate.getTime() + 6 * 60 * 60 * 1000),
             venue: {
                 name: musicArena.name,
+                address: musicArena.location.address,
                 city: musicArena.location.city,
                 country: musicArena.location.country,
                 capacity: musicArena.capacity
             },
             pricing: { type: 'paid', amount: 85, currency: 'USD' },
-            seating: { totalSeats: 250, availableSeats: 250 },
+            seating: {
+                totalSeats: 250,
+                availableSeats: 250,
+                seatMap: generateSeatMap(250)
+            },
             organizer: organizer2._id,
             status: 'completed',
             hall: musicArena._id,
-            analytics: { views: faker.number.int({min: 1500, max: 4000}), bookings: 0, revenue: 0 },
+            analytics: { views: faker.number.int({ min: 1500, max: 4000 }), bookings: 0, revenue: 0 },
             tags: ['Music', 'Summer', 'Live', 'Festival']
         });
 
         // 7. Seed Tickets, Check-ins, and Generate Database Notifications
         console.log('Generating bookings and notifications...');
-        
+
         // 12 Attendees book the upcoming Tech event
         for (let i = 0; i < 12; i++) {
             const user = attendees[i];
-            const seatNumber = `A-${String(i + 1).padStart(2, '0')}`;
-            
+            const row = String.fromCharCode(65 + Math.floor(i / 10)); // A, B, C...
+            const seatNum = (i % 10) + 1;
+            const seatNumber = `${row}-${String(seatNum).padStart(2, '0')}`;
+
             await eventTech.bookSeat(seatNumber, user._id);
-            
+
             const ticket = await Ticket.create({
                 event: eventTech._id,
                 user: user._id,
@@ -277,7 +317,7 @@ const seedData = async () => {
                 await SupportTicket.create({
                     subject: 'Dietary requirements for lunch',
                     description: 'Hello, I just booked my ticket. Do you provide vegan lunch options?',
-                    category: 'event',
+                    category: 'general',
                     priority: 'medium',
                     status: 'open',
                     userId: user._id
@@ -290,7 +330,10 @@ const seedData = async () => {
         for (let i = 12; i < 20; i++) {
             const user = attendees[i];
             const checkedIn = Math.random() > 0.2; // 80% attendance rate
-            const seatNumber = `M-${String(i + 1).padStart(2, '0')}`;
+            const seatIndex = i - 12; // 0-7
+            const row = String.fromCharCode(65 + Math.floor(seatIndex / 10)); // A, B...
+            const seatNum = (seatIndex % 10) + 1;
+            const seatNumber = `${row}-${String(seatNum).padStart(2, '0')}`;
 
             await eventMusic.bookSeat(seatNumber, user._id);
 
@@ -387,8 +430,9 @@ const seedData = async () => {
         console.log('🔑 Admin:      admin@eventx.com     / password123');
         console.log('🔑 Organizer:  organizer@techx.com  / password123');
         console.log('🔑 Venue Mngr: venue@eventx.com     / password123');
-        console.log('🔑 User:       (Any faker email)    / password123');
-        
+        console.log('🔑 User:       user@eventx.com      / password123');
+        console.log('🔑 + 20 random attendees with faker emails');
+
         process.exit();
     } catch (error) {
         console.error('Seeding error:', error);

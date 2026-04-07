@@ -207,16 +207,46 @@ exports.getDashboardOverview = async () => {
  * Monthly revenue trend (last N months).
  */
 exports.getMonthlyRevenue = async (months = 6) => {
-  return Ticket.aggregate([
+  const now = new Date();
+  const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+
+  const rawRevenue = await Ticket.aggregate([
     {
       $match: {
         status: { $in: ['booked', 'used'] },
-        bookingDate: { $gte: new Date(new Date().setMonth(new Date().getMonth() - months)) },
+        bookingDate: { $gte: startDate },
       },
     },
-    { $group: { _id: { year: { $year: '$bookingDate' }, month: { $month: '$bookingDate' } }, revenue: { $sum: { $ifNull: ['$payment.amount', 0] } }, tickets: { $sum: 1 } } },
+    {
+      $group: {
+        _id: {
+          year: { $year: '$bookingDate' },
+          month: { $month: '$bookingDate' },
+        },
+        revenue: { $sum: { $ifNull: ['$payment.amount', 0] } },
+        tickets: { $sum: 1 },
+      },
+    },
     { $sort: { '_id.year': 1, '_id.month': 1 } },
   ]);
+
+  const revenueMap = rawRevenue.reduce((acc, item) => {
+    acc[`${item._id.year}-${item._id.month}`] = item;
+    return acc;
+  }, {});
+
+  const monthlyRevenue = [];
+  for (let i = 0; i < months; i += 1) {
+    const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+    const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
+    monthlyRevenue.push({
+      _id: { year: date.getFullYear(), month: date.getMonth() + 1 },
+      revenue: revenueMap[key]?.revenue || 0,
+      tickets: revenueMap[key]?.tickets || 0,
+    });
+  }
+
+  return monthlyRevenue;
 };
 
 /**

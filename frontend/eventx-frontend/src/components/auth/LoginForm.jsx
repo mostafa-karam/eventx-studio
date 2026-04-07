@@ -73,10 +73,10 @@ const OptimizedLoginForm = ({ onToggleMode }) => {
 
   const handleDemoLogin = async (type) => {
     const demoCredentials = {
-      admin: { email: 'admin@eventx.dev', password: 'Password123!' },
-      venue_admin: { email: 'venue@eventx.dev', password: 'Password123!' },
-      organizer: { email: 'organizer@eventx.dev', password: 'Password123!' },
-      user: { email: 'user@eventx.dev', password: 'Password123!' }
+      admin: { email: 'admin@eventx.com', password: 'password123' },
+      venue_admin: { email: 'venue@eventx.com', password: 'password123' },
+      organizer: { email: 'organizer@techx.com', password: 'password123' },
+      user: { email: 'user@eventx.com', password: 'password123' }
     };
 
     const credentials = demoCredentials[type];

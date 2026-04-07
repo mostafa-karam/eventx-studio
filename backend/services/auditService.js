@@ -35,6 +35,8 @@ const buildEntry = ({ req, actor, action, resource, resourceId, details = {} }) 
     resourceId,
     details,
     ipAddress: req?.ip || req?.headers?.['x-forwarded-for'] || 'unknown',
+    requestMethod: req?.method || 'unknown',
+    requestPath: req?.originalUrl || req?.url || 'unknown',
     userAgent: req?.headers?.['user-agent'] || 'unknown',
     requestId: req?.id,
     timestamp: new Date(),
@@ -76,7 +78,7 @@ exports.query = async ({
     if (endDate) filter.timestamp.$lte = new Date(endDate);
   }
 
-  const [logs, total] = await Promise.all([
+  const [rawLogs, total] = await Promise.all([
     AuditLog.find(filter)
       .populate('userId', 'name email role')
       .sort({ timestamp: -1 })
@@ -85,6 +87,12 @@ exports.query = async ({
       .lean(),
     AuditLog.countDocuments(filter),
   ]);
+
+  const logs = rawLogs.map((log) => ({
+    ...log,
+    ip: log.ip || log.ipAddress || log.ip_address,
+    createdAt: log.createdAt || log.timestamp,
+  }));
 
   return {
     logs,
