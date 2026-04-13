@@ -61,7 +61,8 @@ exports.createHall = async (req, res) => {
 // @access  Private (venue_admin, admin)
 exports.updateHall = async (req, res) => {
     try {
-        const hall = await hallsService.updateHall(req.params.id, req.body);
+        // FIX H-01 — Pass user to allow IDOR ownership checking
+        const hall = await hallsService.updateHall(req.params.id, req.body, req.user);
         res.json({ success: true, message: 'Hall updated successfully', data: { hall } });
     } catch (error) {
         logger.error('Update hall error:', error);

@@ -1,4 +1,6 @@
 const express = require('express');
+const asyncHandler = require('../utils/asyncHandler');
+
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const usersController = require('../controllers/usersController');
 const authController = require('../controllers/authController');

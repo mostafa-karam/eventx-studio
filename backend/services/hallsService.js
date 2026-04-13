@@ -9,6 +9,7 @@
 const Hall = require('../models/Hall');
 const HallBooking = require('../models/HallBooking');
 const { escapeRegex } = require('../utils/helpers');
+const { enforceOwnership } = require('../utils/authorization');
 
 class HallsService {
   /**
@@ -108,7 +109,8 @@ class HallsService {
 
     const bookings = await HallBooking.find({
       hall: hallId,
-      status: 'approved',
+      // FIX M-06 — Include pending and maintenance blocks in availability checks to prevent booking conflicts
+      status: { $in: ['approved', 'pending', 'maintenance'] },
       startDate: { $lt: endDate },
       endDate: { $gt: startDate },
     })
@@ -136,9 +138,12 @@ class HallsService {
   /**
    * Update a hall by ID.
    */
-  async updateHall(hallId, updateData) {
+  async updateHall(hallId, updateData, user) {
     const hall = await Hall.findById(hallId);
     if (!hall) throw Object.assign(new Error('Hall not found'), { status: 404 });
+
+    // FIX H-01 — Enforce IDOR protection on hall updates
+    enforceOwnership(hall, user, 'createdBy', 'update');
 
     const allowedFields = [
       'name', 'description', 'capacity', 'equipment', 'hourlyRate',

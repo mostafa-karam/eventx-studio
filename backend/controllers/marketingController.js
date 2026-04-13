@@ -184,6 +184,24 @@ exports.updateCampaign = async (req, res) => {
 
         const { name, subject, content, targetAudience, scheduledAt } = req.body;
 
+        // FIX M-07 — Explicit validation for targetAudience and scheduledAt
+        if (targetAudience && !['all', 'registered', 'potential', 'vip', 'custom'].includes(targetAudience)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid target audience'
+            });
+        }
+
+        if (scheduledAt) {
+            const parsedDate = new Date(scheduledAt);
+            if (isNaN(parsedDate.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid scheduled date'
+                });
+            }
+        }
+
         campaign.name = name || campaign.name;
         campaign.subject = subject || campaign.subject;
         campaign.content = content || campaign.content;

@@ -217,14 +217,34 @@ class EventsService {
 
         enforceOwnership(event, user, 'organizer', 'delete');
 
+        // FIX L-05 — Cascade delete associated entities to prevent stranded records
+        await Ticket.deleteMany({ event: eventId });
+        await Waitlist.deleteMany({ event: eventId });
+        const HallBooking = require('../models/HallBooking');
+        await HallBooking.deleteMany({ event: eventId });
+
         await Event.findByIdAndDelete(eventId);
         return true;
     }
 
-    async getSeats(eventId) {
-        const event = await Event.findById(eventId).select('seating title date venue.name');
+    // FIX H-02 — Strip bookedBy to prevent data leak for non-organizers
+    async getSeats(eventId, user) {
+        const event = await Event.findById(eventId).select('seating title date venue.name organizer');
         if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
-        return event;
+
+        const isAuthorized = user && (user.role === 'admin' || event.organizer.toString() === user._id.toString());
+        const eventData = event.toObject();
+
+        if (!isAuthorized && eventData.seating && eventData.seating.seatMap) {
+            eventData.seating.seatMap = eventData.seating.seatMap.map(seat => {
+                if (seat.bookedBy) {
+                    delete seat.bookedBy;
+                }
+                return seat;
+            });
+        }
+
+        return eventData;
     }
 
     async joinWaitlist(eventId, user) {

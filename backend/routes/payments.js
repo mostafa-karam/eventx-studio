@@ -1,4 +1,6 @@
 const express = require('express');
+const asyncHandler = require('../utils/asyncHandler');
+
 const { authenticate } = require('../middleware/auth');
 const { paymentLimiter } = require('../middleware/rateLimiter');
 const {
@@ -13,10 +15,10 @@ router.use(paymentLimiter);
 
 // POST /api/payments/process
 // Simulates payment processing and returns a payment receipt
-router.post('/process', authenticate, processPayment);
+router.post('/process', authenticate, asyncHandler(processPayment);
 
 // POST /api/payments/test-token
 // Issues a short-lived signed token for simulated payments. Requires auth.
-router.post('/test-token', authenticate, testToken);
+router.post('/test-token', authenticate, asyncHandler(testToken);
 
 module.exports = router;

@@ -11,10 +11,8 @@ const Ticket = require('../models/Ticket');
 const analyticsService = require('../services/analyticsService');
 
 const User = require('../models/User');
-
-// WARNING: In-memory store — data is lost on restart and doesn't scale across instances.
-// TODO: Replace with a database-backed Report model for production multi-instance deployments.
-const reportsStore = [];
+// FIX C-02 — Database-backed Report model replaces in-memory array
+const Report = require('../models/Report');
 
 // @route   GET /api/analytics/dashboard
 // @desc    Get dashboard analytics (Admin only)
@@ -250,22 +248,28 @@ exports.getEventAnalytics = async (req, res) => {
 exports.exportAnalytics = async (req, res) => {
   try {
     const { type = 'events', format = 'json' } = req.query;
+    // FIX M-01 — Make export limit dynamic but capped
+    const limit = Math.min(parseInt(req.query.limit) || 1000, 10000);
 
     let data = {};
 
     if (type === 'events') {
       data = await Event.find({ organizer: req.user._id })
         .select('title date venue category pricing seating analytics status createdAt')
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .limit(limit);
     } else if (type === 'tickets') {
-      data = await Ticket.find()
-        .populate({ path: 'event', match: { organizer: req.user._id }, select: 'title date venue' })
+      // FIX H-06 — Query user's event IDs first, then filter Tickets at DB level 
+      // Prevents massive memory spike and data leak from fetching all tickets
+      const userEvents = await Event.find({ organizer: req.user._id }).select('_id');
+      const eventIds = userEvents.map(e => e._id);
+
+      data = await Ticket.find({ event: { $in: eventIds } })
+        .populate({ path: 'event', select: 'title date venue' })
         .populate('user', 'name email')
         .select('ticketId seatNumber bookingDate status payment')
         .sort({ bookingDate: -1 })
-        .limit(10000);
-
-      data = data.filter((ticket) => ticket.event);
+        .limit(limit);
     }
 
     if (format === 'csv') {
@@ -470,9 +474,13 @@ exports.getAllAttendeeInsights = async (req, res) => {
 // ─── Reports ─────────────────────────────────────────────────────
 
 // @route   GET /api/analytics/reports
+// FIX C-02 — Query database instead of in-memory array
 exports.getReports = async (req, res) => {
   try {
-    return res.json({ success: true, data: { reports: reportsStore } });
+    const reports = await Report.find({ generatedBy: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(100);
+    return res.json({ success: true, data: { reports } });
   } catch (error) {
     logger.error('Reports list error:', error);
     res.status(500).json({ success: false, message: 'Server error while fetching reports' });
@@ -480,34 +488,36 @@ exports.getReports = async (req, res) => {
 };
 
 // @route   POST /api/analytics/reports/generate
+// FIX C-02 — Persist to database instead of in-memory array
 exports.generateReport = async (req, res) => {
   try {
     const { type, filters } = req.body || {};
     if (!type) return res.status(400).json({ success: false, message: 'Report type is required' });
 
-    const id = new mongoose.Types.ObjectId().toString();
     const now = new Date();
-    const newReport = {
-      _id: id,
+    const report = await Report.create({
       name: `${String(type).charAt(0).toUpperCase() + String(type).slice(1)} Report - ${now.toLocaleDateString()}`,
       type,
       status: 'generating',
-      createdAt: now.toISOString(),
-      fileSize: null,
-      downloadUrl: null,
       parameters: filters || {},
-    };
+      generatedBy: req.user._id,
+    });
 
-    reportsStore.unshift(newReport);
-
-    setTimeout(() => {
-      const idx = reportsStore.findIndex((r) => r._id === id);
-      if (idx !== -1) {
-        reportsStore[idx] = { ...reportsStore[idx], status: 'completed', fileSize: '2.1 MB', downloadUrl: `/api/analytics/reports/${id}/download` };
+    // Simulate async report generation; in production replace with a job queue
+    setTimeout(async () => {
+      try {
+        await Report.findByIdAndUpdate(report._id, {
+          status: 'completed',
+          fileSize: '2.1 MB',
+          downloadUrl: `/api/analytics/reports/${report._id}/download`,
+        });
+      } catch (err) {
+        logger.error('Report finalization error:', err);
+        await Report.findByIdAndUpdate(report._id, { status: 'failed' }).catch(() => {});
       }
     }, 2000);
 
-    return res.status(201).json({ success: true, data: { report: newReport } });
+    return res.status(201).json({ success: true, data: { report } });
   } catch (error) {
     logger.error('Report generation error:', error);
     res.status(500).json({ success: false, message: 'Server error while generating report' });
@@ -515,9 +525,10 @@ exports.generateReport = async (req, res) => {
 };
 
 // @route   GET /api/analytics/reports/:id/download
+// FIX C-02 — Read from database instead of in-memory array
 exports.downloadReport = async (req, res) => {
   try {
-    const report = reportsStore.find((r) => r._id === req.params.id);
+    const report = await Report.findById(req.params.id);
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
     if (report.status !== 'completed') return res.status(409).json({ success: false, message: 'Report not ready yet' });
 

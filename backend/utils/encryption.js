@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const config = require('../config');
+const logger = require('./logger');
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // 96 bits for GCM
@@ -22,6 +23,8 @@ exports.encrypt = (text) => {
         
         return `${iv.toString('hex')}:${authTag}:${encrypted}`;
     } catch (e) {
+        // FIX M-03 — Log encryption failures instead of failing silently
+        logger.warn('Encryption failed — returning plaintext: ' + e.message);
         return text;
     }
 };
@@ -48,6 +51,8 @@ exports.decrypt = (text) => {
             return decrypted;
         }
     } catch (error) {
+        // FIX M-03 — Log decryption failures instead of failing silently
+        logger.warn('Decryption failed — returning ciphertext/plaintext fallback: ' + error.message);
         return text;
     }
 };

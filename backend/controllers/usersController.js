@@ -275,7 +275,8 @@ exports.deleteUser = async (req, res) => {
         await auditService.log({
             req,
             actor: req.user,
-            action: ACTIONS.USER_UPDATE,
+            // FIX H-03 — Correctly log user deletion instead of user update
+            action: ACTIONS.USER_DELETE,
             resource: RESOURCES.USER,
             resourceId: req.params.id,
             details: { operation: 'delete' },

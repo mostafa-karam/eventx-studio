@@ -1,7 +1,12 @@
+const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 const HallBooking = require('../models/HallBooking');
 const Hall = require('../models/Hall');
 const notificationService = require('../services/notificationService');
+
+// FIX C-01 — NoSQL Injection allowlist for query filters
+// Prevents injection of MongoDB operators (e.g. { "$ne": null }) via req.query
+const VALID_BOOKING_STATUSES = ['pending', 'approved', 'rejected', 'cancelled', 'maintenance'];
 
 // @desc    Get all hall bookings (venue_admin, admin)
 // @access  Private (venue_admin, admin)
@@ -13,13 +18,13 @@ exports.getPlatformBookings = async (req, res) => {
 
         let query = {};
 
-        // Filter by status
-        if (req.query.status) {
+        // FIX C-01 — Validate status against enum allowlist to block NoSQL injection
+        if (req.query.status && VALID_BOOKING_STATUSES.includes(req.query.status)) {
             query.status = req.query.status;
         }
 
-        // Filter by hall
-        if (req.query.hall) {
+        // FIX C-01 — Validate hall as a valid ObjectId to block operator injection
+        if (req.query.hall && mongoose.Types.ObjectId.isValid(req.query.hall)) {
             query.hall = req.query.hall;
         }
 
@@ -73,7 +78,8 @@ exports.getMyBookings = async (req, res) => {
 
         const query = { organizer: req.user._id };
 
-        if (req.query.status) {
+        // FIX C-01 — Validate status against enum allowlist to block NoSQL injection
+        if (req.query.status && VALID_BOOKING_STATUSES.includes(req.query.status)) {
             query.status = req.query.status;
         }
 
@@ -258,11 +264,26 @@ exports.scheduleMaintenance = async (req, res) => {
 
 // @desc    Approve a hall booking
 // @access  Private (venue_admin, admin)
+// FIX H-05 — Wrapped in transaction to prevent race conditions on double approval
 exports.approveBooking = async (req, res) => {
+    let session;
+    let useSession = false;
+
     try {
-        const booking = await HallBooking.findById(req.params.id);
+        session = await mongoose.startSession();
+        const topologyType = mongoose.connection.client.topology.description?.type || '';
+        useSession = topologyType.includes('ReplicaSet');
+        
+        if (useSession) {
+            session.startTransaction();
+        }
+
+        const sessionOptions = useSession ? { session } : {};
+
+        const booking = await HallBooking.findById(req.params.id, null, sessionOptions);
 
         if (!booking) {
+            if (useSession) await session.abortTransaction();
             return res.status(404).json({
                 success: false,
                 message: 'Booking not found'
@@ -270,17 +291,41 @@ exports.approveBooking = async (req, res) => {
         }
 
         if (booking.status !== 'pending') {
+            if (useSession) await session.abortTransaction();
             return res.status(400).json({
                 success: false,
                 message: `Cannot approve a booking with status: ${booking.status}`
             });
         }
 
+        // Explicitly check for conflicts within the transaction boundary
+        const conflicting = await HallBooking.findOne({
+            hall: booking.hall,
+            _id: { $ne: booking._id },
+            status: { $in: ['approved', 'maintenance'] },
+            $or: [
+                {
+                    startDate: { $lt: booking.endDate },
+                    endDate: { $gt: booking.startDate }
+                }
+            ]
+        }, null, sessionOptions);
+
+        if (conflicting) {
+            const err = new Error('Hall is already booked or scheduled for maintenance during the selected time period');
+            err.name = 'ConflictError';
+            throw err;
+        }
+
         booking.status = 'approved';
         booking.reviewedBy = req.user._id;
         booking.reviewedAt = new Date();
 
-        await booking.save(); // This triggers conflict check in pre-save hook
+        await booking.save(useSession ? { session } : undefined);
+        
+        if (useSession) {
+            await session.commitTransaction();
+        }
 
         const populatedBooking = await HallBooking.findById(booking._id)
             .populate('hall', 'name capacity')
@@ -301,6 +346,10 @@ exports.approveBooking = async (req, res) => {
             data: { booking: populatedBooking }
         });
     } catch (error) {
+        if (useSession && session) {
+            await session.abortTransaction().catch(() => {});
+        }
+        
         logger.error('Approve booking error:', error);
 
         if (error.name === 'ConflictError') {
@@ -314,6 +363,10 @@ exports.approveBooking = async (req, res) => {
             success: false,
             message: 'Server error while approving booking'
         });
+    } finally {
+        if (session) {
+            session.endSession();
+        }
     }
 };
 
@@ -384,11 +437,11 @@ exports.cancelBooking = async (req, res) => {
             });
         }
 
-        // Only the organizer who created it or an admin can cancel
+        // FIX M-05 — Allow venue_admins to cancel bookings since they can approve/reject them
         const isOwner = booking.organizer.toString() === req.user._id.toString();
-        const isAdmin = req.user.role === 'admin';
+        const isAdminOrVenueAdmin = ['admin', 'venue_admin'].includes(req.user.role);
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !isAdminOrVenueAdmin) {
             return res.status(403).json({
                 success: false,
                 message: 'Not authorized to cancel this booking'

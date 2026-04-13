@@ -194,6 +194,15 @@ exports.updateTicketStatus = async (req, res) => {
             });
         }
 
+        // FIX H-04 — Add enum validation for ticket status to preserve state machine contract
+        const VALID_STATUSES = ['open', 'in-progress', 'resolved', 'closed'];
+        if (!VALID_STATUSES.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status'
+            });
+        }
+
         ticket.status = status;
         await ticket.save();
 

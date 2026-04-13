@@ -8,7 +8,8 @@ const { escapeRegex } = require('../utils/helpers');
 exports.getPublicEvents = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 12;
+        // FIX C-03 — Cap limit to prevent DoS via uncapped public query (e.g. ?limit=999999)
+        const limit = Math.min(parseInt(req.query.limit) || 12, 100);
         const skip = (page - 1) * limit;
 
         const filter = { status: 'published', date: { $gte: new Date() } };
@@ -71,7 +72,8 @@ exports.getPublicEventById = async (req, res) => {
 exports.getPublicHalls = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 12;
+        // FIX C-03 — Cap limit to prevent DoS via uncapped public query (e.g. ?limit=999999)
+        const limit = Math.min(parseInt(req.query.limit) || 12, 100);
         const skip = (page - 1) * limit;
 
         const filter = { status: 'active' };

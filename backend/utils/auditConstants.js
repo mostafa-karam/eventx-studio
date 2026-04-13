@@ -9,6 +9,8 @@ module.exports = {
     USER_DEACTIVATE: 'user.deactivate',
     USER_ACTIVATE: 'user.activate',
     USER_ROLE_CHANGE: 'user.role_change',
+    // FIX H-03 — Add USER_DELETE
+    USER_DELETE: 'user.delete',
     
     // Event actions
     EVENT_CREATE: 'event.create',

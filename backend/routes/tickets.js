@@ -1,4 +1,6 @@
 const express = require('express');
+const asyncHandler = require('../utils/asyncHandler');
+
 const { authenticate, requireAdmin, requireOrganizer, requireRole } = require('../middleware/auth');
 const ticketsController = require('../controllers/ticketsController');
 

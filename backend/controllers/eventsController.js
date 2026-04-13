@@ -135,10 +135,11 @@ exports.deleteEvent = async (req, res) => {
 };
 
 // @desc    Get available seats for an event
-// @access  Public
+// @access  Public (Optional Auth)
 exports.getSeats = async (req, res) => {
     try {
-        const event = await eventsService.getSeats(req.params.id);
+        // FIX H-02 — Pass req.user to allow checking permissions
+        const event = await eventsService.getSeats(req.params.id, req.user);
         res.json({
             success: true,
             data: {
@@ -201,6 +202,12 @@ exports.approveWaitlist = async (req, res) => {
 function escapeCSV(str) {
     if (str === null || str === undefined) return '';
     const strVal = String(str);
+    
+    // FIX M-02 — Prevent CSV Injection by escaping formula prefixes
+    if (/^[=+\-@]/.test(strVal)) {
+        return `"'${strVal.replace(/"/g, '""')}"`;
+    }
+
     if (strVal.includes(',') || strVal.includes('"') || strVal.includes('\n')) {
         return `"${strVal.replace(/"/g, '""')}"`;
     }

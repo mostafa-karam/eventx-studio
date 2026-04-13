@@ -1,4 +1,6 @@
 const express = require('express');
+const asyncHandler = require('../utils/asyncHandler');
+
 const {
   loginLimiter,
   registerLimiter,
