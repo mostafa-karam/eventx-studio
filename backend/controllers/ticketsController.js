@@ -126,10 +126,7 @@ exports.bookMultiTickets = async (req, res) => {
       }
     }
 
-    // Reject paid bookings without verified payment — enforce /api/booking flow
-    if (event.pricing?.type === 'paid' && !transactionId) {
-      return res.status(400).json({ success: false, message: 'Paid events require a verified payment. Please use the booking flow.' });
-    }
+
 
     const seatsChosen = await ticketsService.prepareSeatsForBooking(event, eventId, qty, seatNumbers);
 

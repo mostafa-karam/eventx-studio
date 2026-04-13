@@ -15,21 +15,21 @@ const {
 const router = express.Router();
 
 // GET /api/halls
-router.get('/', optionalAuth, asyncHandler(getHalls);
+router.get('/', optionalAuth, asyncHandler(getHalls));
 
 // GET /api/halls/:id
-router.get('/:id', authenticate, asyncHandler(getHallById);
+router.get('/:id', authenticate, asyncHandler(getHallById));
 
 // GET /api/halls/:id/availability
-router.get('/:id/availability', authenticate, asyncHandler(getHallAvailability);
+router.get('/:id/availability', authenticate, asyncHandler(getHallAvailability));
 
 // POST /api/halls
-router.post('/', authenticate, requireVenueAdmin, createHallValidator, asyncHandler(createHall);
+router.post('/', authenticate, requireVenueAdmin, createHallValidator, asyncHandler(createHall));
 
 // PUT /api/halls/:id
-router.put('/:id', authenticate, requireVenueAdmin, updateHallValidator, asyncHandler(updateHall);
+router.put('/:id', authenticate, requireVenueAdmin, updateHallValidator, asyncHandler(updateHall));
 
 // DELETE /api/halls/:id
-router.delete('/:id', authenticate, requireAdmin, asyncHandler(deleteHall);
+router.delete('/:id', authenticate, requireAdmin, asyncHandler(deleteHall));
 
 module.exports = router;

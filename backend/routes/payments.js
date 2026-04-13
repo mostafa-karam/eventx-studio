@@ -15,10 +15,10 @@ router.use(paymentLimiter);
 
 // POST /api/payments/process
 // Simulates payment processing and returns a payment receipt
-router.post('/process', authenticate, asyncHandler(processPayment);
+router.post('/process', authenticate, asyncHandler(processPayment));
 
 // POST /api/payments/test-token
 // Issues a short-lived signed token for simulated payments. Requires auth.
-router.post('/test-token', authenticate, asyncHandler(testToken);
+router.post('/test-token', authenticate, asyncHandler(testToken));
 
 module.exports = router;

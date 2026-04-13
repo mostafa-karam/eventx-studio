@@ -74,22 +74,23 @@ const getCouponForEvent = async (couponCode, eventId, sessionOptions) => {
  * @returns {object} { ticket, event }
  */
 exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, metadata = {} }) => {
-  // Start a MongoDB session for transactional safety when the topology supports it
-  const session = await mongoose.startSession();
-  const topologyType = mongoose.connection.client.topology.description?.type || '';
-  let useSession = topologyType.includes('ReplicaSet');
-  if (!useSession) {
-    logger.warn('MongoDB topology does not support replica-set transactions; using non-transactional booking flow.');
-  } else {
+  // Use explicit env var instead of private driver topology sniffing (M-03)
+  // Only start session when transactions are actually needed (M-14)
+  const useSession = process.env.ENABLE_TRANSACTIONS === 'true';
+  let session = null;
+  if (useSession) {
     try {
+      session = await mongoose.startSession();
       session.startTransaction();
     } catch (err) {
-      useSession = false;
       logger.warn('Unable to start transaction; falling back to non-transactional booking flow:', err.message);
+      session = null;
     }
+  } else {
+    logger.warn('Transactions disabled (ENABLE_TRANSACTIONS != true); using non-transactional booking flow.');
   }
 
-  const sessionOptions = useSession ? { session } : {};
+  const sessionOptions = session ? { session } : {};
 
   try {
     const eventQuery = Event.findById(eventId);
@@ -267,7 +268,7 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
     }
     throw error;
   } finally {
-    session.endSession();
+    if (session) session.endSession();
   }
 };
 

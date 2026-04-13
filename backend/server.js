@@ -10,6 +10,7 @@ const path = require('path');
 const morgan = require('morgan');
 const hpp = require('hpp');
 const responseTime = require('response-time');
+const crypto = require('crypto');
 const logger = require('./utils/logger');
 const errorHandler = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
@@ -41,6 +42,12 @@ const requestId = require('./middleware/requestId');
 
 app.use(requestId);
 
+// Generate nonce for CSP
+app.use((req, res, next) => {
+  res.locals.nonce = crypto.randomBytes(16).toString('base64');
+  next();
+});
+
 app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: true,
@@ -48,7 +55,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       baseUri: ["'self'"],
       objectSrc: ["'none'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
       styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
       imgSrc: ["'self'", 'data:', 'https:'],
       fontSrc: ["'self'", 'data:', 'https:'],

@@ -5,6 +5,8 @@ const validateEnv = () => {
     'NODE_ENV',
     'MONGO_URI',
     'JWT_SECRET',
+    'JWT_REFRESH_SECRET',
+    'PAYMENT_HMAC_SECRET',
     'FRONTEND_URL'
   ];
 

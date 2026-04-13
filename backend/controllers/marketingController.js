@@ -162,10 +162,12 @@ exports.getCampaignById = async (req, res) => {
 // @access  Private
 exports.updateCampaign = async (req, res) => {
     try {
-        const campaign = await Campaign.findOne({
-            _id: req.params.id,
-            createdBy: req.user._id
-        });
+        const query = { _id: req.params.id };
+        if (req.user.role !== 'admin') {
+            query.createdBy = req.user._id;
+        }
+
+        const campaign = await Campaign.findOne(query);
 
         if (!campaign) {
             return res.status(404).json({

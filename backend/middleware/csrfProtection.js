@@ -37,13 +37,10 @@ const resolveSessionId = (req, res) => {
 };
 
 const shouldSkipCsrfProtection = (req) => {
-  const hasBearerAuth = /^Bearer\s+/i.test(req.headers.authorization || '');
-  const hasSessionCookie = Boolean(req.cookies?.accessToken || req.cookies?.refreshToken);
-  const isAuthRoute = req.originalUrl.startsWith('/api/auth');
-
-  if (hasSessionCookie) return false;
-  if (hasBearerAuth) return true;
-  return !isAuthRoute;
+  // Enforce CSRF on all state-mutating routes to prevent bypasses via Bearer tokens
+  // or unauthenticated submissions. Machine-to-machine endpoints should be explicitly
+  // excluded if needed, rather than blindly trusting the Bearer header.
+  return false;
 };
 
 const {

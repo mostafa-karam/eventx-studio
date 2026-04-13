@@ -21,7 +21,7 @@ const uploadLimiter = rateLimit({
 
 // ─── Storage Config ─────────────────────────────────────────────────────────
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(UPLOADS_DIR) {
+if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
@@ -40,17 +40,17 @@ const upload = multer({
     storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB per file
     fileFilter: (_req, file, cb) => {
-        if (FILE_TYPES.includes(file.mimetype) {
+        if (FILE_TYPES.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('Only JPEG, PNG, WebP, and GIF images are allowed');
+            cb(new Error('Only JPEG, PNG, WebP, and GIF images are allowed'));
         }
     },
 });
 
 // POST /api/upload  — upload one or more images
 // FormData field name: 'images' (up to 10)
-router.post('/', authenticate, uploadLimiter, upload.array('images', 10), asyncHandler(uploadFiles);
+router.post('/', authenticate, uploadLimiter, upload.array('images', 10), asyncHandler(uploadFiles));
 
 // Handle multer errors (e.g. file too large, wrong type)
 router.use((err, _req, res, _next) => {

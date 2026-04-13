@@ -8,7 +8,7 @@ module.exports = {
   mongoUri: process.env.MONGO_URI,
   secrets: {
     jwt: process.env.JWT_SECRET,
-    jwtRefresh: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + '_refresh',
+    jwtRefresh: process.env.JWT_REFRESH_SECRET,
   },
   jwt: {
     accessExpire: security.jwt.accessExpiresIn,

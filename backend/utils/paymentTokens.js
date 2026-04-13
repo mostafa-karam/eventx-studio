@@ -21,7 +21,7 @@ const TOKEN_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
  * @returns {string}
  */
 const getSecret = () => {
-  return process.env.PAYMENT_HMAC_SECRET || process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET;
+  return process.env.PAYMENT_HMAC_SECRET;
 };
 
 /**

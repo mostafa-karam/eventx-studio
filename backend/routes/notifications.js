@@ -14,22 +14,22 @@ const {
 } = require('../controllers/notificationsController');
 
 // Get all notifications for the authenticated user
-router.get('/', authenticate, asyncHandler(getNotifications);
+router.get('/', authenticate, asyncHandler(getNotifications));
 
 // Mark notification as read
-router.patch('/:id/read', authenticate, asyncHandler(markAsRead);
+router.patch('/:id/read', authenticate, asyncHandler(markAsRead));
 
 // Mark all notifications as read
-router.patch('/mark-all-read', authenticate, asyncHandler(markAllAsRead);
+router.patch('/mark-all-read', authenticate, asyncHandler(markAllAsRead));
 
 // Delete notification
-router.delete('/:id', authenticate, asyncHandler(deleteNotification);
+router.delete('/:id', authenticate, asyncHandler(deleteNotification));
 
 // Create notification (for system use)
-router.post('/', authenticate, asyncHandler(createNotification);
+router.post('/', authenticate, asyncHandler(createNotification));
 
 module.exports = router;
 module.exports.createSystemNotification = createSystemNotification;
 
 // Booking confirmation notification endpoint used by frontend
-router.post('/send-booking-confirmation', authenticate, asyncHandler(sendBookingConfirmation);
+router.post('/send-booking-confirmation', authenticate, asyncHandler(sendBookingConfirmation));

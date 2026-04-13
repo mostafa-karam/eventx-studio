@@ -7,6 +7,6 @@ const { getAuditLogs } = require('../controllers/auditLogController');
 const router = express.Router();
 
 // GET /api/audit-log — admin only, paginated
-router.get('/', authenticate, requireAdmin, asyncHandler(getAuditLogs);
+router.get('/', authenticate, requireAdmin, asyncHandler(getAuditLogs));
 
 module.exports = router;

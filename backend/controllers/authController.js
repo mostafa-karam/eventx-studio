@@ -462,8 +462,13 @@ exports.getAllUsers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 10, 100);
-    const users = await User.find().select('name email role isActive createdAt lastLogin avatar phone').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit);
-    const total = await User.countDocuments();
+    const query = { deletedAt: { $exists: false } };
+    const users = await User.find(query)
+      .select('name email role isActive createdAt lastLogin')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+    const total = await User.countDocuments(query);
     res.json({ success: true, data: { users, pagination: { current: page, pages: Math.ceil(total / limit), total } } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });

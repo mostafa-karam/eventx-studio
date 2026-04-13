@@ -27,20 +27,11 @@ exports.processPayment = async (req, res) => {
             currency,
         });
 
-        // Also issue a JWT for backward compatibility during migration
-        const jwtSecret = process.env.PAYMENT_SIMULATION_SECRET || process.env.JWT_SECRET;
-        const jwtToken = jwt.sign(
-            { txId, userId: req.user._id, eventId: eventId || null, amount, quantity, currency },
-            jwtSecret,
-            { expiresIn: '10m' }
-        );
-
         return res.json({
             success: true,
             data: {
                 paymentId: txId,
-                token,        // HMAC token (preferred)
-                jwtToken,     // JWT token (backward compat — will be removed)
+                token,        // HMAC token
                 payment: {
                     id: txId,
                     status: 'succeeded',

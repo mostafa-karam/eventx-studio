@@ -4,7 +4,7 @@ const logger = require('../utils/logger');
 const config = require('../config');
 
 const getTokenFromRequest = (req) => {
-  const headerToken = req.header('Authorization')?.replace('Bearer ', '');
+  const headerToken = req.header('Authorization')?.match(/^Bearer\s+(\S+)/)?.[1];
   const cookieToken = req.cookies?.accessToken || req.cookies?.token;
   const token = headerToken || cookieToken;
 
@@ -80,7 +80,7 @@ const loadUserFromToken = async (req, { optional = false } = {}) => {
         User.updateOne(
           { _id: user._id, 'activeSessions.sessionId': decoded.sessionId },
           { $set: { 'activeSessions.$.lastActivity': new Date() } },
-        ).catch((error) => logger.error(`Session update error: ${error.message}`));
+        ).catch((error) => logger.error(`Session update error for user ${user._id} session ${decoded.sessionId}: ${error.message}`));
       }
     }
 

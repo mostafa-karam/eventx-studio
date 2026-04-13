@@ -19,7 +19,7 @@ const Report = require('../models/Report');
 // @access  Private/Admin
 exports.getDashboard = async (req, res) => {
   try {
-    const months = req.query.months ? parseInt(req.query.months) : 6;
+    const months = Math.min(Math.max(parseInt(req.query.months) || 6, 1), 36);
     const [overview, monthlyRevenue, categoryDistribution, demographics, topPerformers] = await Promise.all([
       analyticsService.getDashboardOverview(),
       analyticsService.getMonthlyRevenue(months),
@@ -254,17 +254,20 @@ exports.exportAnalytics = async (req, res) => {
     let data = {};
 
     if (type === 'events') {
-      data = await Event.find({ organizer: req.user._id })
+      const filter = req.user.role === 'admin' ? {} : { organizer: req.user._id };
+      data = await Event.find(filter)
         .select('title date venue category pricing seating analytics status createdAt')
         .sort({ createdAt: -1 })
         .limit(limit);
     } else if (type === 'tickets') {
       // FIX H-06 — Query user's event IDs first, then filter Tickets at DB level 
       // Prevents massive memory spike and data leak from fetching all tickets
-      const userEvents = await Event.find({ organizer: req.user._id }).select('_id');
+      const filter = req.user.role === 'admin' ? {} : { organizer: req.user._id };
+      const userEvents = await Event.find(filter).select('_id');
       const eventIds = userEvents.map(e => e._id);
 
-      data = await Ticket.find({ event: { $in: eventIds } })
+      const ticketFilter = req.user.role === 'admin' ? {} : { event: { $in: eventIds } };
+      data = await Ticket.find(ticketFilter)
         .populate({ path: 'event', select: 'title date venue' })
         .populate('user', 'name email')
         .select('ticketId seatNumber bookingDate status payment')
@@ -286,6 +289,19 @@ exports.exportAnalytics = async (req, res) => {
   }
 };
 
+// Helper to escape CSV fields to prevent formula injection
+function escapeCSV(str) {
+  if (str === null || str === undefined) return '';
+  const strVal = String(str);
+  if (/^[=+\-@]/.test(strVal)) {
+    return `"'${strVal.replace(/"/g, '""')}"`;
+  }
+  if (strVal.includes(',') || strVal.includes('"') || strVal.includes('\n')) {
+    return `"${strVal.replace(/"/g, '""')}"`;
+  }
+  return strVal;
+}
+
 // Helper function to convert data to CSV
 function convertToCSV(data) {
   if (!data || data.length === 0) return '';
@@ -295,15 +311,13 @@ function convertToCSV(data) {
 
   const csvRows = data.map((item) => {
     const obj = item.toObject ? item.toObject() : item;
-    return headers
-      .map((header) => {
-        const value = obj[header];
-        if (typeof value === 'object' && value !== null) {
-          return JSON.stringify(value).replace(/"/g, '""');
-        }
-        return `"${String(value).replace(/"/g, '""')}"`;
-      })
-      .join(',');
+    return headers.map((header) => {
+      const value = obj[header];
+      const str = typeof value === 'object' && value !== null
+        ? JSON.stringify(value)
+        : String(value ?? '');
+      return escapeCSV(str);
+    }).join(',');
   });
 
   return [csvHeaders, ...csvRows].join('\n');
@@ -528,7 +542,10 @@ exports.generateReport = async (req, res) => {
 // FIX C-02 — Read from database instead of in-memory array
 exports.downloadReport = async (req, res) => {
   try {
-    const report = await Report.findById(req.params.id);
+    const report = await Report.findOne({
+      _id: req.params.id,
+      generatedBy: req.user._id,
+    });
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
     if (report.status !== 'completed') return res.status(409).json({ success: false, message: 'Report not ready yet' });
 

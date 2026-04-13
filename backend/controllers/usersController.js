@@ -24,7 +24,8 @@ exports.getUsers = async (req, res) => {
         }
 
         // Role filter
-        if (req.query.role) {
+        const VALID_ROLES = ['user', 'organizer', 'venue_admin', 'admin'];
+        if (req.query.role && VALID_ROLES.includes(req.query.role)) {
             query.role = req.query.role;
         }
 
