@@ -43,9 +43,24 @@ exports.getPlatformBookings = async (req, res) => {
             query.status = req.query.status;
         }
 
-        // FIX C-01 — Validate hall as a valid ObjectId to block operator injection
-        if (req.query.hall && mongoose.Types.ObjectId.isValid(req.query.hall)) {
-            query.hall = req.query.hall;
+        // Apply venue_admin scoping to enforce IDOR protection
+        if (req.user && req.user.role === 'venue_admin') {
+            const ownedHalls = await Hall.find({ createdBy: req.user._id }).select('_id');
+            const ownedHallIds = ownedHalls.map(h => h._id.toString());
+            
+            if (req.query.hall && mongoose.Types.ObjectId.isValid(req.query.hall)) {
+                if (!ownedHallIds.includes(req.query.hall.toString())) {
+                    return res.status(403).json({ success: false, message: 'Not authorized to view bookings for this hall' });
+                }
+                query.hall = req.query.hall;
+            } else {
+                query.hall = { $in: ownedHalls.map(h => h._id) };
+            }
+        } else {
+            // Original logic for admins
+            if (req.query.hall && mongoose.Types.ObjectId.isValid(req.query.hall)) {
+                query.hall = req.query.hall;
+            }
         }
 
         const bookings = await HallBooking.find(query)

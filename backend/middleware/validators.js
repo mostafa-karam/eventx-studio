@@ -603,6 +603,76 @@ const createCampaignValidator = [
   validate,
 ];
 
+const createCouponValidator = [
+  stringField('code', 'Coupon code', { min: 3, max: 20 }),
+  stringField('description', 'Description', { optional: true, max: 200 }),
+  body('discountType')
+    .exists({ values: 'falsy' })
+    .withMessage('Discount type is required')
+    .bail()
+    .isIn(['percentage', 'fixed'])
+    .withMessage('Invalid discount type'),
+  body('discountValue')
+    .exists({ values: 'falsy' })
+    .withMessage('Discount value is required')
+    .bail()
+    .isFloat({ min: 0 })
+    .withMessage('Discount must be positive'),
+  body('maxUses')
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage('Max uses must be at least 1'),
+  body('expiresAt')
+    .optional({ nullable: true })
+    .isISO8601()
+    .toDate()
+    .withMessage('Valid expiry date is required'),
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .toBoolean(),
+  body('applicableEvents')
+    .optional()
+    .isArray()
+    .withMessage('Applicable events must be an array'),
+  body('applicableEvents.*')
+    .optional()
+    .isMongoId()
+    .withMessage('Each applicable event must be a valid ID'),
+  validate,
+];
+
+const updateCouponValidator = [
+  stringField('description', 'Description', { optional: true, max: 200 }),
+  body('maxUses')
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage('Max uses must be at least 1'),
+  body('expiresAt')
+    .optional({ nullable: true })
+    .isISO8601()
+    .toDate()
+    .withMessage('Valid expiry date is required'),
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .toBoolean(),
+  body('applicableEvents')
+    .optional()
+    .isArray()
+    .withMessage('Applicable events must be an array'),
+  body('applicableEvents.*')
+    .optional()
+    .isMongoId()
+    .withMessage('Each applicable event must be a valid ID'),
+  validate,
+];
+
+const validateCouponValidator = [
+  stringField('code', 'Coupon code', { min: 3, max: 20 }),
+  validate,
+];
+
 module.exports = {
   validate,
   registerValidator,
@@ -623,4 +693,7 @@ module.exports = {
   paginationQueryValidator,
   createSupportTicketValidator,
   createCampaignValidator,
+  createCouponValidator,
+  updateCouponValidator,
+  validateCouponValidator,
 };

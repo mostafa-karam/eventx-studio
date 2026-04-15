@@ -21,6 +21,7 @@ const stripEmptyObjects = (value) => {
     }
 
     return Object.entries(value).reduce((accumulator, [key, nestedValue]) => {
+        if (nestedValue === undefined) return accumulator;
         const cleanedValue = stripEmptyObjects(nestedValue);
         if (!(isPlainObject(cleanedValue) && Object.keys(cleanedValue).length === 0)) {
             accumulator[key] = cleanedValue;
@@ -71,7 +72,7 @@ exports.getEventById = async (req, res) => {
 // @access  Private/Organizer
 exports.createEvent = async (req, res) => {
     try {
-        const payload = stripEmptyObjects(req.body);
+        const payload = stripEmptyObjects(req.validatedBody || req.body);
         const event = await eventsService.createEvent(payload, req.user._id);
         await auditService.log({ req, actor: req.user, action: 'event.create', resource: 'Event', resourceId: event._id, details: { title: event.title } });
         res.status(201).json({ success: true, message: 'Event created successfully', data: { event } });
@@ -103,7 +104,7 @@ exports.cloneEvent = async (req, res) => {
 // @access  Private/Organizer
 exports.updateEvent = async (req, res) => {
     try {
-        const payload = stripEmptyObjects(req.body);
+        const payload = stripEmptyObjects(req.validatedBody || req.body);
         const event = await eventsService.updateEvent(req.params.id, payload, req.user);
         await auditService.log({ req, actor: req.user, action: 'event.update', resource: 'Event', resourceId: event._id, details: { updatedFields: Object.keys(payload) } });
         res.json({ success: true, message: 'Event updated successfully', data: { event } });

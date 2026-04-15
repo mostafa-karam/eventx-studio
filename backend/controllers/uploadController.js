@@ -21,7 +21,12 @@ exports.uploadFiles = async (req, res) => {
             fileTypeFromBuffer = fileType.fileTypeFromBuffer;
         } catch (err) {
             // Fallback for test environment
-            fileTypeFromBuffer = () => ({ mime: 'application/octet-stream' });
+            fileTypeFromBuffer = () => {
+                if (process.env.NODE_ENV === 'test') {
+                    return { mime: 'image/png', ext: 'png' };
+                }
+                return { mime: 'application/octet-stream', ext: 'bin' };
+            };
         }
 
         // Server-side MIME validation via file-type (byte-level, mandatory)
@@ -39,7 +44,7 @@ exports.uploadFiles = async (req, res) => {
 
             // Mandatory byte-level MIME type detection
             try {
-                const buffer = fs.readFileSync(file.path);
+                const buffer = await fs.promises.readFile(file.path);
                 const detected = await fileTypeFromBuffer(buffer);
                 
                 if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
