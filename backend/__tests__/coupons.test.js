@@ -5,7 +5,9 @@ const app = require('../server');
 const User = require('../models/User');
 const Coupon = require('../models/Coupon');
 const Event = require('../models/Event');
-const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { generateAccessToken } = require('../utils/authUtils');
+const { createTestClient } = require('../test-utils/testClient');
 
 let mongoServer;
 let adminToken;
@@ -13,8 +15,10 @@ let userToken;
 let admin;
 let user;
 let testEvent;
+let client;
 
 beforeAll(async () => {
+    client = createTestClient(app);
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
 
@@ -28,18 +32,26 @@ beforeAll(async () => {
         email: 'admin_coupons@example.com',
         password: 'UniqueTestPass!2026',
         role: 'admin',
-        isActive: true
+        isActive: true,
+        emailVerified: true
     });
-    adminToken = jwt.sign({ id: admin._id }, process.env.JWT_SECRET || 'test_secret_for_ci', { expiresIn: '1h' });
+    const adminSessionId = crypto.randomUUID();
+    admin.addSession(adminSessionId, { device: 'Jest', ipAddress: '127.0.0.1' });
+    await admin.save();
+    adminToken = generateAccessToken(admin._id, adminSessionId);
 
     user = await User.create({
         name: 'User',
         email: 'user_coupons@example.com',
         password: 'UniqueTestPass!2026',
         role: 'user',
-        isActive: true
+        isActive: true,
+        emailVerified: true
     });
-    userToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'test_secret_for_ci', { expiresIn: '1h' });
+    const userSessionId = crypto.randomUUID();
+    user.addSession(userSessionId, { device: 'Jest', ipAddress: '127.0.0.1' });
+    await user.save();
+    userToken = generateAccessToken(user._id, userSessionId);
 
     testEvent = await Event.create({
         title: 'Coupon Event',
@@ -68,16 +80,13 @@ afterEach(async () => {
 describe('Coupon Endpoints', () => {
 
     it('should allow admin to create a coupon', async () => {
-        const res = await request(app)
-            .post('/api/coupons')
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({
-                code: 'SAVE10',
-                discountType: 'percentage',
-                discountValue: 10,
-                maxUses: 100,
-                createdBy: admin._id
-            });
+        const res = await client.csrfRequest('post', '/api/coupons', {
+            code: 'SAVE10',
+            discountType: 'percentage',
+            discountValue: 10,
+            maxUses: 100,
+            createdBy: admin._id
+        }, { Authorization: `Bearer ${adminToken}` });
 
         expect(res.statusCode).toBe(201);
         expect(res.body.success).toBe(true);
@@ -93,13 +102,10 @@ describe('Coupon Endpoints', () => {
             isActive: true
         });
 
-        const res = await request(app)
-            .post('/api/coupons/validate')
-            .set('Authorization', `Bearer ${userToken}`)
-            .send({
-                code: 'VALID20',
-                eventId: testEvent._id
-            });
+        const res = await client.csrfRequest('post', '/api/coupons/validate', {
+            code: 'VALID20',
+            eventId: testEvent._id
+        }, { Authorization: `Bearer ${userToken}` });
 
         expect(res.statusCode).toBe(200);
         expect(res.body.success).toBe(true);
@@ -119,13 +125,10 @@ describe('Coupon Endpoints', () => {
             isActive: true
         });
 
-        const res = await request(app)
-            .post('/api/coupons/validate')
-            .set('Authorization', `Bearer ${userToken}`)
-            .send({
-                code: 'EXPIRED',
-                eventId: testEvent._id
-            });
+        const res = await client.csrfRequest('post', '/api/coupons/validate', {
+            code: 'EXPIRED',
+            eventId: testEvent._id
+        }, { Authorization: `Bearer ${userToken}` });
 
         expect(res.statusCode).toBe(400);
         expect(res.body.success).toBe(false);
@@ -143,13 +146,10 @@ describe('Coupon Endpoints', () => {
             isActive: true
         });
 
-        const res = await request(app)
-            .post('/api/coupons/validate')
-            .set('Authorization', `Bearer ${userToken}`)
-            .send({
-                code: 'MAXED',
-                eventId: testEvent._id
-            });
+        const res = await client.csrfRequest('post', '/api/coupons/validate', {
+            code: 'MAXED',
+            eventId: testEvent._id
+        }, { Authorization: `Bearer ${userToken}` });
 
         expect(res.statusCode).toBe(400);
         expect(res.body.success).toBe(false);
@@ -177,13 +177,10 @@ describe('Coupon Endpoints', () => {
             isActive: true
         });
 
-        const res = await request(app)
-            .post('/api/coupons/validate')
-            .set('Authorization', `Bearer ${userToken}`)
-            .send({
-                code: 'SPECIFIC',
-                eventId: testEvent._id
-            });
+        const res = await client.csrfRequest('post', '/api/coupons/validate', {
+            code: 'SPECIFIC',
+            eventId: testEvent._id
+        }, { Authorization: `Bearer ${userToken}` });
 
         expect(res.statusCode).toBe(400);
         expect(res.body.success).toBe(false);

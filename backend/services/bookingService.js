@@ -17,6 +17,7 @@ const Coupon = require('../models/Coupon');
 const Waitlist = require('../models/Waitlist');
 const notificationService = require('./notificationService');
 const logger = require('../utils/logger');
+const ticketsService = require('./ticketsService');
 
 const calculateCouponDiscount = (coupon, baseAmount) => {
   if (!coupon) return 0;
@@ -76,7 +77,7 @@ const getCouponForEvent = async (couponCode, eventId, sessionOptions) => {
 exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, metadata = {} }) => {
   // Use explicit env var instead of private driver topology sniffing (M-03)
   // Only start session when transactions are actually needed (M-14)
-  const useSession = process.env.ENABLE_TRANSACTIONS === 'true';
+  let useSession = process.env.ENABLE_TRANSACTIONS === 'true';
   let session = null;
   if (useSession) {
     try {
@@ -85,28 +86,20 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
     } catch (err) {
       logger.warn('Unable to start transaction; falling back to non-transactional booking flow:', err.message);
       session = null;
+      useSession = false;
     }
   } else {
     logger.warn('Transactions disabled (ENABLE_TRANSACTIONS != true); using non-transactional booking flow.');
   }
 
   const sessionOptions = session ? { session } : {};
+  let couponIncremented = false;
+  let couponIdToRollback = null;
+  let seatMutation = null; // { type: 'named'|'ga', seatNumber, revenueInc }
 
   try {
-    const eventQuery = Event.findById(eventId);
-    if (useSession) eventQuery.session(session);
-    const event = await eventQuery;
-    if (!event) {
-      const err = new Error('Event not found');
-      err.status = 404;
-      throw err;
-    }
-
-    if (event.status !== 'published') {
-      const err = new Error('Event is not available for booking');
-      err.status = 400;
-      throw err;
-    }
+    // Centralized business-rule guard (published + not in the past)
+    const event = await ticketsService.findBookableEvent(eventId);
 
     // Check seat availability
     if (event.seating && event.seating.availableSeats <= 0) {
@@ -162,6 +155,8 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
         err.status = 400;
         throw err;
       }
+      couponIncremented = true;
+      couponIdToRollback = appliedCoupon._id;
     }
 
     const finalAmount = payment?.amount ?? (event.pricing?.amount || 0);
@@ -203,6 +198,7 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
         },
         { new: true, ...sessionOptions }
       );
+      seatMutation = { type: 'named', seatNumber: selectedSeat, revenueInc };
     } else if (event.seating) {
       // General admission — just decrement available seats atomically
       updatedEvent = await Event.findOneAndUpdate(
@@ -219,6 +215,7 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
         },
         { new: true, ...sessionOptions }
       );
+      seatMutation = { type: 'ga', seatNumber: selectedSeat, revenueInc };
     }
 
     if (!updatedEvent) {
@@ -263,8 +260,33 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
 
     return { ticket, event: updatedEvent };
   } catch (error) {
-    if (useSession) {
-      await session.abortTransaction();
+    if (session) {
+      await session.abortTransaction().catch(() => {});
+    } else {
+      // Compensating rollback for non-transactional flow to preserve integrity.
+      if (couponIncremented && couponIdToRollback) {
+        await Coupon.updateOne({ _id: couponIdToRollback, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1 } }).catch(() => {});
+      }
+      if (seatMutation) {
+        const rollbackUpdate = {
+          $inc: {
+            'seating.availableSeats': 1,
+            'analytics.bookings': -1,
+            'analytics.revenue': -(seatMutation.revenueInc || 0),
+          },
+        };
+        if (seatMutation.type === 'named') {
+          await Event.updateOne(
+            { _id: eventId, 'seating.seatMap.seatNumber': seatMutation.seatNumber, 'seating.seatMap.bookedBy': userId },
+            {
+              ...rollbackUpdate,
+              $set: { 'seating.seatMap.$.isBooked': false, 'seating.seatMap.$.bookedBy': null },
+            }
+          ).catch(() => {});
+        } else {
+          await Event.updateOne({ _id: eventId }, rollbackUpdate).catch(() => {});
+        }
+      }
     }
     throw error;
   } finally {
@@ -279,53 +301,71 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
  * @returns {object} { ticket, event }
  */
 exports.cancelBooking = async (ticketId, userId) => {
-  const ticket = await Ticket.findById(ticketId);
-  if (!ticket) {
-    const err = new Error('Ticket not found');
-    err.status = 404;
-    throw err;
+  let session;
+  try {
+    session = await mongoose.startSession();
+    session.startTransaction();
+  } catch (err) {
+    throw Object.assign(new Error('Cancellation requires database transactions to be enabled'), { status: 500 });
   }
 
-  if (ticket.user.toString() !== userId.toString()) {
-    const err = new Error('Not authorized to cancel this ticket');
-    err.status = 403;
-    throw err;
-  }
-
-  if (ticket.status !== 'booked') {
-    const err = new Error(`Cannot cancel a ticket with status: ${ticket.status}`);
-    err.status = 400;
-    throw err;
-  }
-
-  const event = await Event.findById(ticket.event);
-  if (!event) {
-    const err = new Error('Associated event not found');
-    err.status = 404;
-    throw err;
-  }
-
-  // Atomic seat release and analytics update
-  const updateQuery = { _id: ticket.event };
-  const updatePayload = {
-    $inc: {
-      'analytics.bookings': -1
+  try {
+    const ticket = await Ticket.findById(ticketId).session(session);
+    if (!ticket) {
+      const err = new Error('Ticket not found');
+      err.status = 404;
+      throw err;
     }
-  };
 
-  if (ticket.seatNumber && event.seating?.seatMap) {
-    updateQuery['seating.seatMap.seatNumber'] = ticket.seatNumber;
-    updatePayload.$set = { 'seating.seatMap.$.isBooked': false, 'seating.seatMap.$.bookedBy': null };
-    updatePayload.$inc['seating.availableSeats'] = 1;
-
-    if (event.pricing?.type === 'paid') {
-      updatePayload.$inc['analytics.revenue'] = -(ticket.payment?.amount || 0);
+    if (ticket.user.toString() !== userId.toString()) {
+      const err = new Error('Not authorized to cancel this ticket');
+      err.status = 403;
+      throw err;
     }
-  } else if (event.seating) {
-    updatePayload.$inc['seating.availableSeats'] = 1;
-  }
 
-  await Event.findOneAndUpdate(updateQuery, updatePayload);
+    if (ticket.status !== 'booked') {
+      const err = new Error(`Cannot cancel a ticket with status: ${ticket.status}`);
+      err.status = 400;
+      throw err;
+    }
+
+    const event = await Event.findById(ticket.event).session(session);
+    if (!event) {
+      const err = new Error('Associated event not found');
+      err.status = 404;
+      throw err;
+    }
+
+    const seatNumber = ticket.seatNumber;
+    const isGA = typeof seatNumber === 'string' && seatNumber.startsWith('GA-');
+    const revenueDec = event.pricing?.type === 'paid' ? (ticket.payment?.amount || 0) : 0;
+
+    if (isGA) {
+      await Event.updateOne(
+        { _id: ticket.event },
+        {
+          $inc: {
+            'seating.availableSeats': 1,
+            'analytics.bookings': -1,
+            'analytics.revenue': -revenueDec,
+          },
+        },
+        { session }
+      );
+    } else {
+      await Event.updateOne(
+        { _id: ticket.event, 'seating.seatMap.seatNumber': seatNumber },
+        {
+          $set: { 'seating.seatMap.$.isBooked': false, 'seating.seatMap.$.bookedBy': null },
+          $inc: {
+            'seating.availableSeats': 1,
+            'analytics.bookings': -1,
+            'analytics.revenue': -revenueDec,
+          },
+        },
+        { session }
+      );
+    }
 
   // Check waitlist — notify next person
   const nextWaitlist = await Waitlist.findOne({ event: ticket.event, status: 'pending' }).sort({ createdAt: 1 });
@@ -345,9 +385,11 @@ exports.cancelBooking = async (ticketId, userId) => {
   }
 
   // Update ticket status
-  ticket.status = 'cancelled';
-  ticket.payment.status = 'refunded';
-  await ticket.save();
+    ticket.status = 'cancelled';
+    if (ticket.payment) ticket.payment.status = 'refunded';
+    await ticket.save({ session });
+
+    await session.commitTransaction();
 
   // Notify user
   notificationService.notify(userId, {
@@ -358,5 +400,11 @@ exports.cancelBooking = async (ticketId, userId) => {
     actionUrl: `/user/tickets`,
   });
 
-  return { ticket, event };
+    return { ticket, event };
+  } catch (error) {
+    await session.abortTransaction().catch(() => {});
+    throw error;
+  } finally {
+    session.endSession();
+  }
 };

@@ -2,8 +2,11 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const request = require('supertest');
+const crypto = require('crypto');
 const app = require('../server');
 const User = require('../models/User');
+const Event = require('../models/Event');
+const Ticket = require('../models/Ticket');
 const { createTestClient } = require('../test-utils/testClient');
 
 let mongoServer;
@@ -125,6 +128,72 @@ describe('Security Hardening Tests', () => {
 
       expect(response.statusCode).toBe(403);
       expect(response.body.message).toMatch(/csrf/i);
+    });
+  });
+
+  describe('6. Payment Token Secret Enforcement', () => {
+    it('fails module initialization if PAYMENT_HMAC_SECRET is missing', () => {
+      const originalSecret = process.env.PAYMENT_HMAC_SECRET;
+      delete process.env.PAYMENT_HMAC_SECRET;
+      jest.resetModules();
+
+      expect(() => require('../utils/paymentTokens')).toThrow('Missing PAYMENT_HMAC_SECRET');
+
+      process.env.PAYMENT_HMAC_SECRET = originalSecret || 'test_payment_hmac_secret_for_ci';
+      jest.resetModules();
+    });
+  });
+
+  describe('7. QR signing uses dedicated QR_HMAC_SECRET', () => {
+    it('signs QR payload with QR_HMAC_SECRET, not JWT_SECRET', async () => {
+      const event = await Event.create({
+        title: 'QR Security Event',
+        description: 'Security test event for QR signature keying.',
+        category: 'conference',
+        date: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        venue: { name: 'V', address: 'A', city: 'C', country: 'UAE', capacity: 10 },
+        organizer: new mongoose.Types.ObjectId(),
+        seating: { totalSeats: 10, availableSeats: 10 },
+        status: 'published',
+      });
+
+      const user = await User.create({
+        name: 'QR Test User',
+        email: 'qr-test-user@example.com',
+        password: 'UniqueTestPass!2026',
+        role: 'user',
+        emailVerified: true,
+      });
+
+      const ticket = await Ticket.create({
+        event: event._id,
+        user: user._id,
+        seatNumber: 'S001',
+        payment: { status: 'completed', amount: 0, paymentMethod: 'free' },
+      });
+
+      const parsed = JSON.parse(ticket.qrCode);
+      const { sig, ...payload } = parsed;
+      const expected = crypto
+        .createHmac('sha256', process.env.QR_HMAC_SECRET)
+        .update(JSON.stringify(payload))
+        .digest('hex');
+
+      expect(sig).toBe(expected);
+    });
+  });
+
+  describe('8. Pagination normalization and upload access', () => {
+    it('normalizes invalid page/limit values for events listing', async () => {
+      const response = await request(app).get('/api/events?page=abc&limit=xyz');
+      expect(response.statusCode).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.pagination.current).toBe(1);
+    });
+
+    it('requires authentication for uploaded file retrieval', async () => {
+      const response = await request(app).get('/api/upload/files/sample.png');
+      expect(response.statusCode).toBe(401);
     });
   });
 });

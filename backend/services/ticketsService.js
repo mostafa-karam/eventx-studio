@@ -325,7 +325,7 @@ class TicketsService {
         const { sig, ...qrData } = parsed;
         if (sig) {
           const expectedSig = crypto
-            .createHmac('sha256', config.secrets.jwt)
+            .createHmac('sha256', config.secrets.qrHmac)
             .update(JSON.stringify(qrData))
             .digest('hex');
           if (sig !== expectedSig) {
@@ -361,26 +361,75 @@ class TicketsService {
    * Refund a ticket.
    */
   async refundTicket(ticketId, user) {
-    const ticket = await Ticket.findById(ticketId).populate('event');
-    if (!ticket) throw Object.assign(new Error('Ticket not found'), { status: 404 });
-
-    if (ticket.user.toString() !== user._id.toString() && user.role !== 'admin') {
-      throw Object.assign(new Error('Not authorized to refund this ticket'), { status: 403 });
+    let session;
+    try {
+      session = await mongoose.startSession();
+      session.startTransaction();
+    } catch (err) {
+      // Refunds must be atomic to avoid capacity corruption.
+      throw Object.assign(new Error('Refunds require database transactions to be enabled'), { status: 500 });
     }
 
-    if (ticket.status === 'cancelled') throw Object.assign(new Error('Ticket is already cancelled'), { status: 400 });
-    if (ticket.status === 'used') throw Object.assign(new Error('Cannot refund a used ticket'), { status: 400 });
+    try {
+      const ticket = await Ticket.findById(ticketId).populate('event').session(session);
+      if (!ticket) throw Object.assign(new Error('Ticket not found'), { status: 404 });
 
-    ticket.status = 'cancelled';
-    ticket.payment.status = 'refunded';
-    await ticket.save();
+      if (ticket.user.toString() !== user._id.toString() && user.role !== 'admin') {
+        throw Object.assign(new Error('Not authorized to refund this ticket'), { status: 403 });
+      }
 
-    // Free up seat
-    const event = await Event.findById(ticket.event._id);
-    event.cancelSeat(ticket.seatNumber);
-    await event.save();
+      if (ticket.status === 'cancelled') throw Object.assign(new Error('Ticket is already cancelled'), { status: 400 });
+      if (ticket.status === 'used') throw Object.assign(new Error('Cannot refund a used ticket'), { status: 400 });
 
-    return { ticket, event };
+      // Update ticket first inside the transaction.
+      ticket.status = 'cancelled';
+      if (ticket.payment) {
+        ticket.payment.status = 'refunded';
+      }
+      await ticket.save({ session });
+
+      const eventId = ticket.event?._id || ticket.event;
+      const seatNumber = ticket.seatNumber;
+      const isGA = typeof seatNumber === 'string' && seatNumber.startsWith('GA-');
+
+      // Release capacity atomically; GA tickets do NOT map to seatMap entries.
+      if (isGA) {
+        await Event.updateOne(
+          { _id: eventId },
+          {
+            $inc: {
+              'seating.availableSeats': 1,
+              'analytics.bookings': -1,
+              'analytics.revenue': -(ticket.payment?.amount || 0),
+            },
+          },
+          { session }
+        );
+      } else {
+        await Event.updateOne(
+          { _id: eventId, 'seating.seatMap.seatNumber': seatNumber },
+          {
+            $set: { 'seating.seatMap.$.isBooked': false, 'seating.seatMap.$.bookedBy': null },
+            $inc: {
+              'seating.availableSeats': 1,
+              'analytics.bookings': -1,
+              'analytics.revenue': -(ticket.payment?.amount || 0),
+            },
+          },
+          { session }
+        );
+      }
+
+      await session.commitTransaction();
+
+      const event = await Event.findById(eventId);
+      return { ticket, event };
+    } catch (e) {
+      await session.abortTransaction().catch(() => {});
+      throw e;
+    } finally {
+      session.endSession();
+    }
   }
 
   /**

@@ -9,31 +9,19 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const logger = require('./logger');
 
+const getDemoPassword = () => {
+  const pw = process.env.DEMO_SEED_PASSWORD;
+  if (!pw) {
+    throw new Error('Missing DEMO_SEED_PASSWORD. Put it in .env.development (not committed).');
+  }
+  return pw;
+};
+
 const DEMO_USERS = [
-  {
-    name: 'Admin User',
-    email: 'admin@eventx.dev',
-    password: 'Admin@Dev2024!',
-    role: 'admin',
-  },
-  {
-    name: 'Venue Admin',
-    email: 'venue@eventx.dev',
-    password: 'Venue@Dev2024!',
-    role: 'venue_admin',
-  },
-  {
-    name: 'Event Organizer',
-    email: 'organizer@eventx.dev',
-    password: 'Organizer@Dev2024!',
-    role: 'organizer',
-  },
-  {
-    name: 'Regular User',
-    email: 'user@eventx.dev',
-    password: 'User@Dev2024!',
-    role: 'user',
-  },
+  { name: 'Admin User', email: 'admin@eventx.dev', role: 'admin' },
+  { name: 'Venue Admin', email: 'venue@eventx.dev', role: 'venue_admin' },
+  { name: 'Event Organizer', email: 'organizer@eventx.dev', role: 'organizer' },
+  { name: 'Regular User', email: 'user@eventx.dev', role: 'user' },
 ];
 
 async function seedUsers() {
@@ -60,7 +48,7 @@ async function seedUsers() {
     const user = new User({
       name: userData.name,
       email: userData.email,
-      password: userData.password,
+      password: getDemoPassword(),
       role: userData.role,
       emailVerified: true,
       isActive: true,

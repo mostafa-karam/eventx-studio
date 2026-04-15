@@ -60,6 +60,13 @@ const loadUserFromToken = async (req, { optional = false } = {}) => {
       return { error: { status: 401, message: 'Account is deactivated.' } };
     }
 
+    // Enforce email verification for all authenticated routes.
+    // Unverified users must complete /api/auth/verify-email before accessing protected APIs.
+    if (!user.emailVerified) {
+      if (optional) return null;
+      return { error: { status: 403, message: 'Email verification required.' } };
+    }
+
     if (user.isLocked) {
       if (optional) return null;
       return { error: { status: 423, message: 'Account is temporarily locked due to security reasons.' } };

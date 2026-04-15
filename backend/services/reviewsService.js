@@ -79,6 +79,17 @@ class ReviewsService {
       status: { $in: ['booked', 'used'] },
     });
 
+    // Enforce 24-hour cooldown after deletion to prevent delete/repost abuse.
+    const previousReview = await Review.findOne({ event: eventId, user: userId })
+      .sort({ createdAt: -1 })
+      .select('deletedAt createdAt');
+    if (previousReview?.deletedAt) {
+      const cooldownUntil = new Date(previousReview.deletedAt.getTime() + 24 * 60 * 60 * 1000);
+      if (cooldownUntil > new Date()) {
+        throw Object.assign(new Error('You must wait 24 hours after deleting a review before creating a new one'), { status: 400 });
+      }
+    }
+
     const review = new Review({
       event: eventId,
       user: userId,

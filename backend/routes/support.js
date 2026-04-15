@@ -2,7 +2,7 @@ const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 const { createSupportTicketValidator } = require('../middleware/validators');
 const {
   getTickets,
@@ -25,6 +25,6 @@ router.get('/tickets/:id', authenticate, asyncHandler(getTicketById));
 router.post('/tickets/:id/responses', authenticate, asyncHandler(addTicketResponse));
 
 // Update support ticket status (for staff)
-router.patch('/tickets/:id/status', authenticate, asyncHandler(updateTicketStatus));
+router.patch('/tickets/:id/status', authenticate, requireAdmin, asyncHandler(updateTicketStatus));
 
 module.exports = router;

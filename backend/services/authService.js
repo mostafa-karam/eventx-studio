@@ -111,17 +111,15 @@ exports.registerUser = async (userData, deviceInfo) => {
   });
 
   const verificationToken = user.generateEmailVerificationToken();
-  const sessionId = crypto.randomUUID();
-  user.addSession(sessionId, deviceInfo);
-
-  const { accessToken, refreshToken } = rotateSessionTokens(user, sessionId);
   await user.save();
 
   sendVerificationEmail(user.email, verificationToken).catch((error) =>
     logger.error(`Failed to send verification email: ${error.message}`),
   );
 
-  return { user, accessToken, refreshToken, role: safeRole, sessionId };
+  // IMPORTANT: Do NOT create a session or issue tokens until the user verifies email.
+  // This prevents unverified accounts from receiving valid auth cookies.
+  return { user, role: safeRole };
 };
 
 // Login

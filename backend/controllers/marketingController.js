@@ -1,11 +1,42 @@
 const Campaign = require('../models/Campaign');
 const logger = require('../utils/logger');
+const Event = require('../models/Event');
+
+const assertCampaignAccess = async (user, campaignId) => {
+    const query = { _id: campaignId };
+    if (user.role !== 'admin') {
+        query.createdBy = user._id;
+    }
+    const campaign = await Campaign.findOne(query);
+    if (!campaign) {
+        const err = new Error('Campaign not found');
+        err.status = 404;
+        throw err;
+    }
+    return campaign;
+};
+
+const assertEventOwnershipIfProvided = async (user, eventId) => {
+    if (!eventId) return;
+    const event = await Event.findById(eventId).select('organizer');
+    if (!event) {
+        const err = new Error('Event not found');
+        err.status = 404;
+        throw err;
+    }
+    if (user.role !== 'admin' && String(event.organizer) !== String(user._id)) {
+        const err = new Error('Not authorized to manage campaigns for this event');
+        err.status = 403;
+        throw err;
+    }
+};
 
 // @desc    Get marketing campaigns and stats
 // @access  Private
 exports.getCampaigns = async (req, res) => {
     try {
-        const campaigns = await Campaign.find({ createdBy: req.user._id })
+        const query = req.user.role === 'admin' ? {} : { createdBy: req.user._id };
+        const campaigns = await Campaign.find(query)
             .populate('eventId', 'title')
             .sort({ createdAt: -1 });
 
@@ -76,6 +107,8 @@ exports.createCampaign = async (req, res) => {
     try {
         const { name, type, eventId, eventName, subject, content, targetAudience, scheduledAt } = req.body;
 
+        await assertEventOwnershipIfProvided(req.user, eventId);
+
         const campaign = new Campaign({
             name,
             type,
@@ -117,10 +150,11 @@ exports.createCampaign = async (req, res) => {
 // @access  Private
 exports.getCampaignById = async (req, res) => {
     try {
-        const campaign = await Campaign.findOne({
-            _id: req.params.id,
-            createdBy: req.user._id
-        }).populate('eventId', 'title');
+        const query = { _id: req.params.id };
+        if (req.user.role !== 'admin') {
+            query.createdBy = req.user._id;
+        }
+        const campaign = await Campaign.findOne(query).populate('eventId', 'title');
 
         if (!campaign) {
             return res.status(404).json({
@@ -162,19 +196,7 @@ exports.getCampaignById = async (req, res) => {
 // @access  Private
 exports.updateCampaign = async (req, res) => {
     try {
-        const query = { _id: req.params.id };
-        if (req.user.role !== 'admin') {
-            query.createdBy = req.user._id;
-        }
-
-        const campaign = await Campaign.findOne(query);
-
-        if (!campaign) {
-            return res.status(404).json({
-                success: false,
-                message: 'Campaign not found'
-            });
-        }
+        const campaign = await assertCampaignAccess(req.user, req.params.id);
 
         // Don't allow editing sent campaigns
         if (campaign.status === 'completed') {
@@ -229,17 +251,8 @@ exports.updateCampaign = async (req, res) => {
 // @access  Private
 exports.deleteCampaign = async (req, res) => {
     try {
-        const campaign = await Campaign.findOneAndDelete({
-            _id: req.params.id,
-            createdBy: req.user._id
-        });
-
-        if (!campaign) {
-            return res.status(404).json({
-                success: false,
-                message: 'Campaign not found'
-            });
-        }
+        const campaign = await assertCampaignAccess(req.user, req.params.id);
+        await campaign.deleteOne();
 
         res.json({
             success: true,
@@ -258,17 +271,8 @@ exports.deleteCampaign = async (req, res) => {
 // @access  Private
 exports.launchCampaign = async (req, res) => {
     try {
-        const campaign = await Campaign.findOne({
-            _id: req.params.id,
-            createdBy: req.user._id
-        });
-
-        if (!campaign) {
-            return res.status(404).json({
-                success: false,
-                message: 'Campaign not found'
-            });
-        }
+        const campaign = await assertCampaignAccess(req.user, req.params.id);
+        await assertEventOwnershipIfProvided(req.user, campaign.eventId);
 
         if (campaign.status !== 'draft' && campaign.status !== 'scheduled') {
             return res.status(400).json({

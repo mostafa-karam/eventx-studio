@@ -144,15 +144,6 @@ app.get('/api/auth/csrf-token', (req, res) => {
   res.json({ success: true, csrfToken: token });
 });
 
-// ─── Serve Uploaded Files ────────────────────────────────────────────
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  setHeaders: (res) => {
-    res.set('X-Content-Type-Options', 'nosniff');
-    res.set('Content-Disposition', 'inline');
-    res.set('Cache-Control', 'public, max-age=86400');
-  },
-}));
-
 // ─── Request Logging ─────────────────────────────────────────────────
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));

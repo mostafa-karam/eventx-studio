@@ -15,14 +15,17 @@ const crypto = require('crypto');
 const logger = require('./logger');
 
 const TOKEN_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
+const PAYMENT_HMAC_SECRET = process.env.PAYMENT_HMAC_SECRET;
+
+if (!PAYMENT_HMAC_SECRET) {
+  throw new Error('Missing PAYMENT_HMAC_SECRET');
+}
 
 /**
- * Get the HMAC secret. Falls back to JWT_SECRET if dedicated env var is missing.
+ * Get the dedicated payment-token HMAC secret.
  * @returns {string}
  */
-const getSecret = () => {
-  return process.env.PAYMENT_HMAC_SECRET;
-};
+const getSecret = () => PAYMENT_HMAC_SECRET;
 
 /**
  * Create an HMAC-signed payment token.

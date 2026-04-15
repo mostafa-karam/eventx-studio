@@ -10,7 +10,6 @@ const {
   deleteNotification,
   createNotification,
   sendBookingConfirmation,
-  createSystemNotification
 } = require('../controllers/notificationsController');
 
 // Get all notifications for the authenticated user
@@ -28,8 +27,7 @@ router.delete('/:id', authenticate, asyncHandler(deleteNotification));
 // Create notification (for system use)
 router.post('/', authenticate, asyncHandler(createNotification));
 
-module.exports = router;
-module.exports.createSystemNotification = createSystemNotification;
-
 // Booking confirmation notification endpoint used by frontend
 router.post('/send-booking-confirmation', authenticate, asyncHandler(sendBookingConfirmation));
+
+module.exports = router;

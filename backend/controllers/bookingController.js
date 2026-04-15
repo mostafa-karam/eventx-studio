@@ -9,6 +9,7 @@ const Event = require('../models/Event');
 const bookingService = require('../services/bookingService');
 const auditService = require('../services/auditService');
 const { verifyPaymentToken } = require('../utils/paymentTokens');
+const ticketsService = require('../services/ticketsService');
 
 // @desc    Initiates a booking session
 // @access  Private
@@ -64,8 +65,7 @@ exports.confirmBooking = async (req, res) => {
     } = req.validatedBody || req.body || {};
 
     try {
-        const event = await Event.findById(eventId);
-        if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
+        const event = await ticketsService.findBookableEvent(eventId);
 
         // Calculate expected payment amount considering coupon
         let expectedAmount = event.pricing?.amount || 0;
@@ -102,6 +102,9 @@ exports.confirmBooking = async (req, res) => {
             }
             try {
                 const verifiedPayment = verifyPaymentToken(paymentToken);
+                if (!paymentId) {
+                    return res.status(400).json({ success: false, message: 'paymentId is required for paid events' });
+                }
                 // Ensure token matches user, event, and amount
                 if (verifiedPayment.userId.toString() !== req.user._id.toString() ||
                     verifiedPayment.eventId !== eventId ||
@@ -109,6 +112,10 @@ exports.confirmBooking = async (req, res) => {
                     Number(verifiedPayment.quantity) !== 1 ||
                     verifiedPayment.currency !== (event.pricing?.currency || 'USD')) {
                     return res.status(400).json({ success: false, message: 'Invalid payment token - amount, quantity, or event mismatch' });
+                }
+                // Bind paymentId to a verified transaction id to prevent tampering/replay.
+                if (!verifiedPayment.txId || String(verifiedPayment.txId) !== String(paymentId)) {
+                    return res.status(400).json({ success: false, message: 'Invalid payment token - transaction mismatch' });
                 }
             } catch (err) {
                 logger.warn('Payment token verification failed: ' + err.message);

@@ -1,45 +1,58 @@
-# Security Posture & Configurations
+# Backend Security Guide
 
-The EventX Studio backend employs a zero-trust, defense-in-depth model to protect Organizer and Attendee data. All traffic routing through Express interacts with a dense ring of security middlewares.
+This backend applies layered controls across transport, auth/session, CSRF, input handling, and abuse prevention.
 
-## Authentication (JWT & HttpOnly Cookies)
+## Core Controls
 
-We do not transmit authorization tokens via JSON bodies or LocalStorage, defeating standard XSS (Cross-Site Scripting) token exfiltration.
-- **Login Flow**: Upon successful authentication, the server generates a JSON Web Token (JWT) signed with `JWT_SECRET`. 
-- **Storage**: The token is set natively as an `HttpOnly`, `Secure` cookie named `token`. The browser handles token attachment automatically.
-- **Refresh Flow**: A parallel `refreshToken` cookie allows users to generate new ephemeral access tokens without continuously requesting credentials.
+- `helmet` with CSP nonces and production HSTS.
+- Global rate limiter and route-specific auth limiters.
+- Request sanitization middleware plus `express-mongo-sanitize`.
+- `hpp` for HTTP parameter pollution defense.
+- JWT access and refresh token separation.
+- Cookie parsing with signed/secure handling support.
 
-## Cross-Site Request Forgery (CSRF)
+## Secrets and Sensitive Configuration
 
-Because tokens are stored in Cookies automatically sent by browsers, the application uses **Double Submit Cookie** + **Token Hash** mitigation via `csrf-csrf`.
-- **Read Operations (`GET`, `HEAD`, `OPTIONS`)**: Allowed through freely.
-- **Mutating Operations (`POST`, `PUT`, `DELETE`)**: The frontend must fetch `/api/v1/auth/csrf-token` to retrieve a cryptographically signed CSRF seed. This seed must be attached to the mutating request under the `X-CSRF-Token` HTTP Header. If the hash derived from the header does not cryptographically match the session context, the server immediately drops the connection (`403 Forbidden`).
+Use unique random values for:
 
-## Rate Limiting (Brute Force Protection)
+- `JWT_SECRET`
+- `JWT_REFRESH_SECRET`
+- `PAYMENT_HMAC_SECRET`
+- `QR_HMAC_SECRET`
+- `SESSION_ENCRYPTION_KEY`
+- `CSRF_SECRET`
 
-`express-rate-limit` governs traffic globally across the entire API space to prevent Denial of Service (DoS) and credential stuffing.
-- **Global API Limit**: 100 requests per 10 minutes per IP.
-- **Authentication Route Limit** (`authLimiter`): 10 requests per 10 minutes per IP to defeat dictionary attacks against schemas like `/login` or `/tfa/verify`.
+Never reuse one secret for multiple domains.
 
-## Payload Sanitization (NoSQL Injection & XSS)
+## CSRF Model
 
-Before body payloads strike the Models, they are sanitized recursively:
-1. **`express-mongo-sanitize`**: Scans the `req.body`, `req.query`, and `req.params`. Any keys beginning with `$` or containing `.` (MongoDB operators) are aggressively stripped. This defeats queries like `{ email: { $gt: "" } }`.
-2. **Data Structure Validation**: Heavily relies on Mongoose schemas forcing `Number` casting or `enum` evaluation, preventing unexpected object properties from sliding into DB mutations.
+- CSRF protection is mounted on `/api`.
+- Safe methods (`GET`, `HEAD`, `OPTIONS`) are exempt.
+- Mutating requests must include `X-CSRF-Token`.
+- Token endpoint: `GET /api/auth/csrf-token`.
 
-## HTTP Headers (Helmet)
+## Upload Hardening
 
-Helmet sets 11 protective HTTP headers securely defining browser behavioral limits:
-- **`Content-Security-Policy`**: Governs authorized resource origins.
-- **`Strict-Transport-Security`**: Enforces strict HTTPS binding (HSTS) for 1 year.
-- **`X-Frame-Options`**: `DENY`. Stops UI redressing/Clickjacking techniques.
-- **`X-Download-Options`**: `noopen`. Mitigates IE8 execution risks.
-- **`X-Content-Type-Options`**: `nosniff`. Blocks MIME-type sniffing.
+- Upload route requires authentication.
+- Current implementation validates both extension and file signature before serving.
+- Retrieval endpoint: `GET /api/upload/files/:filename`.
+- Response uses `X-Content-Type-Options: nosniff`.
 
-## Session Revocation
+## CORS and Proxy Notes
 
-When a user logs out (`/api/v1/auth/logout`), the server responds by overwriting the `token` and `refreshToken` cookies with explicit `expires: new Date(Date.now() - 1)` parameters, causing immediate local annihilation of auth states on the client.
+- Allowed origins come from `FRONTEND_ORIGIN` or `FRONTEND_URL`.
+- In production, requests without `Origin` are rejected.
+- Set `TRUST_PROXY` only when behind a trusted reverse proxy.
 
-## Multi-Factor Authentication (MFA/2FA)
+## Known Security Gaps (Current Audit)
 
-Administrators and Organizers can opt into Time-Based One-Time Password (TOTP) constraints leveraging `otplib`. Upon enabling, login validation routes enforce a secondary intercept requiring users to supply temporary codes verified against the hashed Base32 `twoFactorSecret` locked to their schema.
+The following issues were identified and should be remediated:
+
+1. High: `venue_admin` can currently list platform-wide hall bookings instead of own halls only.
+2. Medium: event create/update controllers rely on `req.body` instead of strictly using validated payload.
+3. Medium: `verify-email` and `resend-verification` do not have dedicated abuse rate limiting.
+4. Medium: coupon mutations lack explicit request validators.
+5. Low: upload MIME signature check performs synchronous file reads.
+6. Low: development email sink can store sensitive links/tokens in plain temp logs.
+
+Track these items in engineering backlog and validate fixes with regression tests.

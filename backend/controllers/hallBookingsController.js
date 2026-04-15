@@ -8,6 +8,26 @@ const notificationService = require('../services/notificationService');
 // Prevents injection of MongoDB operators (e.g. { "$ne": null }) via req.query
 const VALID_BOOKING_STATUSES = ['pending', 'approved', 'rejected', 'cancelled', 'maintenance'];
 
+const assertHallOwnershipForVenueAdmin = async (req, hallId) => {
+    if (req.user?.role === 'admin') return;
+    if (req.user?.role !== 'venue_admin') {
+        return;
+    }
+
+    const hall = await Hall.findById(hallId).select('createdBy');
+    if (!hall) {
+        const error = new Error('Hall not found');
+        error.status = 404;
+        throw error;
+    }
+
+    if (String(hall.createdBy) !== String(req.user._id)) {
+        const error = new Error('Not authorized to manage bookings for this hall');
+        error.status = 403;
+        throw error;
+    }
+};
+
 // @desc    Get all hall bookings (venue_admin, admin)
 // @access  Private (venue_admin, admin)
 exports.getPlatformBookings = async (req, res) => {
@@ -290,6 +310,8 @@ exports.approveBooking = async (req, res) => {
             });
         }
 
+        await assertHallOwnershipForVenueAdmin(req, booking.hall);
+
         if (booking.status !== 'pending') {
             if (useSession) await session.abortTransaction();
             return res.status(400).json({
@@ -383,6 +405,8 @@ exports.rejectBooking = async (req, res) => {
             });
         }
 
+        await assertHallOwnershipForVenueAdmin(req, booking.hall);
+
         if (booking.status !== 'pending') {
             return res.status(400).json({
                 success: false,
@@ -437,7 +461,8 @@ exports.cancelBooking = async (req, res) => {
             });
         }
 
-        // FIX M-05 — Allow venue_admins to cancel bookings since they can approve/reject them
+        // Organizer can cancel their own booking; venue_admin can cancel bookings
+        // only for halls they own; admin can cancel anything.
         const isOwner = booking.organizer.toString() === req.user._id.toString();
         const isAdminOrVenueAdmin = ['admin', 'venue_admin'].includes(req.user.role);
 
@@ -446,6 +471,10 @@ exports.cancelBooking = async (req, res) => {
                 success: false,
                 message: 'Not authorized to cancel this booking'
             });
+        }
+
+        if (!isOwner && req.user.role === 'venue_admin') {
+            await assertHallOwnershipForVenueAdmin(req, booking.hall);
         }
 
         if (booking.status === 'cancelled') {

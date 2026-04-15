@@ -70,7 +70,10 @@ const seedData = async () => {
 
         console.log('--- Inserting realistic mock data... ---');
 
-        const password = 'password123';
+        const password = process.env.DEMO_SEED_PASSWORD;
+        if (!password) {
+            throw new Error('Missing DEMO_SEED_PASSWORD. Put it in .env.development (not committed).');
+        }
 
         // 1. Create Core Users (Fixed logins for ease of access)
         const admin = await User.create({

@@ -91,30 +91,28 @@ describe('Review Soft-Delete & Unique Index', () => {
 
     it('should allow re-submitting a review after soft-deletion', async () => {
         // 1. Submit first review
-        const res1 = await request(app)
-            .post(`/api/events/${testEventId}/reviews`)
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({ rating: 5, title: 'Great!', body: 'Loved it' });
+        const res1 = await client.csrfRequest('post', `/api/events/${testEventId}/reviews`, { rating: 5, title: 'Great!', body: 'Loved it' }, {
+            Authorization: `Bearer ${authToken}`,
+        });
 
         expect(res1.statusCode).toBe(201);
         const reviewId = res1.body.data.review._id;
 
         // 2. Soft-delete the review
-        const resDel = await request(app)
-            .delete(`/api/events/${testEventId}/reviews/${reviewId}`)
-            .set('Authorization', `Bearer ${authToken}`);
+        const resDel = await client.csrfRequest('delete', `/api/events/${testEventId}/reviews/${reviewId}`, undefined, {
+            Authorization: `Bearer ${authToken}`,
+        });
 
         expect(resDel.statusCode).toBe(200);
 
         // 3. Submit a new review for the same event
-        const res2 = await request(app)
-            .post(`/api/events/${testEventId}/reviews`)
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({ rating: 4, title: 'Again!', body: 'Still good' });
+        const res2 = await client.csrfRequest('post', `/api/events/${testEventId}/reviews`, { rating: 4, title: 'Again!', body: 'Still good' }, {
+            Authorization: `Bearer ${authToken}`,
+        });
 
-        // This should now succeed due to partial index
-        expect(res2.statusCode).toBe(201);
-        expect(res2.body.data.review.rating).toBe(4);
+        // Cooldown is now enforced (24h) after deletion.
+        expect(res2.statusCode).toBe(400);
+        expect(res2.body.success).toBe(false);
 
         // 4. Verify original review is still there (soft-deleted) but not in standard list
         const softReview = await Review.findById(reviewId);
@@ -123,22 +121,21 @@ describe('Review Soft-Delete & Unique Index', () => {
         const resList = await request(app)
             .get(`/api/events/${testEventId}/reviews`);
         
-        expect(resList.body.data.reviews.length).toBe(1);
-        expect(resList.body.data.reviews[0]._id).toBe(res2.body.data.review._id);
+        // The only review is now soft-deleted and the replacement is blocked by cooldown,
+        // so the public list should be empty.
+        expect(resList.body.data.reviews.length).toBe(0);
     });
 
     it('should NOT allow multiple active reviews for same event/user', async () => {
         // Submit first review
-        await request(app)
-            .post(`/api/events/${testEventId}/reviews`)
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({ rating: 5, title: 'First', body: '...' });
+        await client.csrfRequest('post', `/api/events/${testEventId}/reviews`, { rating: 5, title: 'First', body: '...' }, {
+            Authorization: `Bearer ${authToken}`,
+        });
 
         // Submit second review (without deleting first)
-        const res = await request(app)
-            .post(`/api/events/${testEventId}/reviews`)
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({ rating: 2, title: 'Second', body: '...' });
+        const res = await client.csrfRequest('post', `/api/events/${testEventId}/reviews`, { rating: 2, title: 'Second', body: '...' }, {
+            Authorization: `Bearer ${authToken}`,
+        });
 
         // Should fail due to unique index (partial index is for deletedAt: null)
         expect(res.statusCode).toBe(400);

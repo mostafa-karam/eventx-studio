@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: [true, 'Password is required'],
-    minlength: [8, 'Password must be at least 8 characters'],
+    minlength: [12, 'Password must be at least 12 characters'],
     select: false // Don't include password in queries by default
   },
   role: {
@@ -103,7 +103,10 @@ const userSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.Mixed,
       get: function(data) {
           if (!data) return data;
-          return typeof data === 'string' && data.includes(':') ? decrypt(data) : data;
+          if (typeof data === 'string' && data.includes(':')) {
+            try { return decrypt(data); } catch { return data; }
+          }
+          return data;
       },
       set: function(data) {
           if (!data) return data;
@@ -323,6 +326,15 @@ userSchema.methods.toJSON = function () {
   delete userObject.twoFactorSecret;
   delete userObject.activeSessions;
   return userObject;
+};
+
+userSchema.methods.setTwoFactorSecret = function (plainSecret) {
+  this.twoFactorSecret = encrypt(String(plainSecret));
+};
+
+userSchema.methods.getTwoFactorSecret = function () {
+  if (!this.twoFactorSecret) return null;
+  return decrypt(this.twoFactorSecret);
 };
 
 // Performance Indexes (email index handled by unique:true on field)

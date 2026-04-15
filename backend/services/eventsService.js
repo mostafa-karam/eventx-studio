@@ -5,6 +5,14 @@ const { sanitizeSearchInput, createSafeRegex } = require('../utils/helpers');
 const { enforceOwnership } = require('../utils/authorization');
 
 class EventsService {
+    toPositiveInt(value, fallback) {
+        const parsed = Number.parseInt(value, 10);
+        if (!Number.isFinite(parsed) || parsed < 1) {
+            return fallback;
+        }
+        return parsed;
+    }
+
     buildEventQuery(queryParams) {
         const { category, search, city, dateFrom, dateTo, priceMin, priceMax, organizerId } = queryParams;
         let query = { status: 'published' };
@@ -54,8 +62,8 @@ class EventsService {
     }
 
     async getEvents(queryParams, page = 1, limit = 12) {
-        page = parseInt(page);
-        limit = Math.min(parseInt(limit), 100);
+        page = this.toPositiveInt(page, 1);
+        limit = Math.min(this.toPositiveInt(limit, 12), 100);
         const skip = (page - 1) * limit;
 
         const query = this.buildEventQuery(queryParams);
@@ -80,8 +88,8 @@ class EventsService {
     }
 
     async getMyEvents(user, queryParams, page = 1, limit = 10) {
-        page = parseInt(page);
-        limit = Math.min(parseInt(limit), 100);
+        page = this.toPositiveInt(page, 1);
+        limit = Math.min(this.toPositiveInt(limit, 10), 100);
         const skip = (page - 1) * limit;
 
         const query = user.role === 'admin' ? {} : { organizer: user._id };
@@ -233,6 +241,9 @@ class EventsService {
         if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
 
         const isAuthorized = user && (user.role === 'admin' || event.organizer.toString() === user._id.toString());
+        if (event.status !== 'published' && !isAuthorized) {
+            throw Object.assign(new Error('Event not found'), { status: 404 });
+        }
         const eventData = event.toObject();
 
         if (!isAuthorized && eventData.seating && eventData.seating.seatMap) {

@@ -1,5 +1,47 @@
 const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
+const REDACTED_VALUE = '[REDACTED]';
+const SENSITIVE_DETAIL_KEYS = new Set([
+  'password',
+  'newPassword',
+  'currentPassword',
+  'token',
+  'refreshToken',
+  'accessToken',
+  'authorization',
+  'cookie',
+  'secret',
+  'emailVerificationToken',
+  'passwordResetToken',
+  'paymentToken',
+]);
+
+const sanitizeDetails = (value, key = '') => {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (SENSITIVE_DETAIL_KEYS.has(String(key))) {
+    return REDACTED_VALUE;
+  }
+
+  if (typeof value === 'string') {
+    return value.length > 1000 ? `${value.slice(0, 1000)}...` : value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeDetails(entry));
+  }
+
+  if (typeof value === 'object') {
+    return Object.entries(value).reduce((accumulator, [nestedKey, nestedValue]) => {
+      accumulator[nestedKey] = sanitizeDetails(nestedValue, nestedKey);
+      return accumulator;
+    }, {});
+  }
+
+  return value;
+};
 
 const normalizeActor = (actor) => {
   if (!actor) {
@@ -33,7 +75,7 @@ const buildEntry = ({ req, actor, action, resource, resourceId, details = {} }) 
     action,
     resource,
     resourceId,
-    details,
+    details: sanitizeDetails(details),
     ipAddress: req?.ip || req?.headers?.['x-forwarded-for'] || 'unknown',
     requestMethod: req?.method || 'unknown',
     requestPath: req?.originalUrl || req?.url || 'unknown',
@@ -49,7 +91,11 @@ exports.log = async ({ req, actor, action, resource, resourceId, details = {} })
     await AuditLog.create(entry);
 
     logger.info('audit.log.created', {
-      audit: entry,
+      requestId: entry.requestId,
+      action: entry.action,
+      resource: entry.resource,
+      resourceId: entry.resourceId,
+      actorRole: entry.actorRole,
     });
   } catch (error) {
     logger.error(`AuditService error: ${error.message}`);

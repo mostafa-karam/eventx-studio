@@ -5,7 +5,8 @@ const app = require('../server');
 const User = require('../models/User');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
-const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { generateAccessToken } = require('../utils/authUtils');
 
 let mongoServer;
 let adminToken;
@@ -26,16 +27,21 @@ beforeAll(async () => {
         email: 'admin_analytics@example.com',
         password: 'UniqueTestPass!2026',
         role: 'admin',
-        isActive: true
+        isActive: true,
+        emailVerified: true
     });
-    adminToken = jwt.sign({ id: admin._id }, process.env.JWT_SECRET || 'test_secret_for_ci', { expiresIn: '1h' });
+    const adminSessionId = crypto.randomUUID();
+    admin.addSession(adminSessionId, { device: 'Jest', ipAddress: '127.0.0.1' });
+    await admin.save();
+    adminToken = generateAccessToken(admin._id, adminSessionId);
 
     const user = await User.create({
         name: 'User',
         email: 'user_analytics@example.com',
         password: 'UniqueTestPass!2026',
         role: 'user',
-        isActive: true
+        isActive: true,
+        emailVerified: true
     });
 
     const organizerUser = await User.create({
@@ -43,10 +49,14 @@ beforeAll(async () => {
         email: 'org_analytics@example.com',
         password: 'UniqueTestPass!2026',
         role: 'organizer',
-        isActive: true
+        isActive: true,
+        emailVerified: true
     });
     organizer = organizerUser;
-    organizerToken = jwt.sign({ id: organizer._id }, process.env.JWT_SECRET || 'test_secret_for_ci', { expiresIn: '1h' });
+    const organizerSessionId = crypto.randomUUID();
+    organizer.addSession(organizerSessionId, { device: 'Jest', ipAddress: '127.0.0.1' });
+    await organizer.save();
+    organizerToken = generateAccessToken(organizer._id, organizerSessionId);
 
     // Seed some metrics
     const event = await Event.create({
@@ -144,9 +154,13 @@ describe('Analytics Endpoints', () => {
             email: 'other@example.com',
             password: 'UniqueTestPass!2026',
             role: 'organizer',
-            isActive: true
+            isActive: true,
+            emailVerified: true
         });
-        const otherOrgToken = jwt.sign({ id: otherOrg._id }, process.env.JWT_SECRET || 'test_secret_for_ci', { expiresIn: '1h' });
+        const otherSessionId = crypto.randomUUID();
+        otherOrg.addSession(otherSessionId, { device: 'Jest', ipAddress: '127.0.0.1' });
+        await otherOrg.save();
+        const otherOrgToken = generateAccessToken(otherOrg._id, otherSessionId);
 
         const event = await Event.findOne({ title: 'Analytics Event' });
 

@@ -583,16 +583,19 @@ const paginationQueryValidator = [
 const createSupportTicketValidator = [
   body('subject').isString().trim().isLength({ min: 5, max: 200 }).withMessage('Subject must be between 5 and 200 characters'),
   body('description').isString().trim().isLength({ min: 10, max: 2000 }).withMessage('Description must be between 10 and 2000 characters'),
-  body('category').isIn(['general', 'billing', 'technical', 'event', 'other']).withMessage('Invalid category'),
+  body('category').isIn(['general', 'technical', 'billing', 'feature-request', 'bug-report']).withMessage('Invalid category'),
   body('priority').isIn(['low', 'medium', 'high', 'urgent']).withMessage('Invalid priority'),
   body('attachments').optional().isArray({ max: 5 }).withMessage('Maximum 5 attachments allowed'),
-  body('attachments.*').isURL({ protocols: ['https'] }).withMessage('Attachments must be secure HTTPS URLs'),
+  body('attachments.*').custom((value) => isPlainObject(value)).withMessage('Each attachment must be an object'),
+  body('attachments.*.filename').isString().trim().isLength({ min: 1, max: 255 }).withMessage('Attachment filename is required'),
+  body('attachments.*.url').isURL({ protocols: ['https'] }).withMessage('Attachment url must be a secure HTTPS URL'),
+  body('attachments.*.size').optional().isInt({ min: 0, max: 50 * 1024 * 1024 }).toInt().withMessage('Attachment size must be an integer (max 50MB)'),
   validate,
 ];
 
 const createCampaignValidator = [
   body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Name must be between 1 and 100 characters'),
-  body('type').isIn(['email', 'push', 'sms', 'in-app']).withMessage('Invalid campaign type'),
+  body('type').isIn(['email', 'sms', 'social', 'push']).withMessage('Invalid campaign type'),
   body('subject').isString().trim().isLength({ max: 200 }).withMessage('Subject cannot exceed 200 characters'),
   body('content').isString().trim().isLength({ max: 10000 }).withMessage('Content cannot exceed 10000 characters'),
   body('targetAudience').optional().isIn(['all', 'registered', 'potential', 'vip', 'custom']).withMessage('Invalid target audience'),

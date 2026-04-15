@@ -2,7 +2,7 @@ const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 const {
   getCategories,
   createCategory,
@@ -15,19 +15,19 @@ const {
 // Get all event categories
 router.get('/', authenticate, asyncHandler(getCategories));
 
+// Get category statistics (admin only)
+router.get('/stats/overview', authenticate, requireAdmin, asyncHandler(getCategoryStats));
+
 // Create new category
-router.post('/', authenticate, asyncHandler(createCategory));
+router.post('/', authenticate, requireAdmin, asyncHandler(createCategory));
 
 // Get specific category
 router.get('/:id', authenticate, asyncHandler(getCategoryById));
 
 // Update category
-router.put('/:id', authenticate, asyncHandler(updateCategory));
+router.put('/:id', authenticate, requireAdmin, asyncHandler(updateCategory));
 
 // Delete category (soft delete)
-router.delete('/:id', authenticate, asyncHandler(deleteCategory));
-
-// Get category statistics
-router.get('/stats/overview', authenticate, asyncHandler(getCategoryStats));
+router.delete('/:id', authenticate, requireAdmin, asyncHandler(deleteCategory));
 
 module.exports = router;

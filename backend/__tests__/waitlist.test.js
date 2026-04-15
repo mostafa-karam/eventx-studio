@@ -5,7 +5,9 @@ const app = require('../server');
 const User = require('../models/User');
 const Event = require('../models/Event');
 const Waitlist = require('../models/Waitlist');
-const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { generateAccessToken } = require('../utils/authUtils');
+const { createTestClient } = require('../test-utils/testClient');
 
 let mongoServer;
 let userToken;
@@ -14,8 +16,10 @@ let user;
 let organizer;
 let fullEvent;
 let availableEvent;
+let client;
 
 beforeAll(async () => {
+    client = createTestClient(app);
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
 
@@ -29,18 +33,26 @@ beforeAll(async () => {
         email: 'waitlist_user@example.com',
         password: 'UniqueTestPass!2026',
         role: 'user',
-        isActive: true
+        isActive: true,
+        emailVerified: true
     });
-    userToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'test_secret_for_ci', { expiresIn: '1h' });
+    const userSessionId = crypto.randomUUID();
+    user.addSession(userSessionId, { device: 'Jest', ipAddress: '127.0.0.1' });
+    await user.save();
+    userToken = generateAccessToken(user._id, userSessionId);
 
     organizer = await User.create({
         name: 'Organizer',
         email: 'org_waitlist@example.com',
         password: 'UniqueTestPass!2026',
         role: 'organizer',
-        isActive: true
+        isActive: true,
+        emailVerified: true
     });
-    organizerToken = jwt.sign({ id: organizer._id }, process.env.JWT_SECRET || 'test_secret_for_ci', { expiresIn: '1h' });
+    const organizerSessionId = crypto.randomUUID();
+    organizer.addSession(organizerSessionId, { device: 'Jest', ipAddress: '127.0.0.1' });
+    await organizer.save();
+    organizerToken = generateAccessToken(organizer._id, organizerSessionId);
 
     fullEvent = await Event.create({
         title: 'Full Event',
@@ -81,9 +93,9 @@ afterEach(async () => {
 describe('Waitlist Endpoints', () => {
 
     it('should allow user to join waitlist for a full event', async () => {
-        const res = await request(app)
-            .post(`/api/events/${fullEvent._id}/waitlist`)
-            .set('Authorization', `Bearer ${userToken}`);
+        const res = await client.csrfRequest('post', `/api/events/${fullEvent._id}/waitlist`, undefined, {
+            Authorization: `Bearer ${userToken}`,
+        });
 
         expect(res.statusCode).toBe(201);
         expect(res.body.success).toBe(true);
@@ -94,9 +106,9 @@ describe('Waitlist Endpoints', () => {
     });
 
     it('should prevent joining waitlist for an event with available seats', async () => {
-        const res = await request(app)
-            .post(`/api/events/${availableEvent._id}/waitlist`)
-            .set('Authorization', `Bearer ${userToken}`);
+        const res = await client.csrfRequest('post', `/api/events/${availableEvent._id}/waitlist`, undefined, {
+            Authorization: `Bearer ${userToken}`,
+        });
 
         expect(res.statusCode).toBe(400);
         expect(res.body.success).toBe(false);
@@ -109,9 +121,9 @@ describe('Waitlist Endpoints', () => {
             status: 'pending'
         });
 
-        const res = await request(app)
-            .post(`/api/events/${fullEvent._id}/waitlist`)
-            .set('Authorization', `Bearer ${userToken}`);
+        const res = await client.csrfRequest('post', `/api/events/${fullEvent._id}/waitlist`, undefined, {
+            Authorization: `Bearer ${userToken}`,
+        });
 
         expect(res.statusCode).toBe(400);
         expect(res.body.success).toBe(false);

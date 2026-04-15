@@ -1,116 +1,147 @@
-# Comprehensive API Reference
+# API Reference
 
-This document extensively maps all available REST endpoints accessible via the EventX Backend. 
+## Base URL
 
-## Global Prefix
-All backend routes adhere to the global prefix:
+All backend routes are mounted under:
+
 ```text
-http://localhost:5000/api/v1
+http://localhost:5000/api
 ```
 
-## Standardized Responses
-Every endpoint returns a normalized JSON envelope:
-**Success:**
-```json
-{
-  "success": true,
-  "data": { ... } // or "message"
-}
-```
-**Error:**
-```json
-{
-  "success": false,
-  "message": "Descriptive reason for failure"
-}
-```
+## Global Endpoints
 
----
+- `GET /api/health` - service and DB health
+- `GET /api/auth/csrf-token` - CSRF token for mutating requests
 
-## 1. Authentication (`/auth`)
+## Auth (`/api/auth`)
 
-| Method | Endpoint | Access | Description | Parameters (Body) |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/register` | Public | Register a new user | `{ name, email, password, role }` |
-| `POST` | `/login` | Public | Login via credentials | `{ email, password }` |
-| `GET` | `/logout` | Private | Destroy HttpOnly auth cookies | None |
-| `GET` | `/me` | Private | Retrieve active JWT user profile | None |
-| `POST` | `/updatepassword` | Private | Change active password | `{ currentPassword, newPassword }` |
-| `POST` | `/refresh` | Public | Rotates Refresh Token | Requires `refreshToken` cookie |
-| `GET` | `/csrf-token` | Public | Fetch CSRF required for forms | None |
-| `POST` | `/tfa/setup` | Private | Generates 2FA QR Code | None |
-| `POST` | `/tfa/verify` | Private | Enables 2FA via code | `{ code: "123456" }` |
-| `POST` | `/tfa/validate`| Public | Finalize login if 2FA active | `{ token (tempAuthToken), code }` |
+- `POST /register`
+- `POST /login`
+- `POST /refresh`
+- `GET /me`
+- `POST /logout`
+- `PUT /profile`
+- `PUT /change-password`
+- `POST /verify-email`
+- `POST /resend-verification`
+- `POST /forgot-password`
+- `POST /reset-password`
+- `POST /2fa/setup`
+- `POST /2fa/enable`
+- `DELETE /2fa`
+- `GET /sessions`
+- `DELETE /sessions/:sessionId`
+- `DELETE /sessions`
+- `GET /users` (admin)
+- `POST /role-upgrade`
+- `GET /role-upgrade-requests` (admin)
+- `PUT /role-upgrade-requests/:userId` (admin)
+- `DELETE /account`
 
+## Events (`/api/events`)
 
-## 2. Events (`/events`)
+- `GET /`
+- `GET /admin/my-events`
+- `GET /:id`
+- `POST /`
+- `POST /:id/clone`
+- `PUT /:id`
+- `DELETE /:id`
+- `GET /:id/seats`
+- `GET /waitlists/my`
+- `POST /:id/waitlist`
+- `GET /:id/waitlist`
+- `POST /:id/waitlist/:waitlistId/approve`
+- `GET /:id/attendees/export`
+- `POST /:id/publish`
+- `POST /:id/cancel`
+- Nested reviews router mounted at `/api/events/:eventId/reviews`
 
-| Method | Endpoint | Access | Description | Parameters / Query |
-| :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/` | Public | Get all events (paginated) | `?page, ?limit, ?category, ?search` |
-| `GET` | `/:id` | Public | Single Event Details | None |
-| `POST` | `/` | Organizer | Create an event | `{ title, description, category... }` |
-| `PUT` | `/:id` | Organizer | Modify owned event | `{ ...updatedFields }` |
-| `DELETE` | `/:id` | Organizer | Cancel owned event | None |
-| `PUT` | `/:id/status`| Organizer | Change event visibility | `{ status: "published" }` |
-| `GET` | `/organizer/my-events`| Organizer | List internally owned events| None |
+## Tickets (`/api/tickets`)
 
+- `POST /book`
+- `POST /book-multi`
+- `GET /my-tickets`
+- `GET /organizer`
+- `GET /admin`
+- `GET /admin/orphans`
+- `POST /admin/orphans/:id/assign`
+- `POST /admin/orphans/:id/cancel`
+- `GET /:id`
+- `PUT /:id/cancel`
+- `POST /:id/checkin`
+- `GET /event/:eventId`
+- `POST /lookup-qr`
+- `PUT /:id/refund`
 
-## 3. Tickets & Bookings (`/tickets`)
+## Booking (`/api/booking`)
 
-| Method | Endpoint | Access | Description | Parameters (Body) |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/book` | Private | Request a ticket via service | `{ eventId, seatNumber?, payment }` |
-| `GET` | `/my-tickets` | Private | View user's tickets | None |
-| `GET` | `/:id` | Private | Ticket validation payload | None |
-| `POST` | `/:id/cancel` | Private | User relinquishes a ticket | None |
-| `POST` | `/:id/checkin`| Organizer | Organizer manually checks user | None |
-| `POST` | `/checkin/qr` | Organizer | QR payload validation endpoint | `{ qrData: "uuid-xxxx" }` |
+- `POST /initiate`
+- `POST /confirm`
 
+## Payments (`/api/payments`)
 
-## 4. Users & Attendees (`/users`)
+- `POST /process`
+- `POST /test-token`
 
-| Method | Endpoint | Access | Description | Form-Data / Body |
-| :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/` | Admin | List all registered users | None |
-| `GET` | `/:id` | Admin | Details on singular account | None |
-| `PUT` | `/:id/role` | Admin | Elevate/demote roles | `{ role: "venue_admin" }` |
-| `PUT` | `/profile` | Private | Standard user update | `{ location, interests }` |
-| `PUT` | `/avatar` | Private | Form-Data Avatar Upload | Form-Data: `avatar` field |
+## Users (`/api/users`)
 
+- `GET /profile/me`
+- `PUT /profile/me`
+- `GET /organizer/:id`
+- `GET /` (admin)
+- `GET /:id` (admin)
+- `PUT /:id` (admin)
+- `PUT /:id/status` (admin)
+- `DELETE /:id` (admin)
 
-## 5. Event Analytics (`/analytics`)
+## Analytics (`/api/analytics`)
 
-| Method | Endpoint | Access | Description | Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/dashboard` | Admin | High-level system overview | Total Users, Revenue, System Health |
-| `GET` | `/organizer` | Organizer | Metrics scoped to auth user | Revenue sums, active bookings |
-| `GET` | `/events/:id` | Organizer | Singular event metrics | Demographics, check-in rates |
+- `GET /dashboard`
+- `GET /attendees`
+- `GET /events/:eventId`
+- `GET /export`
+- `GET /attendee-insights`
+- `GET /all-attendee-insights`
+- `GET /reports`
+- `POST /reports/generate`
+- `GET /reports/:id/download`
 
+## Halls and Hall Bookings
 
-## 6. Hall Leasing (`/halls`)
+`/api/halls`:
 
-| Method | Endpoint | Access | Description | Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/` | Public | List all physical halls | Query filtering available |
-| `POST` | `/` | VenueAdmin| Register a new physical space| Detailed `{ equipment, capacity }` |
-| `POST` | `/request` | Organizer | Request to reserve a Hall | `{ hallId, startDate }` |
-| `PUT` | `/request/:id` | VenueAdmin| Approve/Reject a request | `{ status: "approved" }` |
+- `GET /`
+- `GET /:id`
+- `GET /:id/availability`
+- `POST /`
+- `PUT /:id`
+- `DELETE /:id` (admin)
 
+`/api/hall-bookings`:
 
-## 7. Notifications (`/notifications`)
+- `GET /`
+- `GET /my`
+- `POST /`
+- `POST /maintenance`
+- `PUT /:id/approve`
+- `PUT /:id/reject`
+- `DELETE /:id`
 
-| Method | Endpoint | Access | Description | Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/` | Private | My Notifications | Query Database |
-| `PUT` | `/:id/read` | Private | Toggle read status | Mongoose `.findOneAndUpdate` |
-| `PUT` | `/read-all` | Private | Mark all clear | None |
-| `DELETE` | `/:id` | Private | Trash Notification | None |
+## Other Routers
 
+- `/api/categories`: CRUD + stats (admin for writes)
+- `/api/coupons`: validate + admin CRUD
+- `/api/notifications`: list/read/read-all/delete/create/send-booking-confirmation
+- `/api/support`: support ticket lifecycle
+- `/api/marketing`: campaign CRUD + launch
+- `/api/public`: public events and halls
+- `/api/search`: global search
+- `/api/upload`: image upload and authenticated file retrieval
+- `/api/audit-log`: admin audit log listing
 
-## 8. Utilities (`/categories`, `/coupons`, `/reviews`)
+## Access Control Summary
 
-1. **`GET /api/categories`**: Public fetch of taxonomies. Additions require Admin access.
-2. **`POST /api/coupons/validate`**: Public verification `({ code, eventId })` against expiry.
-3. **`POST /api/events/:id/reviews`**: Verified Attendees push ratings up to 5 stars.
-4. **`POST /api/support`**: Generates a generic Technical/Billing Support Ticket.
+- Public routes are mainly under `/api/public` and selected event read endpoints.
+- Most business routes require `authenticate`.
+- Elevated role checks use middleware (`requireAdmin`, `requireOrganizer`, `requireVenueAdmin`, or `requireRole`).

@@ -7,6 +7,8 @@ const validateEnv = () => {
     'JWT_SECRET',
     'JWT_REFRESH_SECRET',
     'PAYMENT_HMAC_SECRET',
+    'QR_HMAC_SECRET',
+    'SESSION_ENCRYPTION_KEY',
     'FRONTEND_URL'
   ];
 

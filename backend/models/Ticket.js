@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
+const config = require('../config');
 
 const ticketSchema = new mongoose.Schema({
   ticketId: {
@@ -100,7 +101,7 @@ ticketSchema.pre('validate', function(next) {
     const payload = JSON.stringify(qrData);
     // Sign the QR payload with HMAC to prevent forgery
     const signature = crypto
-      .createHmac('sha256', process.env.JWT_SECRET)
+      .createHmac('sha256', config.secrets.qrHmac)
       .update(payload)
       .digest('hex');
     this.qrCode = JSON.stringify({ ...qrData, sig: signature });

@@ -4,6 +4,7 @@ const fs = require('fs');
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
+const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 
 // @desc    Upload files
 // @access  Private
@@ -82,7 +83,7 @@ exports.uploadFiles = async (req, res) => {
             `${req.protocol}://${req.get('host')}`;
 
         const urls = validatedFiles.map(file => ({
-            url: `${baseUrl}/uploads/${file.filename}`,
+            url: `${baseUrl}/api/upload/files/${file.filename}`,
             alt: file.sanitizedAlt || 'Uploaded image',
             filename: file.filename,
         }));
@@ -95,5 +96,31 @@ exports.uploadFiles = async (req, res) => {
     } catch (error) {
         logger.error('Upload error: ' + error.message);
         res.status(500).json({ success: false, message: 'Upload failed' });
+    }
+};
+
+// @desc    Serve uploaded file for authenticated users
+// @access  Private
+exports.getUploadedFile = async (req, res) => {
+    try {
+        const requestedName = path.basename(String(req.params.filename || ''));
+        const fileExt = path.extname(requestedName).toLowerCase();
+
+        if (!requestedName || !ALLOWED_EXTENSIONS.has(fileExt)) {
+            return res.status(400).json({ success: false, message: 'Invalid file name' });
+        }
+
+        const filePath = path.join(UPLOADS_DIR, requestedName);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ success: false, message: 'File not found' });
+        }
+
+        res.set('X-Content-Type-Options', 'nosniff');
+        res.set('Content-Disposition', 'inline');
+        res.set('Cache-Control', 'private, max-age=300');
+        return res.sendFile(filePath);
+    } catch (error) {
+        logger.error('Upload file read error: ' + error.message);
+        return res.status(500).json({ success: false, message: 'File retrieval failed' });
     }
 };

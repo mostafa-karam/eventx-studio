@@ -30,13 +30,6 @@ exports.register = async (req, res) => {
       details: { role: result.role },
     });
 
-    if (result.accessToken) {
-      res.cookie('accessToken', result.accessToken, { ...ACCESS_COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE });
-    }
-    if (result.refreshToken) {
-      res.cookie('refreshToken', result.refreshToken, { ...REFRESH_COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE });
-    }
-
     res.status(201).json({
       success: true,
       message: 'Registered successfully. Please verify your email.',
@@ -356,7 +349,9 @@ exports.setup2FA = async (req, res) => {
     const qrCodeDataUrl = await qrcode.toDataURL(otpAuthUrl);
 
     // Store secret temporarily (not enabled yet until verified)
-    await User.findByIdAndUpdate(req.user._id, { twoFactorSecret: secret });
+    const user = await User.findById(req.user._id).select('+twoFactorSecret');
+    user.setTwoFactorSecret(secret);
+    await user.save();
 
     // Only return the QR code — never expose the raw TOTP secret in API responses
     res.json({ success: true, data: { qrCodeDataUrl } });
@@ -378,7 +373,8 @@ exports.enable2FA = async (req, res) => {
 
     if (!user.twoFactorSecret) return res.status(400).json({ success: false, message: 'Please call /2fa/setup first' });
 
-    const isValid = authenticator.check(code, user.twoFactorSecret);
+    const plainSecret = user.getTwoFactorSecret();
+    const isValid = authenticator.check(code, plainSecret);
     if (!isValid) return res.status(400).json({ success: false, message: 'Invalid 2FA code' });
 
     user.twoFactorEnabled = true;

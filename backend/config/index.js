@@ -9,6 +9,8 @@ module.exports = {
   secrets: {
     jwt: process.env.JWT_SECRET,
     jwtRefresh: process.env.JWT_REFRESH_SECRET,
+    sessionEncryption: process.env.SESSION_ENCRYPTION_KEY,
+    qrHmac: process.env.QR_HMAC_SECRET,
   },
   jwt: {
     accessExpire: security.jwt.accessExpiresIn,

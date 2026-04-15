@@ -61,41 +61,31 @@ describe('Event Lifecycle & Immutability', () => {
         authToken = accessTokenCookie.split(';')[0].split('=')[1];
 
         // Create a test event
-        const eventRes = await request(app)
-            .post('/api/events')
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                title: 'Lifecycle Test Event',
-                description: 'Test event description',
-                date: new Date(Date.now() + 86400000).toISOString(),
-                venue: {
-                    name: 'Initial Venue',
-                    address: '123 Test St',
-                    city: 'Test City',
-                    country: 'USA',
-                    capacity: 100
-                },
-                pricing: { type: 'free', amount: 0 },
-                seating: { totalSeats: 50, availableSeats: 50 },
-                category: 'workshop'
-            });
+        const eventRes = await client.csrfRequest('post', '/api/events', {
+            title: 'Lifecycle Test Event',
+            description: 'Test event description',
+            date: new Date(Date.now() + 86400000).toISOString(),
+            venue: {
+                name: 'Initial Venue',
+                address: '123 Test St',
+                city: 'Test City',
+                country: 'USA',
+                capacity: 100
+            },
+            pricing: { type: 'free', amount: 0 },
+            seating: { totalSeats: 50, availableSeats: 50 },
+            category: 'workshop'
+        }, { Authorization: `Bearer ${authToken}` });
 
         testEventId = eventRes.body.data.event._id;
 
         // Publish the event
-        await request(app)
-            .post(`/api/events/${testEventId}/publish`)
-            .set('Authorization', `Bearer ${authToken}`);
+        await client.csrfRequest('post', `/api/events/${testEventId}/publish`, undefined, { Authorization: `Bearer ${authToken}` });
     });
 
     it('should allow updating critical fields if there are no bookings', async () => {
         const newDate = new Date(Date.now() + 172800000).toISOString();
-        const res = await request(app)
-            .put(`/api/events/${testEventId}`)
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                date: newDate
-            });
+        const res = await client.csrfRequest('put', `/api/events/${testEventId}`, { date: newDate }, { Authorization: `Bearer ${authToken}` });
 
         expect(res.statusCode).toBe(200);
         expect(new Date(res.body.data.event.date).toISOString()).toBe(newDate);
@@ -103,30 +93,21 @@ describe('Event Lifecycle & Immutability', () => {
 
     it('should block critical field updates if there are active bookings', async () => {
         // 1. Create a booking
-        const initRes = await request(app)
-            .post('/api/booking/initiate')
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({ eventId: testEventId, quantity: 1 });
+        const initRes = await client.csrfRequest('post', '/api/booking/initiate', { eventId: testEventId, quantity: 1 }, { Authorization: `Bearer ${authToken}` });
         
         const bookingId = initRes.body.data.bookingSession._id;
         
-        await request(app)
-            .post('/api/booking/confirm')
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                eventId: testEventId,
-                bookingId,
-                paymentId: 'free-tx',
-                paymentMethod: 'free'
-            });
+        await client.csrfRequest('post', '/api/booking/confirm', {
+            eventId: testEventId,
+            bookingId,
+            paymentId: 'free-tx',
+            paymentMethod: 'free'
+        }, { Authorization: `Bearer ${authToken}` });
 
         // 2. Try to update price (critical field)
-        const res = await request(app)
-            .put(`/api/events/${testEventId}`)
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                pricing: { type: 'paid', amount: 99.99 }
-            });
+        const res = await client.csrfRequest('put', `/api/events/${testEventId}`, {
+            pricing: { type: 'paid', amount: 99.99 }
+        }, { Authorization: `Bearer ${authToken}` });
 
         expect(res.statusCode).toBe(400);
         expect(res.body.message).toContain('Cannot update critical event details');
@@ -134,26 +115,17 @@ describe('Event Lifecycle & Immutability', () => {
 
     it('should cancel event, void tickets, and notify attendees', async () => {
         // 1. Create a booking
-        const initRes = await request(app)
-            .post('/api/booking/initiate')
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({ eventId: testEventId, quantity: 1 });
+        const initRes = await client.csrfRequest('post', '/api/booking/initiate', { eventId: testEventId, quantity: 1 }, { Authorization: `Bearer ${authToken}` });
         
-        await request(app)
-            .post('/api/booking/confirm')
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                eventId: testEventId,
-                bookingId: initRes.body.data.bookingSession._id,
-                paymentId: 'free-tx',
-                paymentMethod: 'free'
-            });
+        await client.csrfRequest('post', '/api/booking/confirm', {
+            eventId: testEventId,
+            bookingId: initRes.body.data.bookingSession._id,
+            paymentId: 'free-tx',
+            paymentMethod: 'free'
+        }, { Authorization: `Bearer ${authToken}` });
 
         // 2. Cancel event
-        const cancelRes = await request(app)
-            .post(`/api/events/${testEventId}/cancel`)
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({ reason: 'Weather conditions' });
+        const cancelRes = await client.csrfRequest('post', `/api/events/${testEventId}/cancel`, { reason: 'Weather conditions' }, { Authorization: `Bearer ${authToken}` });
 
         expect(cancelRes.statusCode).toBe(200);
         expect(cancelRes.body.success).toBe(true);

@@ -202,46 +202,15 @@ eventSchema.pre('save', function (next) {
 
 // Method to book a seat
 eventSchema.methods.bookSeat = function (seatNumber, userId) {
-  const seat = this.seating.seatMap.find(s => s.seatNumber === seatNumber);
-  if (!seat) {
-    throw new Error('Seat not found');
-  }
-  if (seat.isBooked) {
-    throw new Error('Seat is already booked');
-  }
-
-  seat.isBooked = true;
-  seat.bookedBy = userId;
-  this.seating.availableSeats -= 1;
-  this.analytics.bookings += 1;
-
-  if (this.pricing.type === 'paid') {
-    this.analytics.revenue += this.pricing.amount;
-  }
-
-  return seat;
+  void seatNumber;
+  void userId;
+  throw new Error('Direct seat mutation is disabled. Use bookingService atomic operations instead.');
 };
 
 // Method to cancel seat booking
 eventSchema.methods.cancelSeat = function (seatNumber) {
-  const seat = this.seating.seatMap.find(s => s.seatNumber === seatNumber);
-  if (!seat) {
-    throw new Error('Seat not found');
-  }
-  if (!seat.isBooked) {
-    throw new Error('Seat is not booked');
-  }
-
-  seat.isBooked = false;
-  seat.bookedBy = null;
-  this.seating.availableSeats += 1;
-  this.analytics.bookings -= 1;
-
-  if (this.pricing.type === 'paid') {
-    this.analytics.revenue -= this.pricing.amount;
-  }
-
-  return seat;
+  void seatNumber;
+  throw new Error('Direct seat mutation is disabled. Use bookingService atomic operations instead.');
 };
 
 // Performance Indexes

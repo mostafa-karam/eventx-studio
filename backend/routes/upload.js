@@ -7,7 +7,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { authenticate } = require('../middleware/auth');
-const { uploadFiles } = require('../controllers/uploadController');
+const { uploadFiles, getUploadedFile } = require('../controllers/uploadController');
 
 const router = express.Router();
 
@@ -51,6 +51,9 @@ const upload = multer({
 // POST /api/upload  — upload one or more images
 // FormData field name: 'images' (up to 10)
 router.post('/', authenticate, uploadLimiter, upload.array('images', 10), asyncHandler(uploadFiles));
+
+// GET /api/upload/files/:filename — authenticated file access
+router.get('/files/:filename', authenticate, asyncHandler(getUploadedFile));
 
 // Handle multer errors (e.g. file too large, wrong type)
 router.use((err, _req, res, _next) => {

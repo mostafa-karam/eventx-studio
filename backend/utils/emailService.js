@@ -24,7 +24,7 @@ if (process.env.EMAIL_HOST) {
     transporter = {
         sendMail: async (opts) => {
             const entry = `\n${'─'.repeat(60)}\n[${new Date().toISOString()}]\nTO: ${opts.to}\nSUBJECT: ${opts.subject}\n${opts.text || ''}\n`;
-            fs.appendFileSync(DEV_LOG, entry, 'utf8');
+            await fs.promises.appendFile(DEV_LOG, entry, 'utf8');
             logger.info(`[DEV EMAIL] Written to ${DEV_LOG} — To: ${opts.to} | Subject: ${opts.subject}`);
             return { messageId: 'dev-' + Date.now() };
         },

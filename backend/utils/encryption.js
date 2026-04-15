@@ -6,9 +6,11 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // 96 bits for GCM
 const AUTH_TAG_LENGTH = 16; // 128 bits for GCM
 
-// Generate a valid 32 byte key using SHA-256 hash of the JWT_SECRET
-const keyBase = config.secrets.sessionEncryption || config.secrets.jwt;
-const ENCRYPTION_KEY = crypto.createHash('sha256').update(keyBase).digest();
+// Require a dedicated encryption key (never fall back to JWT secrets).
+if (!config.secrets.sessionEncryption) {
+    throw new Error('Missing SESSION_ENCRYPTION_KEY (required for encryption at rest/in transit fields).');
+}
+const ENCRYPTION_KEY = crypto.createHash('sha256').update(String(config.secrets.sessionEncryption)).digest();
 
 exports.encrypt = (text) => {
     if (!text) return text;
@@ -23,9 +25,8 @@ exports.encrypt = (text) => {
         
         return `${iv.toString('hex')}:${authTag}:${encrypted}`;
     } catch (e) {
-        // FIX M-03 — Log encryption failures instead of failing silently
-        logger.warn('Encryption failed — returning plaintext: ' + e.message);
-        return text;
+        logger.error('Encryption failed: ' + e.message);
+        throw e;
     }
 };
 
@@ -33,11 +34,16 @@ exports.decrypt = (text) => {
     if (!text || typeof text !== 'string' || !text.includes(':')) return text;
     try {
         const parts = text.split(':');
-        if (parts.length !== 3) return text;
+        if (parts.length !== 3) {
+            throw new Error('Invalid ciphertext format');
+        }
 
         const iv = Buffer.from(parts[0], 'hex');
         const authTag = Buffer.from(parts[1], 'hex');
         const encryptedText = parts[2];
+        if (iv.length !== IV_LENGTH || authTag.length !== AUTH_TAG_LENGTH) {
+            throw new Error('Invalid ciphertext parameters');
+        }
         
         const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
         decipher.setAuthTag(authTag);
@@ -51,8 +57,7 @@ exports.decrypt = (text) => {
             return decrypted;
         }
     } catch (error) {
-        // FIX M-03 — Log decryption failures instead of failing silently
-        logger.warn('Decryption failed — returning ciphertext/plaintext fallback: ' + error.message);
-        return text;
+        logger.error('Decryption failed: ' + error.message);
+        throw error;
     }
 };

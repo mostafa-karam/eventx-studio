@@ -186,12 +186,10 @@ exports.updateTicketStatus = async (req, res) => {
             });
         }
 
-        // Only allow users to update their own tickets or staff to update any
-        if (ticket.userId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            return res.status(403).json({
-                success: false,
-                message: 'Access denied'
-            });
+        // Status changes are restricted to staff/admin workflow.
+        // Route is protected by requireAdmin; keep a defense-in-depth check here.
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Access denied' });
         }
 
         // FIX H-04 — Add enum validation for ticket status to preserve state machine contract

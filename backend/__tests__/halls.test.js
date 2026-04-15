@@ -57,14 +57,11 @@ describe('Halls Endpoints', () => {
     });
 
     it('should create a hall', async () => {
-        const createHallRes = await request(app)
-            .post('/api/halls')
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                name: 'Grand Ballroom',
-                capacity: 500,
-                hourlyRate: 150
-            });
+        const createHallRes = await client.csrfRequest('post', '/api/halls', {
+            name: 'Grand Ballroom',
+            capacity: 500,
+            hourlyRate: 150
+        }, { Authorization: `Bearer ${authToken}` });
 
         expect(createHallRes.statusCode).toBe(201);
         expect(createHallRes.body.success).toBe(true);
@@ -73,14 +70,11 @@ describe('Halls Endpoints', () => {
     });
 
     it('should list halls', async () => {
-        await request(app)
-            .post('/api/halls')
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                name: 'Grand Ballroom',
-                capacity: 500,
-                hourlyRate: 150
-            });
+        await client.csrfRequest('post', '/api/halls', {
+            name: 'Grand Ballroom',
+            capacity: 500,
+            hourlyRate: 150
+        }, { Authorization: `Bearer ${authToken}` });
 
         const listRes = await request(app)
             .get('/api/halls')

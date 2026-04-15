@@ -3,13 +3,16 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
 const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { generateAccessToken } = require('../utils/authUtils');
+const { createTestClient } = require('../test-utils/testClient');
 
 let mongoServer;
 let adminToken;
 let userToken;
 let admin;
 let user;
+let client;
 
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
@@ -28,7 +31,10 @@ beforeAll(async () => {
         isActive: true,
         emailVerified: true
     });
-    adminToken = jwt.sign({ id: admin._id }, process.env.JWT_SECRET || 'test_secret_for_ci', { expiresIn: '1h' });
+    const adminSessionId = crypto.randomUUID();
+    admin.addSession(adminSessionId, { device: 'Jest', ipAddress: '127.0.0.1' });
+    await admin.save();
+    adminToken = generateAccessToken(admin._id, adminSessionId);
 
     user = await User.create({
         name: 'Standard User',
@@ -38,7 +44,12 @@ beforeAll(async () => {
         isActive: true,
         emailVerified: true
     });
-    userToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'test_secret_for_ci', { expiresIn: '1h' });
+    const userSessionId = crypto.randomUUID();
+    user.addSession(userSessionId, { device: 'Jest', ipAddress: '127.0.0.1' });
+    await user.save();
+    userToken = generateAccessToken(user._id, userSessionId);
+
+    client = createTestClient(app);
 });
 
 afterAll(async () => {
@@ -61,13 +72,10 @@ describe('User Management Endpoints', () => {
     });
 
     it('should allow user to update their profile', async () => {
-        const res = await request(app)
-            .put('/api/auth/profile')
-            .set('Authorization', `Bearer ${userToken}`)
-            .send({
-                name: 'Updated Name',
-                interests: ['coding', 'music']
-            });
+        const res = await client.csrfRequest('put', '/api/auth/profile', {
+            name: 'Updated Name',
+            interests: ['coding', 'music']
+        }, { Authorization: `Bearer ${userToken}` });
 
         expect(res.statusCode).toBe(200);
         expect(res.body.success).toBe(true);
@@ -78,13 +86,10 @@ describe('User Management Endpoints', () => {
     });
 
     it('should allow user to request a role upgrade', async () => {
-        const res = await request(app)
-            .post('/api/auth/role-upgrade')
-            .set('Authorization', `Bearer ${userToken}`)
-            .send({
-                reason: 'I want to organize tech meetups',
-                organizationName: 'Techies Collective'
-            });
+        const res = await client.csrfRequest('post', '/api/auth/role-upgrade', {
+            reason: 'I want to organize tech meetups',
+            organizationName: 'Techies Collective'
+        }, { Authorization: `Bearer ${userToken}` });
 
         expect(res.statusCode).toBe(200);
         expect(res.body.success).toBe(true);
@@ -105,12 +110,9 @@ describe('User Management Endpoints', () => {
     });
 
     it('should allow admin to approve a role upgrade', async () => {
-        const res = await request(app)
-            .put(`/api/auth/role-upgrade-requests/${user._id}`)
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({
-                action: 'approve'
-            });
+        const res = await client.csrfRequest('put', `/api/auth/role-upgrade-requests/${user._id}`, {
+            action: 'approve'
+        }, { Authorization: `Bearer ${adminToken}` });
 
         expect(res.statusCode).toBe(200);
         expect(res.body.success).toBe(true);
@@ -129,12 +131,9 @@ describe('User Management Endpoints', () => {
             isActive: true
         });
 
-        const res = await request(app)
-            .put(`/api/auth/role-upgrade-requests/${victim._id}`)
-            .set('Authorization', `Bearer ${userToken}`) // using 'organizer' token (user was upgraded in prev test)
-            .send({
-                action: 'approve'
-            });
+        const res = await client.csrfRequest('put', `/api/auth/role-upgrade-requests/${victim._id}`, {
+            action: 'approve'
+        }, { Authorization: `Bearer ${userToken}` }); // using 'organizer' token (user was upgraded in prev test)
 
         expect(res.statusCode).toBe(403);
     });

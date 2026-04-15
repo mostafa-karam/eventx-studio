@@ -4,13 +4,17 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { generateAccessToken } = require('../utils/authUtils');
+const { createTestClient } = require('../test-utils/testClient');
 
 let mongoServer;
 let testUser;
 let token;
+let client;
 
 beforeAll(async () => {
+    client = createTestClient(app);
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
 
@@ -25,10 +29,14 @@ beforeAll(async () => {
         email: 'notif@example.com',
         password: 'UniqueTestPass!2026',
         role: 'user',
-        isActive: true
+        isActive: true,
+        emailVerified: true
     });
 
-    token = jwt.sign({ id: testUser._id }, process.env.JWT_SECRET || 'test_secret_for_ci', { expiresIn: '1h' });
+    const sessionId = crypto.randomUUID();
+    testUser.addSession(sessionId, { device: 'Jest', ipAddress: '127.0.0.1' });
+    await testUser.save();
+    token = generateAccessToken(testUser._id, sessionId);
 });
 
 afterAll(async () => {
@@ -85,9 +93,9 @@ describe('Notifications Endpoints', () => {
             read: false
         });
 
-        const res = await request(app)
-            .patch(`/api/notifications/${notif._id}/read`)
-            .set('Authorization', `Bearer ${token}`);
+        const res = await client.csrfRequest('patch', `/api/notifications/${notif._id}/read`, undefined, {
+            Authorization: `Bearer ${token}`,
+        });
 
         expect(res.statusCode).toBe(200);
         expect(res.body.success).toBe(true);
@@ -105,9 +113,9 @@ describe('Notifications Endpoints', () => {
             type: 'system'
         });
 
-        const res = await request(app)
-            .delete(`/api/notifications/${notif._id}`)
-            .set('Authorization', `Bearer ${token}`);
+        const res = await client.csrfRequest('delete', `/api/notifications/${notif._id}`, undefined, {
+            Authorization: `Bearer ${token}`,
+        });
 
         expect(res.statusCode).toBe(200);
         expect(res.body.success).toBe(true);

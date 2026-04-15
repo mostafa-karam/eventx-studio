@@ -1,41 +1,41 @@
-# Data Processing & Scripts Guide
+# Scripts Guide
 
-The `/scripts` directory houses independent, executable Node files. These scripts are run via the command line and interact directly with the MongoDB layer bypass the Express server completely.
+## NPM Script Map
 
-## The Global Seeder (`seed.js`)
+- `npm run seed` -> `node utils/seed.js`
+- `npm run seed:all` -> `node scripts/seed.js`
 
-The `seed.js` script is the primary utility for populating a local or staging database with a massive, hyper-realistic dataset.
+## `utils/seed.js` (Lightweight Dev Seed)
 
-### Execution
-Run via NPM from the backend root:
-```bash
-npm run seed
-```
+Purpose:
 
-### Script Behaviors
-1. **Destructive Prep**: The script executes an unconditional `deleteMany({})` across **all 13 models**. Running `seed.js` completely destroys the existing database state to ensure idempotency.
-2. **Predictable Logins**: While the script uses `@faker-js/faker` for the bulk of data generation, the administrative accounts remain statically defined:
-   - **Admin**: `admin@eventx.com` / `password123`
-   - **Organizer**: `organizer@techx.com` / `password123`
-   - **Venue Admin**: `venue@eventx.com` / `password123`
-3. **Relational Depth**: The script doesn't just create standalone documents. It specifically hooks models together:
-   - **Events** are mapped explicitly to **Halls**.
-   - **Tickets** are booked by generating atomic actions via `event.bookSeat()`.
-   - **Reviews** assert attendance via checking ticket states.
-   - **Notifications** and **Waitlists** are spawned to simulate a heavily-trafficked, active platform.
+- Seeds or updates core development users only.
+- Skips execution when `NODE_ENV=production`.
+- Requires `DEMO_SEED_PASSWORD`.
 
----
+Behavior:
 
-## Utility Scripts
+- Creates/updates fixed dev identities (`admin`, `venue_admin`, `organizer`, `user`).
+- Preserves non-seed users.
 
-*Note: Over time, debugging scripts (e.g., `check-revenue.js`, `diag-tickets.js`) have been consolidated or removed to keep the directory clean. If you need singular diagnostic runs, you can create isolated files here and execute them via `node scripts/your-file.js`.*
+## `scripts/seed.js` (Full Dataset Seed)
 
-### `sync-event-stats.js`
-A self-healing script to resolve desyncs between actual ticket documents and the aggregated `seating` counts locked on the Event models.
-- **Execution**: `node scripts/sync-event-stats.js`
-- **Logic**: Aggregates all valid active tickets and sets the Event's `analytics.bookings` exactly to that count, preventing mathematical drift.
+Purpose:
 
-### `verify-countries.js`
-A location taxonomy corrector.
-- **Execution**: `node scripts/verify-countries.js`
-- **Logic**: Scans older User models that might contain free-text "Dubai" in the country field, migrating them to standard "UAE" maps for proper frontend demographic charts.
+- Creates a full realistic dataset (users, halls, events, tickets, coupons, reviews, notifications, campaigns, audit logs).
+- Requires `DEMO_SEED_PASSWORD`.
+
+Important:
+
+- Destructive reset across many collections before re-seeding.
+- Intended for local/staging only.
+- Current console output still mentions static `password123` even though password comes from `DEMO_SEED_PASSWORD`; treat the env value as source of truth.
+
+## Other Script
+
+- `scripts/checkUsers.js` - utility script for user checks/inspection.
+
+## Safety Notes
+
+- Never run destructive seed scripts against production data.
+- Never commit `.env` with real secrets or seed passwords.
