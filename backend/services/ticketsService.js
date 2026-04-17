@@ -559,7 +559,11 @@ class TicketsService {
         .populate('event', 'title date venue pricing')
         .populate('user', 'name email');
       if (session) query.session(session);
-      return query;
+
+      // Execute while session is still alive; returning a lazy Query would
+      // run after finally() ends the session and can trigger driver errors.
+      const populatedTickets = await query.exec();
+      return populatedTickets;
     } catch (e) {
       if (session) {
         await session.abortTransaction().catch(() => {});

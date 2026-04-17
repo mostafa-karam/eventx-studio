@@ -92,5 +92,51 @@ describe('Transaction enforcement', () => {
     expect(session.commitTransaction).not.toHaveBeenCalled();
     expect(session.endSession).toHaveBeenCalledTimes(1);
   });
+
+  it('executes populated ticket query before ending session (bookMultiSeats)', async () => {
+    process.env.ENABLE_TRANSACTIONS = 'true';
+    process.env.NODE_ENV = 'test';
+
+    const session = {
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn().mockResolvedValue(undefined),
+      abortTransaction: jest.fn().mockResolvedValue(undefined),
+      endSession: jest.fn(),
+    };
+
+    const query = {
+      _session: null,
+      populate: jest.fn().mockReturnThis(),
+      session(s) { this._session = s; return this; },
+      exec: jest.fn(async function exec() {
+        // If this assertion fails, query execution happened after cleanup.
+        expect(session.endSession).not.toHaveBeenCalled();
+        return [{ _id: 't1' }];
+      }),
+    };
+
+    jest.spyOn(mongoose, 'startSession').mockResolvedValue(session);
+    jest.spyOn(Event, 'updateOne').mockResolvedValue({ modifiedCount: 1 });
+    jest.spyOn(Ticket, 'insertMany').mockResolvedValue([{ _id: 't1' }]);
+    jest.spyOn(Ticket, 'find').mockReturnValue(query);
+
+    const result = await ticketsService.bookMultiSeats({
+      eventId: '507f1f77bcf86cd799439011',
+      event: { pricing: { type: 'paid', currency: 'USD' } },
+      seatsChosen: ['S001'],
+      userId: '507f1f77bcf86cd799439012',
+      expectedAmount: 10,
+      paymentMethod: 'credit_card',
+      transactionId: 'tx_1',
+      couponCode: null,
+      metadata: {},
+    });
+
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(1);
+    expect(session.commitTransaction).toHaveBeenCalledTimes(1);
+    expect(query.exec).toHaveBeenCalledTimes(1);
+    expect(session.endSession).toHaveBeenCalledTimes(1);
+  });
 });
 
