@@ -19,6 +19,8 @@ const validate = (req, res, next) => {
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
+      data: null,
+      error: 'Validation failed',
       message: 'Validation failed',
       errors: errors.array().map((error) => error.msg),
     });
@@ -459,6 +461,13 @@ const confirmBookingValidator = [
     .optional()
     .isString()
     .withMessage('Payment token must be a string'),
+  body('idempotencyKey')
+    .optional()
+    .isString()
+    .withMessage('Idempotency key must be a string')
+    .trim()
+    .isLength({ min: 8, max: 128 })
+    .withMessage('Idempotency key must be between 8 and 128 characters'),
   validate,
 ];
 

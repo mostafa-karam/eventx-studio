@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const logger = require('./utils/logger');
 const errorHandler = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
+const methodNotAllowed = require('./middleware/methodNotAllowed');
 const sanitizeRequest = require('./middleware/requestSanitizer');
 const {
   csrfProtection,
@@ -63,7 +64,20 @@ app.use(helmet({
       ...(config.env === 'production' ? { upgradeInsecureRequests: [] } : {}),
     },
   },
-  crossOriginEmbedderPolicy: false,
+  crossOriginEmbedderPolicy: { policy: 'credentialless' },
+  crossOriginOpenerPolicy: { policy: 'same-origin' },
+  crossOriginResourcePolicy: { policy: 'same-site' },
+  xFrameOptions: { action: 'deny' },
+  permissionsPolicy: {
+    features: {
+      camera: [],
+      microphone: [],
+      geolocation: [],
+      payment: [],
+      usb: [],
+      fullscreen: ['self'],
+    },
+  },
   referrerPolicy: { policy: 'no-referrer' },
   hsts: config.env === 'production'
     ? { maxAge: 15552000, includeSubDomains: true, preload: true }
@@ -145,7 +159,7 @@ app.use('/api', csrfProtection);
 // CSRF Token Provider Endpoint
 app.get('/api/auth/csrf-token', (req, res) => {
   const token = issueCsrfToken(req, res);
-  res.json({ success: true, csrfToken: token });
+  res.json({ success: true, data: { csrfToken: token }, csrfToken: token });
 });
 
 // ─── Request Logging ─────────────────────────────────────────────────
@@ -184,17 +198,29 @@ app.get('/', (_req, res) => res.json({ message: 'EventX Studio API is running!',
 app.get('/api/health', (_req, res) => {
   const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
   res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    dbStatus,
-    memory: process.memoryUsage(),
-    environment: process.env.NODE_ENV || 'development',
+    success: true,
+    data: {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      dbStatus,
+      memory: process.memoryUsage(),
+      environment: process.env.NODE_ENV || 'development',
+    },
   });
 });
 
+// ─── Global 405 Handler ───────────────────────────────────────────────
+app.use(methodNotAllowed(app));
+
 // ─── 404 Catch-All ───────────────────────────────────────────────────
-app.use('*', (_req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
+app.use('*', (_req, res) =>
+  res.status(404).json({
+    success: false,
+    data: null,
+    error: 'Route not found',
+    message: 'Route not found',
+  }));
 
 // ─── Error Handling (must be LAST — 4-arg signature) ─────────────────
 app.use(errorHandler);

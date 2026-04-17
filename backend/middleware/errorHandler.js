@@ -14,6 +14,8 @@ const errorHandler = (err, req, res, _next) => {
   if (err.message === 'invalid csrf token' || err.code === 'EBADCSRFTOKEN') {
     return res.status(403).json({ 
       success: false, 
+      data: null,
+      error: 'Invalid or missing CSRF token',
       message: 'Invalid or missing CSRF token',
       requestId: req.id
     });
@@ -25,6 +27,8 @@ const errorHandler = (err, req, res, _next) => {
   if (err.name === 'ValidationError') {
     return res.status(400).json({
       success: false,
+      data: null,
+      error: 'Validation failed',
       message: 'Validation failed',
       errors: Object.values(err.errors).map((error) => error.message),
       requestId: req.id,
@@ -34,6 +38,8 @@ const errorHandler = (err, req, res, _next) => {
   if (err.name === 'CastError') {
     return res.status(400).json({
       success: false,
+      data: null,
+      error: `Invalid ${err.path}`,
       message: `Invalid ${err.path}`,
       requestId: req.id,
     });
@@ -42,6 +48,8 @@ const errorHandler = (err, req, res, _next) => {
   if (err.code === 11000) {
     return res.status(409).json({
       success: false,
+      data: null,
+      error: 'A record with that value already exists.',
       message: 'A record with that value already exists.',
       requestId: req.id,
     });
@@ -62,6 +70,8 @@ const errorHandler = (err, req, res, _next) => {
 
   const responsePayload = {
     success: false,
+    data: null,
+    error: displayMessage,
     message: displayMessage,
     requestId: req.id, // Provide request ID so users can report it to support
   };

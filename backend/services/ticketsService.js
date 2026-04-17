@@ -545,6 +545,7 @@ class TicketsService {
         },
         metadata: {
           ...metadata,
+          bulkBooking: true,
           couponCode: couponCode || undefined,
         },
       }));

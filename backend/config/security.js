@@ -21,6 +21,8 @@ module.exports = {
     passwordResetMax: toInt(process.env.AUTH_PASSWORD_RESET_RATE_LIMIT_MAX, 5),
     refreshMax: toInt(process.env.AUTH_REFRESH_RATE_LIMIT_MAX, 10),
     paymentMax: toInt(process.env.PAYMENT_RATE_LIMIT_MAX, 10),
+    redisUrl: process.env.REDIS_URL || '',
+    redisPrefix: process.env.REDIS_RATE_LIMIT_PREFIX || 'eventx:ratelimit:',
   },
   jwt: {
     issuer: process.env.JWT_ISSUER || 'eventx-studio-api',

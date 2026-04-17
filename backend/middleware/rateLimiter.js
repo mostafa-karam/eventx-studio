@@ -1,4 +1,6 @@
 const rateLimit = require('express-rate-limit');
+const { RedisStore } = require('rate-limit-redis');
+const Redis = require('ioredis');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const logger = require('../utils/logger');
@@ -30,9 +32,50 @@ const defaultHandler = (message) => (req, res, _next, options) => {
 
   res.status(options.statusCode).json({
     success: false,
+    data: null,
+    error: message,
     message,
     retryAfter: Number(res.getHeader('Retry-After')) || undefined,
   });
+};
+
+let redisClient = null;
+let redisStore = null;
+let redisUnavailableLogged = false;
+
+const buildStore = () => {
+  const redisUrl = config.security.rateLimit.redisUrl;
+  if (!redisUrl) return undefined;
+
+  try {
+    if (!redisClient) {
+      redisClient = new Redis(redisUrl, {
+        maxRetriesPerRequest: 1,
+        enableReadyCheck: true,
+      });
+
+      redisClient.on('error', (error) => {
+        if (!redisUnavailableLogged) {
+          logger.warn(`Redis rate limiter unavailable, using in-memory fallback: ${error.message}`);
+          redisUnavailableLogged = true;
+        }
+      });
+      redisClient.on('ready', () => {
+        redisUnavailableLogged = false;
+      });
+    }
+
+    if (!redisStore) {
+      redisStore = new RedisStore({
+        sendCommand: (...args) => redisClient.call(...args),
+        prefix: config.security.rateLimit.redisPrefix,
+      });
+    }
+    return redisStore;
+  } catch (error) {
+    logger.warn(`Failed to initialize Redis rate limiter, using memory fallback: ${error.message}`);
+    return undefined;
+  }
 };
 
 const createLimiter = ({
@@ -49,6 +92,7 @@ const createLimiter = ({
   legacyHeaders: false,
   skipSuccessfulRequests,
   skipFailedRequests,
+  store: buildStore(),
   keyGenerator,
   handler: defaultHandler(message),
 });

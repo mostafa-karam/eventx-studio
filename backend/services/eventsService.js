@@ -3,6 +3,7 @@ const Waitlist = require('../models/Waitlist');
 const Ticket = require('../models/Ticket');
 const { sanitizeSearchInput, createSafeRegex } = require('../utils/helpers');
 const { enforceOwnership } = require('../utils/authorization');
+const { withTransactionRetry } = require('../utils/transaction');
 
 class EventsService {
     toPositiveInt(value, fallback) {
@@ -220,18 +221,28 @@ class EventsService {
     }
 
     async deleteEvent(eventId, user) {
-        const event = await Event.findById(eventId);
+        const event = await Event.findById(eventId).select('organizer');
         if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
-
         enforceOwnership(event, user, 'organizer', 'delete');
 
-        // FIX L-05 — Cascade delete associated entities to prevent stranded records
-        await Ticket.deleteMany({ event: eventId });
-        await Waitlist.deleteMany({ event: eventId });
-        const HallBooking = require('../models/HallBooking');
-        await HallBooking.deleteMany({ event: eventId });
+        await withTransactionRetry(async (session) => {
+            const Notification = require('../models/Notification');
+            const HallBooking = require('../models/HallBooking');
+            const eventInSessionQuery = Event.findById(eventId);
+            if (session) eventInSessionQuery.session(session);
+            const eventInSession = await eventInSessionQuery;
+            if (!eventInSession) {
+                throw Object.assign(new Error('Event not found'), { status: 404 });
+            }
 
-        await Event.findByIdAndDelete(eventId);
+            await Promise.all([
+                Ticket.deleteMany({ event: eventId }, session ? { session } : undefined),
+                Waitlist.deleteMany({ event: eventId }, session ? { session } : undefined),
+                HallBooking.deleteMany({ event: eventId }, session ? { session } : undefined),
+                Notification.deleteMany({ 'metadata.eventId': String(eventId) }, session ? { session } : undefined),
+                Event.deleteOne({ _id: eventId }, session ? { session } : undefined),
+            ]);
+        }, { allowFallback: true });
         return true;
     }
 

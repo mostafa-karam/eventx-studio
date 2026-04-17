@@ -6,7 +6,7 @@ The `/services` directory is the most critical infrastructure layer in the backe
 
 The core transaction engine for the platform. Booking a ticket cannot simply be a `Ticket.create` operation.
 
-### `bookSeat({ eventId, userId, seatNumber, payment, couponCode, metadata })`
+### `bookSeat({ eventId, userId, seatNumber, payment, couponCode, metadata, idempotencyKey })`
 - **Verification Hook**: Resolves a bookable event through `ticketsService.findBookableEvent()` (published + not past date).
 - **Atomic Seat Mutation**: Uses DB-level atomic updates (`findOneAndUpdate`) to mark seat state and adjust capacity/analytics safely.
 - **Coupon Enforcement**: Validates coupon applicability and expected payment amount server-side before ticket issue.
@@ -15,10 +15,24 @@ The core transaction engine for the platform. Booking a ticket cannot simply be 
   - In production, if transactions are explicitly required but unavailable, fails closed with operational error.
   - In non-transactional dev/test fallback, applies compensating rollback logic.
 - **Notification**: Sends confirmation through `notificationService.notify(...)` after persistence.
+- **Idempotency**: Supports replay-safe booking confirm calls using idempotency keys.
+- **Data Integrity Indexing**: Enforced unique active booking constraint at the ticket model layer.
 
 ### `cancelBooking(ticketId, userId)`
-- Reverses booking inside a transaction and unlocks capacity/seat state.
+- Reverses booking inside a transaction (with retry helper) and unlocks capacity/seat state.
 - Checks the `Waitlist` queue; if a pending user matches, re-sends availability `Notification`.
+
+## 1.1 `eventLifecycleService.js` (Critical multi-collection orchestration)
+
+### `cancelEvent(eventId, organizer, reason)`
+- Performs event cancellation + ticket cancellation + attendee notifications as one atomic operation when transactions are available.
+- Includes retry logic for transient transaction failures and safe fallback for unsupported local topologies.
+
+## 1.2 `eventsService.js` (Event CRUD + deletion safety)
+
+### `deleteEvent(eventId, user)`
+- Cascades deletion across `Event`, `Ticket`, `Waitlist`, `HallBooking`, and related notifications.
+- Uses shared transaction retry utility to keep multi-collection state consistent.
 
 ## 2. `ticketsService.js` (Ticket lifecycle + QR integrity)
 

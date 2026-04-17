@@ -79,7 +79,25 @@ Every validator chain ends with the `validate` function, which checks `validatio
 Additional hardening validators now enforced in routes:
 - coupon validate requires `eventId` + `amount` shape checks.
 - booking initiate requires valid `eventId`.
+- booking confirm supports optional `idempotencyKey` validation for safe retries.
 - account delete requires `password` type/constraints.
 
 ### Security Note on `normalizeEmail`
 The `gmail_remove_dots: false` option is explicitly set. Gmail treats `john.doe@gmail.com` and `johndoe@gmail.com` as the same inbox, but our system preserves dots to avoid confusing users who registered with a specific format.
+
+---
+
+## File: `rateLimiter.js` — Abuse Protection
+
+- Uses `express-rate-limit` for global and auth-specific limiter policies.
+- Supports Redis store via `REDIS_URL` and `REDIS_RATE_LIMIT_PREFIX` for multi-instance deployments.
+- Automatically falls back to in-memory limiter if Redis is unavailable.
+- Returns structured `429` responses with retry metadata.
+
+---
+
+## File: `methodNotAllowed.js` — HTTP Method Enforcement
+
+- App-level middleware that resolves allowed methods for matched routes.
+- Returns `405 Method Not Allowed` instead of false `404` for unsupported methods.
+- Sets proper `Allow` header per RFC semantics.

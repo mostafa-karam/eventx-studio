@@ -18,6 +18,7 @@ const Waitlist = require('../models/Waitlist');
 const notificationService = require('./notificationService');
 const logger = require('../utils/logger');
 const ticketsService = require('./ticketsService');
+const { withTransactionRetry } = require('../utils/transaction');
 
 const calculateCouponDiscount = (coupon, baseAmount) => {
   if (!coupon) return 0;
@@ -74,10 +75,18 @@ const getCouponForEvent = async (couponCode, eventId, sessionOptions) => {
  * @param {object} [options.metadata]
  * @returns {object} { ticket, event }
  */
-exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, metadata = {} }) => {
+exports.bookSeat = async ({
+  eventId,
+  userId,
+  seatNumber,
+  payment,
+  couponCode,
+  metadata = {},
+  idempotencyKey,
+}) => {
   // Use explicit env var instead of private driver topology sniffing (M-03)
   // Only start session when transactions are actually needed (M-14)
-  let useSession = process.env.ENABLE_TRANSACTIONS === 'true';
+  let useSession = process.env.ENABLE_TRANSACTIONS !== 'false';
   let session = null;
   if (useSession) {
     try {
@@ -91,7 +100,7 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
         throw e;
       }
 
-      logger.warn('Unable to start transaction; falling back to non-transactional booking flow:', err.message);
+      logger.warn(`Unable to start transaction; falling back to non-transactional booking flow: ${err.message}`);
       session = null;
       useSession = false;
     }
@@ -105,6 +114,19 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
   let seatMutation = null; // { type: 'named'|'ga', seatNumber, revenueInc }
 
   try {
+    if (idempotencyKey) {
+      const existingByIdempotencyQuery = Ticket.findOne({
+        event: eventId,
+        user: userId,
+        'payment.idempotencyKey': idempotencyKey,
+      });
+      if (useSession) existingByIdempotencyQuery.session(session);
+      const existingByIdempotency = await existingByIdempotencyQuery;
+      if (existingByIdempotency) {
+        return { ticket: existingByIdempotency, event: null, idempotentReplay: true };
+      }
+    }
+
     // Centralized business-rule guard (published + not in the past)
     const event = await ticketsService.findBookableEvent(eventId);
 
@@ -125,8 +147,11 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
     const existingTicket = await existingTicketQuery;
 
     if (existingTicket) {
+      if (idempotencyKey && existingTicket.payment?.idempotencyKey === idempotencyKey) {
+        return { ticket: existingTicket, event, idempotentReplay: true };
+      }
       const err = new Error('You already have a ticket for this event');
-      err.status = 400;
+      err.status = 409;
       throw err;
     }
 
@@ -243,6 +268,7 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
         status: 'completed',
         paymentDate: new Date(),
         transactionId: payment?.transactionId || undefined,
+        idempotencyKey: idempotencyKey || undefined,
       },
       metadata: metadata || {},
       bookingDate: new Date(),
@@ -295,6 +321,16 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
         }
       }
     }
+    if (error?.code === 11000) {
+      const duplicateTicket = await Ticket.findOne({
+        event: eventId,
+        user: userId,
+        status: { $in: ['booked', 'used'] },
+      });
+      if (duplicateTicket) {
+        return { ticket: duplicateTicket, event: null, idempotentReplay: true };
+      }
+    }
     throw error;
   } finally {
     if (session) session.endSession();
@@ -308,15 +344,7 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
  * @returns {object} { ticket, event }
  */
 exports.cancelBooking = async (ticketId, userId) => {
-  let session;
-  try {
-    session = await mongoose.startSession();
-    session.startTransaction();
-  } catch (err) {
-    throw Object.assign(new Error('Cancellation requires database transactions to be enabled'), { status: 500 });
-  }
-
-  try {
+  return withTransactionRetry(async (session) => {
     const ticket = await Ticket.findById(ticketId).session(session);
     if (!ticket) {
       const err = new Error('Ticket not found');
@@ -375,43 +403,42 @@ exports.cancelBooking = async (ticketId, userId) => {
     }
 
   // Check waitlist — notify next person
-  const nextWaitlist = await Waitlist.findOne({ event: ticket.event, status: 'pending' }).sort({ createdAt: 1 });
-  if (nextWaitlist) {
-    nextWaitlist.status = 'notified';
-    nextWaitlist.notifiedAt = new Date();
-    nextWaitlist.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await nextWaitlist.save();
-
-    notificationService.notify(nextWaitlist.user, {
-      title: 'A spot opened up!',
-      message: `A seat is now available for "${event.title}". You have 24 hours to book.`,
-      type: 'event',
-      priority: 'high',
-      actionUrl: `/user/events/${event._id}`,
-    });
-  }
+    const nextWaitlist = await Waitlist.findOne({ event: ticket.event, status: 'pending' })
+      .sort({ createdAt: 1 })
+      .session(session);
+    let waitlistUserId = null;
+    if (nextWaitlist) {
+      nextWaitlist.status = 'notified';
+      nextWaitlist.notifiedAt = new Date();
+      nextWaitlist.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await nextWaitlist.save({ session });
+      waitlistUserId = nextWaitlist.user;
+    }
 
   // Update ticket status
     ticket.status = 'cancelled';
     if (ticket.payment) ticket.payment.status = 'refunded';
     await ticket.save({ session });
 
-    await session.commitTransaction();
-
-  // Notify user
-  notificationService.notify(userId, {
-    title: 'Booking Cancelled',
-    message: `Your ticket for "${event.title}" has been cancelled.`,
-    type: 'booking',
-    priority: 'medium',
-    actionUrl: `/user/tickets`,
-  });
-
+    // Notify user and waitlisted user outside transaction.
+    setImmediate(() => {
+      notificationService.notify(userId, {
+        title: 'Booking Cancelled',
+        message: `Your ticket for "${event.title}" has been cancelled.`,
+        type: 'booking',
+        priority: 'medium',
+        actionUrl: '/user/tickets',
+      });
+      if (waitlistUserId) {
+        notificationService.notify(waitlistUserId, {
+          title: 'A spot opened up!',
+          message: `A seat is now available for "${event.title}". You have 24 hours to book.`,
+          type: 'event',
+          priority: 'high',
+          actionUrl: `/user/events/${event._id}`,
+        });
+      }
+    });
     return { ticket, event };
-  } catch (error) {
-    await session.abortTransaction().catch(() => {});
-    throw error;
-  } finally {
-    session.endSession();
-  }
+  });
 };

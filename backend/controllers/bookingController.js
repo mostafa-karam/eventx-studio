@@ -65,6 +65,13 @@ exports.confirmBooking = async (req, res) => {
     } = req.validatedBody || req.body || {};
 
     try {
+        const idempotencyKey = String(
+            req.headers['idempotency-key'] ||
+            req.headers['x-idempotency-key'] ||
+            (req.validatedBody || req.body || {}).idempotencyKey ||
+            ''
+        ).trim() || undefined;
+
         const event = await ticketsService.findBookableEvent(eventId);
 
         // Calculate expected payment amount considering coupon
@@ -132,6 +139,7 @@ exports.confirmBooking = async (req, res) => {
                 transactionId: paymentId,
             },
             couponCode,
+            idempotencyKey,
         });
 
         const Ticket = require('../models/Ticket');

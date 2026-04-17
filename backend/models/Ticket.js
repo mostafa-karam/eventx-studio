@@ -53,7 +53,11 @@ const ticketSchema = new mongoose.Schema({
       default: 'free'
     },
     transactionId: String,
-    paymentDate: Date
+    paymentDate: Date,
+    idempotencyKey: {
+      type: String,
+      index: true,
+    },
   },
   qrCode: {
     type: String,
@@ -151,6 +155,17 @@ ticketSchema.virtual('formattedTicketId').get(function() {
 
 // Performance Indexes
 ticketSchema.index({ event: 1, user: 1 });
+ticketSchema.index(
+  { event: 1, user: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ['booked', 'used'] },
+      'metadata.bulkBooking': { $ne: true },
+    },
+    name: 'uniq_active_booking_per_event_user',
+  }
+);
 ticketSchema.index({ status: 1 });
 ticketSchema.index({ bookingDate: -1 });
 ticketSchema.index({ user: 1, status: 1, bookingDate: -1 });

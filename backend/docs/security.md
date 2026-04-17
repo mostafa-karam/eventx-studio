@@ -4,12 +4,13 @@ This backend applies layered controls across transport, auth/session, CSRF, inpu
 
 ## Core Controls
 
-- `helmet` with CSP nonces and production HSTS.
-- Global rate limiter and route-specific auth limiters.
+- `helmet` with CSP nonces, strict frame/embed/opener controls, permissions policy, and production HSTS.
+- Global rate limiter and route-specific auth limiters with Redis-backed distributed mode and memory fallback.
 - Request sanitization middleware plus `express-mongo-sanitize`.
 - `hpp` for HTTP parameter pollution defense.
 - JWT access and refresh token separation.
 - Cookie parsing with dedicated `COOKIE_SIGNING_SECRET`.
+- Global `405 Method Not Allowed` handler with `Allow` header enforcement.
 
 ## Secrets and Sensitive Configuration
 
@@ -46,6 +47,12 @@ Never reuse one secret for multiple domains.
 - In production, requests without `Origin` are rejected.
 - Set `TRUST_PROXY` only when behind a trusted reverse proxy.
 
+## Distributed Rate Limit Notes
+
+- Set `REDIS_URL` to enable shared rate limits across multiple backend instances.
+- `REDIS_RATE_LIMIT_PREFIX` scopes limiter keys.
+- If Redis is unavailable, limiter falls back to in-memory mode and logs warning.
+
 ## Security Posture Notes
 
 - QR check-in requires signed JSON payloads; raw/unsigned ticket IDs are rejected.
@@ -53,6 +60,7 @@ Never reuse one secret for multiple domains.
 - Refresh-token flow validates user active/verified state.
 - Password reset revokes refresh/session state.
 - Hall-booking visibility and counts are scoped to authorization context.
+- Booking confirmation supports idempotency keys to make retries safe.
 
 Residual operational risk to track:
 - Development email sink writes links/tokens to local temp logs when SMTP is not configured (acceptable for local dev only).

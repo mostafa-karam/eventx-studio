@@ -21,6 +21,8 @@ This document is the source of truth for backend environment variables.
 - `BACKEND_URL` - absolute backend URL for links
 - `TRUST_PROXY` - set to `1` when behind a trusted proxy
 - `ENABLE_TRANSACTIONS` - enforce transactional booking flows where supported
+- `REDIS_URL` - enable distributed/shared rate limiting across backend instances
+- `REDIS_RATE_LIMIT_PREFIX` - key prefix namespace for Redis rate-limit counters
 
 ## Optional Mail Configuration
 
@@ -42,6 +44,7 @@ If `EMAIL_HOST` is missing in development, the app may write email output to a l
 - `API_URL` - Swagger/OpenAPI server URL
 - `REQUEST_BODY_LIMIT` - max incoming payload size
 - rate-limit tuning vars (`RATE_LIMIT_*`, `AUTH_*`, `PAYMENT_RATE_LIMIT_MAX`)
+- `REDIS_URL` / `REDIS_RATE_LIMIT_PREFIX` for distributed rate limiting with graceful fallback
 - `DEMO_SEED_PASSWORD` - required for `seed` and `seed:all`
 
 ## Example (Development)
@@ -61,6 +64,8 @@ FRONTEND_URL=http://localhost:5173
 FRONTEND_ORIGIN=http://localhost:5173
 BACKEND_URL=http://localhost:5000
 ENABLE_TRANSACTIONS=false
+REDIS_URL=redis://localhost:6379
+REDIS_RATE_LIMIT_PREFIX=eventx:ratelimit:
 DEMO_SEED_PASSWORD=replace_with_strong_password
 ```
 

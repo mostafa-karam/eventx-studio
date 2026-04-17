@@ -4,7 +4,7 @@
 
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const UAParser = require('ua-parser-js');
+const Bowser = require('bowser');
 const config = require('../config');
 
 const DISPOSABLE_DOMAINS = [
@@ -119,15 +119,23 @@ const generateRefreshToken = (userId, sessionId) => jwt.sign(
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 const getDeviceInfo = (req) => {
-  const parser = new UAParser(req.headers['user-agent']);
-  const result = parser.getResult();
+  const userAgent = req.headers['user-agent'] || 'Unknown';
+  let parsed = {};
+  try {
+    parsed = Bowser.parse(userAgent);
+  } catch (_error) {
+    parsed = {};
+  }
+  const platform = parsed.platform || {};
+  const browser = parsed.browser || {};
+  const os = parsed.os || {};
 
   return {
-    userAgent: req.headers['user-agent'],
+    userAgent,
     ipAddress: req.ip || req.connection?.remoteAddress,
-    device: result.device.model || result.device.type || 'Unknown',
-    browser: `${result.browser.name || 'Unknown'} ${result.browser.version || ''}`.trim(),
-    os: `${result.os.name || 'Unknown'} ${result.os.version || ''}`.trim(),
+    device: platform.type || 'Unknown',
+    browser: `${browser.name || 'Unknown'} ${browser.version || ''}`.trim(),
+    os: `${os.name || 'Unknown'} ${os.version || ''}`.trim(),
   };
 };
 

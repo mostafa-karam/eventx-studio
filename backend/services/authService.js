@@ -195,24 +195,29 @@ exports.loginUser = async (email, password, twoFactorCode, deviceInfo) => {
   const invalidCredentialsError = () => Object.assign(new Error('Invalid email or password'), { status: 401 });
 
   if (!user) {
+    logger.warn('Failed login attempt for unknown user', { email: String(email).toLowerCase() });
     throw invalidCredentialsError();
   }
 
   if (user.isLocked) {
+    logger.warn('Blocked login attempt on locked account', { userId: user._id, email: user.email });
     throw invalidCredentialsError();
   }
 
   if (!user.isActive) {
+    logger.warn('Blocked login attempt on inactive account', { userId: user._id, email: user.email });
     throw invalidCredentialsError();
   }
 
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
     await user.incLoginAttempts();
+    logger.warn('Failed login attempt due to invalid password', { userId: user._id, email: user.email });
     throw invalidCredentialsError();
   }
 
   if (!user.emailVerified) {
+    logger.warn('Blocked login attempt on unverified account', { userId: user._id, email: user.email });
     throw invalidCredentialsError();
   }
 
@@ -226,6 +231,7 @@ exports.loginUser = async (email, password, twoFactorCode, deviceInfo) => {
       ? verifyTotpCode(twoFactorCode, plainTwoFactorSecret)
       : false;
     if (!isValid) {
+      logger.warn('Failed login attempt due to invalid 2FA code', { userId: user._id, email: user.email });
       const error = new Error('Invalid 2FA code');
       error.status = 401;
       throw error;
