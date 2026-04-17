@@ -1,5 +1,7 @@
 # Services Reference (Business Logic)
 
+Last updated: 2026-04-17
+
 The `/services` directory is the most critical infrastructure layer in the backend. Controllers should be "thin"—only parsing requests and formatting responses. If a process requires modifying multiple models simultaneously, it must be contained in a Service object to prevent concurrency bugs and race conditions.
 
 ## 1. `bookingService.js` (Atomicity Central)

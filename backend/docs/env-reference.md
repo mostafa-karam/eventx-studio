@@ -2,6 +2,8 @@
 
 This document is the source of truth for backend environment variables.
 
+Last updated: 2026-04-17
+
 ## Required Variables
 
 - `NODE_ENV` - `development`, `test`, or `production`

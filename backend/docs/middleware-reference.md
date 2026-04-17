@@ -1,5 +1,7 @@
 # Middleware Reference
 
+Last updated: 2026-04-17
+
 The `middleware/` directory contains custom Express interceptors that execute **before** any Controller logic runs. These form the security perimeter and validation layer of the entire application.
 
 ---

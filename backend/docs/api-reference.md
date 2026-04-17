@@ -1,5 +1,7 @@
 # API Reference
 
+Last updated: 2026-04-17
+
 ## Base URL
 
 All backend routes are mounted under:
@@ -7,6 +9,20 @@ All backend routes are mounted under:
 ```text
 http://localhost:5000/api
 ```
+
+## Global API Behavior
+
+- Standard success shape:
+  - `{ success: true, data: ... }`
+- Standard error shape:
+  - `{ success: false, data: null, error: string, message: string }`
+- Unsupported method on existing path:
+  - `405 Method Not Allowed` with `Allow` header.
+- Route missing:
+  - `404 Route not found`.
+- CSRF:
+  - Mutating `/api` routes require `X-CSRF-Token`.
+  - Token endpoint: `GET /api/auth/csrf-token`.
 
 ## Global Endpoints
 
@@ -78,6 +94,9 @@ http://localhost:5000/api
 
 - `POST /initiate`
 - `POST /confirm`
+
+Notes:
+- `POST /confirm` supports idempotent retries through `Idempotency-Key` / `X-Idempotency-Key`.
 
 ## Payments (`/api/payments`)
 

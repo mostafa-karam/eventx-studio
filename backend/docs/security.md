@@ -1,5 +1,7 @@
 # Backend Security Guide
 
+Last updated: 2026-04-17
+
 This backend applies layered controls across transport, auth/session, CSRF, input handling, and abuse prevention.
 
 ## Core Controls

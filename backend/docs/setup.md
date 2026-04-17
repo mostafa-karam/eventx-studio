@@ -1,5 +1,7 @@
 # EventX Studio Backend Setup
 
+Last updated: 2026-04-17
+
 ## Prerequisites
 
 - Node.js `18+`
@@ -28,6 +30,8 @@ Required (see `env-reference.md` for full details):
 - `QR_HMAC_SECRET`
 - `SESSION_ENCRYPTION_KEY`
 - `FRONTEND_URL`
+- `COOKIE_SIGNING_SECRET`
+- `CSRF_SECRET`
 
 Recommended for secure local/prod behavior:
 
@@ -35,6 +39,8 @@ Recommended for secure local/prod behavior:
 - `FRONTEND_ORIGIN` (supports comma-separated allowlist)
 - `BACKEND_URL`
 - `TRUST_PROXY` (when behind reverse proxy)
+- `REDIS_URL` (distributed rate limiting)
+- `REDIS_RATE_LIMIT_PREFIX`
 
 ## Run
 

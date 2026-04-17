@@ -1,6 +1,7 @@
 # EventX Studio Backend Docs
 
 This folder contains the backend technical references for the Node.js + Express + MongoDB API.
+Last updated: 2026-04-17
 
 Last updated: 2026-04-17
 
@@ -34,6 +35,7 @@ Last updated: 2026-04-17
 - Unsupported methods now return `405` with an `Allow` header.
 - Rate limiting supports Redis-backed distributed counters (`REDIS_URL`) with graceful memory fallback.
 - Critical multi-collection event operations use transaction retry helpers for stronger consistency.
+- Docs in this folder are synchronized with current backend behavior and env requirements.
 
 ## Standard Local Commands
 

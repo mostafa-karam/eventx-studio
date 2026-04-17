@@ -1,9 +1,12 @@
 # Scripts Guide
 
+Last updated: 2026-04-17
+
 ## NPM Script Map
 
 - `npm run seed` -> `node utils/seed.js`
 - `npm run seed:all` -> `node scripts/seed.js`
+- `npm test` -> `jest --detectOpenHandles --forceExit`
 
 ## `utils/seed.js` (Lightweight Dev Seed)
 
@@ -39,3 +42,4 @@ Important:
 
 - Never run destructive seed scripts against production data.
 - Never commit `.env` with real secrets or seed passwords.
+- Keep seeding and script execution in isolated non-production databases.

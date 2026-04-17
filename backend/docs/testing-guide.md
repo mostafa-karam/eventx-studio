@@ -1,5 +1,7 @@
 # Testing Guide
 
+Last updated: 2026-04-17
+
 Backend tests use Jest + Supertest and run under `backend/__tests__`.
 
 ## Run Tests
@@ -33,6 +35,7 @@ Current test files:
 - `notifications.test.js`
 - `reviews.test.js`
 - `security.test.js`
+- `transactions.test.js`
 - `users.test.js`
 - `waitlist.test.js`
 
@@ -46,6 +49,8 @@ Use `/api` routes, not `/api/v1`.
 - Rate-limit behavior tests for `verify-email` and `resend-verification`.
 - Event payload hardening tests to ensure unknown fields are rejected.
 - Coupon endpoint validator tests for malformed payloads.
+- Idempotency retry tests for booking confirm endpoint.
+- 405 method enforcement tests with `Allow` header assertions.
 
 ## Test Hygiene
 
