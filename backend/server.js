@@ -12,6 +12,7 @@ const hpp = require('hpp');
 const responseTime = require('response-time');
 const crypto = require('crypto');
 const logger = require('./utils/logger');
+const Idempotency = require('./models/Idempotency');
 const errorHandler = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
 const methodNotAllowed = require('./middleware/methodNotAllowed');
@@ -27,6 +28,8 @@ const validateEnv = require('./config/validateEnv');
 validateEnv();
 
 const config = require('./config');
+const paymentsService = require('./services/paymentsService');
+const { probeTransactionCapability, getTransactionHealthState } = require('./utils/transactionHealth');
 
 const app = express();
 const PORT = config.port;
@@ -190,15 +193,60 @@ const verifyDbTransactions = async () => {
   // Fail closed on misconfigured Mongo topology.
   if (!config.security.db?.requireTransactions) return;
 
-  try {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    await session.abortTransaction().catch(() => {});
-    session.endSession();
-  } catch (err) {
-    logger.error(`MongoDB transactions are required but unavailable: ${err.message}`);
+  const healthy = await probeTransactionCapability();
+  if (!healthy) {
+    logger.error('MongoDB transactions are required but unavailable');
     process.exit(1);
   }
+};
+
+const verifyPaymentWebhookSecurity = () => {
+  try {
+    paymentsService.validatePaymentWebhookSecurityConfig();
+  } catch (err) {
+    logger.error(`Payment webhook security config invalid: ${err.message}`);
+    process.exit(1);
+  }
+};
+
+const startIdempotencyReconciler = () => {
+  const intervalMs = Number.parseInt(process.env.IDEMPOTENCY_RECONCILE_INTERVAL_MS, 10) || 60 * 1000;
+  const staleThresholdMs = Number.parseInt(process.env.IDEMPOTENCY_PROCESSING_TIMEOUT_MS, 10) || 2 * 60 * 1000;
+  return setInterval(async () => {
+    try {
+      const cutoff = new Date(Date.now() - staleThresholdMs);
+      const result = await Idempotency.updateMany(
+        { status: 'processing', createdAt: { $lte: cutoff } },
+        {
+          $set: {
+            status: 'failed',
+            statusCode: 409,
+            response: { success: false, message: 'Request processing timed out; safe retry allowed.' },
+          },
+        },
+      );
+      if (result.modifiedCount > 0) {
+        logger.warn(`Idempotency reconciler marked ${result.modifiedCount} stale records as failed`);
+      }
+    } catch (err) {
+      logger.error(`Idempotency reconciler failed: ${err.message}`);
+    }
+  }, intervalMs);
+};
+
+const startTransactionCapabilityMonitor = () => {
+  const intervalMs = Number.parseInt(process.env.TRANSACTION_HEALTH_CHECK_INTERVAL_MS, 10) || 60 * 1000;
+  return setInterval(async () => {
+    const healthy = await probeTransactionCapability();
+    const state = getTransactionHealthState();
+    if (!healthy) {
+      logger.error('security_event', {
+        event: 'db.transaction_capability_lost',
+        timestamp: new Date().toISOString(),
+        lastProbeAt: state.lastProbeAt,
+      });
+    }
+  }, intervalMs);
 };
 
 const verifyRateLimitRedisConfigured = () => {
@@ -250,9 +298,10 @@ app.use(errorHandler);
 const startServer = async () => {
   await connectDB();
   verifyRateLimitRedisConfigured();
+  verifyPaymentWebhookSecurity();
   await verifyDbTransactions();
-
-
+  const idempotencyReconciler = startIdempotencyReconciler();
+  const transactionMonitor = startTransactionCapabilityMonitor();
 
   const server = app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
   server.timeout = 30000; // 30 second request timeout
@@ -262,6 +311,8 @@ const startServer = async () => {
     logger.info(`${signal} received. Shutting down gracefully...`);
     server.close(async () => {
       try {
+        clearInterval(idempotencyReconciler);
+        clearInterval(transactionMonitor);
         await mongoose.connection.close();
         logger.info('MongoDB connection closed.');
       } catch (err) {

@@ -5,34 +5,53 @@ const Redis = require('ioredis');
 const config = require('../config');
 const logger = require('../utils/logger');
 
-const ipKeyGenerator = rateLimit.ipKeyGenerator || ((req) => req.ip);
 const STRICT_REDIS_DOWN_STATUS = 503;
 const FINGERPRINT_HEADER = 'x-device-fingerprint';
 const redisStrictMode = config.env === 'production';
+const emergencyBuckets = new Map();
+const EMERGENCY_WINDOW_MS = 60 * 1000;
+const EMERGENCY_MAX_REQUESTS = 10;
 
 const normalizeEmail = (email) => {
   if (typeof email !== 'string') return 'anonymous';
   return email.trim().toLowerCase();
 };
 
-const getClientIp = (req) => ipKeyGenerator(req);
+const getClientIp = (req) => String(req.ip || req.connection?.remoteAddress || 'unknown').trim();
+const getIpSubnet = (ipRaw) => {
+  const ip = String(ipRaw || '').replace('::ffff:', '');
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) {
+    const parts = ip.split('.');
+    return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
+  }
+  if (ip.includes(':')) {
+    const parts = ip.split(':').filter(Boolean);
+    return `${parts.slice(0, 4).join(':')}::/64`;
+  }
+  return ip || 'unknown';
+};
 const getUserAgent = (req) => String(req.get('user-agent') || 'unknown').slice(0, 256);
 const getDeviceFingerprint = (req) => String(req.get(FINGERPRINT_HEADER) || 'none').slice(0, 256);
 const getUserId = (req) => req.user?._id?.toString?.() || 'anonymous';
+const getEndpointScope = (req) => `${req.method}:${req.baseUrl || ''}${req.path || ''}`;
 
 const hashRateKey = (parts) => crypto.createHash('sha256').update(parts.join('|')).digest('hex');
 
 const compositeRateIdentity = (req) => {
   const ip = getClientIp(req);
+  const ipSubnet = getIpSubnet(ip);
   const userId = getUserId(req);
   const userAgent = getUserAgent(req);
   const deviceFingerprint = getDeviceFingerprint(req);
   return {
     ip,
+    ipSubnet,
+    endpoint: getEndpointScope(req),
     userId,
     userAgent,
     deviceFingerprint,
-    hash: hashRateKey([ip, userId, userAgent, deviceFingerprint]),
+    primaryHash: hashRateKey([ipSubnet, userId, getEndpointScope(req)]),
+    telemetryHash: hashRateKey([ip, userAgent, deviceFingerprint]),
   };
 };
 
@@ -142,10 +161,30 @@ const ensureRedisAvailable = (scope) => (req, res, next) => {
     requestId: req.id,
   });
 
-  return res.status(STRICT_REDIS_DOWN_STATUS).json({
-    success: false,
-    message: 'Service temporarily unavailable. Please retry shortly.',
-  });
+  const allowEmergencyMode = String(process.env.RATE_LIMIT_EMERGENCY_MODE || 'true').toLowerCase() === 'true';
+  if (!allowEmergencyMode) {
+    return res.status(STRICT_REDIS_DOWN_STATUS).json({
+      success: false,
+      message: 'Service temporarily unavailable. Please retry shortly.',
+    });
+  }
+
+  const emergencyKey = `${scope}:${getIpSubnet(getClientIp(req))}:${getUserId(req)}:${getEndpointScope(req)}`;
+  const now = Date.now();
+  const bucket = emergencyBuckets.get(emergencyKey) || { count: 0, windowStart: now };
+  if ((now - bucket.windowStart) > EMERGENCY_WINDOW_MS) {
+    bucket.count = 0;
+    bucket.windowStart = now;
+  }
+  bucket.count += 1;
+  emergencyBuckets.set(emergencyKey, bucket);
+  if (bucket.count > EMERGENCY_MAX_REQUESTS) {
+    return res.status(429).json({
+      success: false,
+      message: 'Rate limit temporarily tightened. Please retry shortly.',
+    });
+  }
+  return next();
 };
 
 const defaultHandler = (message) => (req, res, _next, options) => {
@@ -189,12 +228,12 @@ const createLimiter = ({
     skipSuccessfulRequests,
     skipFailedRequests,
     store: buildStore(),
-    passOnStoreError: false,
+    passOnStoreError: !strictRedis,
     keyGenerator: (req) => {
       const identity = compositeRateIdentity(req);
       const emailPart = withEmail ? normalizeEmail(req.body?.email) : 'none';
       trackSuspiciousPattern(req, scope);
-      return `${scope}:${hashRateKey([identity.hash, emailPart])}`;
+      return `${scope}:${hashRateKey([identity.primaryHash, emailPart])}`;
     },
     handler: defaultHandler(message),
   });

@@ -13,6 +13,11 @@ const validateEnv = () => {
     'SESSION_ENCRYPTION_KEY',
     'FRONTEND_URL'
   ];
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction) {
+    requiredVars.push('PAYMENT_PROVIDER_WEBHOOK_SECRET');
+    requiredVars.push('PAYMENT_WEBHOOK_IP_ALLOWLIST');
+  }
 
   const missing = requiredVars.filter(envVar => !process.env[envVar]);
   const isTest = process.env.NODE_ENV === 'test';

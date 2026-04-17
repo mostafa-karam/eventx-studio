@@ -1,7 +1,9 @@
 const express = require('express');
-const asyncHandler = require('../utils/asyncHandler');
 
 const { authenticate, requireAdmin, requireOrganizer, requireRole } = require('../middleware/auth');
+const { bookingLimiter, paymentLimiter } = require('../middleware/rateLimiter');
+const idempotency = require('../middleware/idempotency');
+const { requireHealthyTransactions } = require('../middleware/transactionGuard');
 const {
   bookTicketValidator,
   bookMultiTicketsValidator,
@@ -10,8 +12,24 @@ const ticketsController = require('../controllers/ticketsController');
 
 const router = express.Router();
 
-router.post('/book', authenticate, bookTicketValidator, ticketsController.bookTicket);
-router.post('/book-multi', authenticate, bookMultiTicketsValidator, ticketsController.bookMultiTickets);
+router.post(
+  '/book',
+  paymentLimiter,
+  requireHealthyTransactions,
+  authenticate,
+  idempotency({ ttlSeconds: 60 * 60, awaitPersist: true }),
+  bookTicketValidator,
+  ticketsController.bookTicket,
+);
+router.post(
+  '/book-multi',
+  bookingLimiter,
+  requireHealthyTransactions,
+  authenticate,
+  idempotency({ ttlSeconds: 60 * 60, awaitPersist: true }),
+  bookMultiTicketsValidator,
+  ticketsController.bookMultiTickets,
+);
 router.get('/my-tickets', authenticate, ticketsController.getMyTickets);
 router.get('/organizer', authenticate, requireOrganizer, ticketsController.getOrganizerTickets);
 router.get('/admin', authenticate, requireAdmin, ticketsController.getTicketsAdmin);

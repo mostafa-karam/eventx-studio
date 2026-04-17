@@ -22,9 +22,10 @@ const normalizeForHash = (payload) => {
 
 const computeRequestHash = (req) => {
   const userId = req.user?._id?.toString?.() || 'anonymous';
+  const endpointPath = `${req.baseUrl || ''}${req.path || ''}`;
   const data = {
     method: req.method,
-    endpoint: req.baseUrl ? `${req.baseUrl}${req.path}` : req.originalUrl,
+    endpoint: endpointPath,
     userId,
     body: normalizeForHash(req.body || {}),
     query: normalizeForHash(req.query || {}),
@@ -37,6 +38,10 @@ const idempotency = (options = {}) => {
   const ttlSeconds = Number.isInteger(options.ttlSeconds) ? options.ttlSeconds : DEFAULT_TTL_SECONDS;
   const headerName = String(options.headerName || 'idempotency-key').toLowerCase();
   const required = options.required !== false;
+  const awaitPersist = options.awaitPersist === true;
+  const processingTimeoutMs = Number.isFinite(Number(options.processingTimeoutMs))
+    ? Number(options.processingTimeoutMs)
+    : 2 * 60 * 1000;
 
   return async (req, res, next) => {
     const keyHeaderValue = req.headers[headerName];
@@ -50,7 +55,7 @@ const idempotency = (options = {}) => {
       return res.status(400).json({ success: false, message: 'Idempotency-Key header is required' });
     }
 
-    const endpoint = req.baseUrl ? `${req.baseUrl}${req.path}` : req.originalUrl;
+    const endpoint = `${req.baseUrl || ''}${req.path || ''}`;
     const userId = req.user?._id || null;
     const requestHash = computeRequestHash(req);
     const now = new Date();
@@ -95,7 +100,40 @@ const idempotency = (options = {}) => {
     }
 
     if (idempotencyRecord.status === 'processing' && !upserted) {
-      return res.status(409).json({ success: false, message: 'Duplicate request is currently processing' });
+      const staleCutoff = new Date(now.getTime() - processingTimeoutMs);
+      const isStale = idempotencyRecord.createdAt && idempotencyRecord.createdAt <= staleCutoff;
+      if (!isStale) {
+        return res.status(409).json({ success: false, message: 'Duplicate request is currently processing' });
+      }
+
+      // Mark stale processing records as failed, then safely re-acquire processing state.
+      await Idempotency.updateOne(
+        { _id: idempotencyRecord._id, status: 'processing', createdAt: idempotencyRecord.createdAt },
+        {
+          $set: {
+            status: 'failed',
+            statusCode: 409,
+            response: { success: false, message: 'Previous request timed out while processing' },
+          },
+        },
+      );
+      const reclaimed = await Idempotency.findOneAndUpdate(
+        { _id: idempotencyRecord._id, status: 'failed', requestHash },
+        {
+          $set: {
+            status: 'processing',
+            createdAt: now,
+            expiresAt,
+            response: null,
+            statusCode: null,
+          },
+        },
+        { new: true },
+      );
+      if (!reclaimed) {
+        return res.status(409).json({ success: false, message: 'Duplicate request is currently processing' });
+      }
+      idempotencyRecord = reclaimed;
     }
 
     if (idempotencyRecord.status === 'completed' && idempotencyRecord.response !== null) {
@@ -131,10 +169,23 @@ const idempotency = (options = {}) => {
     };
 
     res.json = (body) => {
-      persistResult(body).catch((err) => {
-        logSecurityEvent(req, 'idempotency.persist_failed', { reason: err.message });
-      });
-      return originalJson(body);
+      if (!awaitPersist) {
+        persistResult(body).catch((err) => {
+          logSecurityEvent(req, 'idempotency.persist_failed', { reason: err.message });
+        });
+        return originalJson(body);
+      }
+
+      persistResult(body)
+        .then(() => originalJson(body))
+        .catch((err) => {
+          logSecurityEvent(req, 'idempotency.persist_failed', { reason: err.message });
+          if (!res.headersSent) {
+            res.status(503);
+            originalJson({ success: false, message: 'Request result could not be persisted safely' });
+          }
+        });
+      return res;
     };
 
     res.send = (body) => {
@@ -146,10 +197,23 @@ const idempotency = (options = {}) => {
           payload = { message: body };
         }
       }
-      persistResult(payload).catch((err) => {
-        logSecurityEvent(req, 'idempotency.persist_failed', { reason: err.message });
-      });
-      return originalSend(body);
+      if (!awaitPersist) {
+        persistResult(payload).catch((err) => {
+          logSecurityEvent(req, 'idempotency.persist_failed', { reason: err.message });
+        });
+        return originalSend(body);
+      }
+
+      persistResult(payload)
+        .then(() => originalSend(body))
+        .catch((err) => {
+          logSecurityEvent(req, 'idempotency.persist_failed', { reason: err.message });
+          if (!res.headersSent) {
+            res.status(503);
+            originalJson({ success: false, message: 'Request result could not be persisted safely' });
+          }
+        });
+      return res;
     };
 
     return next();

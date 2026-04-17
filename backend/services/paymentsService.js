@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const net = require('net');
 const { v4: uuidv4 } = require('uuid');
 const Payment = require('../models/Payment');
 const PaymentWebhookEvent = require('../models/PaymentWebhookEvent');
@@ -6,7 +7,14 @@ const Event = require('../models/Event');
 const logger = require('../utils/logger');
 const { logSecurityEvent } = require('../utils/securityLog');
 
-const WEBHOOK_SECRET = process.env.PAYMENT_PROVIDER_WEBHOOK_SECRET || process.env.PAYMENT_HMAC_SECRET;
+const getWebhookSecret = () => {
+  const dedicatedSecret = String(process.env.PAYMENT_PROVIDER_WEBHOOK_SECRET || '').trim();
+  if (dedicatedSecret) return dedicatedSecret;
+  if (process.env.NODE_ENV === 'production') {
+    throw Object.assign(new Error('PAYMENT_PROVIDER_WEBHOOK_SECRET is required in production'), { status: 500 });
+  }
+  return String(process.env.PAYMENT_HMAC_SECRET || '').trim();
+};
 const WEBHOOK_MAX_AGE_MS = Number.parseInt(process.env.PAYMENT_WEBHOOK_MAX_AGE_MS, 10) || 5 * 60 * 1000;
 const WEBHOOK_EVENT_TTL_MS = Number.parseInt(process.env.PAYMENT_WEBHOOK_EVENT_TTL_MS, 10) || 7 * 24 * 60 * 60 * 1000;
 const WEBHOOK_IP_ALLOWLIST = String(process.env.PAYMENT_WEBHOOK_IP_ALLOWLIST || '')
@@ -16,6 +24,44 @@ const WEBHOOK_IP_ALLOWLIST = String(process.env.PAYMENT_WEBHOOK_IP_ALLOWLIST || 
 
 const normalizeCurrency = (currency) => String(currency || 'USD').trim().toUpperCase();
 const normalizeIp = (ip) => String(ip || '').replace('::ffff:', '').trim();
+const getIpVersionLabel = (ip) => (net.isIP(ip) === 6 ? 'ipv6' : 'ipv4');
+
+const buildWebhookIpBlockList = (entries) => {
+  const blockList = new net.BlockList();
+  for (const entry of entries) {
+    if (entry.includes('/')) {
+      const [baseIp, prefixRaw] = entry.split('/');
+      const ip = normalizeIp(baseIp);
+      const prefix = Number(prefixRaw);
+      const version = net.isIP(ip);
+      const maxPrefix = version === 6 ? 128 : 32;
+      if (!version || !Number.isInteger(prefix) || prefix < 0 || prefix > maxPrefix) {
+        throw new Error(`Invalid webhook allowlist CIDR entry: ${entry}`);
+      }
+      blockList.addSubnet(ip, prefix, getIpVersionLabel(ip));
+      continue;
+    }
+
+    const ip = normalizeIp(entry);
+    if (!net.isIP(ip)) {
+      throw new Error(`Invalid webhook allowlist IP entry: ${entry}`);
+    }
+    blockList.addAddress(ip, getIpVersionLabel(ip));
+  }
+  return blockList;
+};
+
+const WEBHOOK_IP_BLOCKLIST = buildWebhookIpBlockList(WEBHOOK_IP_ALLOWLIST);
+
+const validatePaymentWebhookSecurityConfig = () => {
+  const webhookSecret = String(process.env.PAYMENT_PROVIDER_WEBHOOK_SECRET || '').trim();
+  if (process.env.NODE_ENV === 'production' && !webhookSecret) {
+    throw new Error('PAYMENT_PROVIDER_WEBHOOK_SECRET is required in production');
+  }
+  if (process.env.NODE_ENV === 'production' && WEBHOOK_IP_ALLOWLIST.length === 0) {
+    throw new Error('PAYMENT_WEBHOOK_IP_ALLOWLIST must be configured in production');
+  }
+};
 
 const toProviderPayload = (body = {}) => ({
   eventId: String(body.eventId || ''),
@@ -29,7 +75,8 @@ const toProviderPayload = (body = {}) => ({
 });
 
 const computeWebhookSignature = (payload) => {
-  if (!WEBHOOK_SECRET) {
+  const webhookSecret = getWebhookSecret();
+  if (!webhookSecret) {
     throw Object.assign(new Error('Payment webhook secret is not configured'), { status: 500 });
   }
   const signaturePayload = {
@@ -43,7 +90,7 @@ const computeWebhookSignature = (payload) => {
   if (payload.eventId) signaturePayload.eventId = payload.eventId;
   if (Number.isFinite(payload.timestamp)) signaturePayload.timestamp = payload.timestamp;
   return crypto
-    .createHmac('sha256', WEBHOOK_SECRET)
+    .createHmac('sha256', webhookSecret)
     .update(JSON.stringify(signaturePayload))
     .digest('hex');
 };
@@ -120,11 +167,19 @@ class PaymentsService {
   }
 
   assertWebhookIp(req) {
-    if (WEBHOOK_IP_ALLOWLIST.length === 0) return;
+    if (WEBHOOK_IP_ALLOWLIST.length === 0) {
+      if (process.env.NODE_ENV === 'production') {
+        throw Object.assign(new Error('Webhook IP allowlist is required in production'), { status: 500 });
+      }
+      return;
+    }
     const incomingIp = normalizeIp(req?.ip);
     const forwardedIp = normalizeIp(String(req?.headers?.['x-forwarded-for'] || '').split(',')[0]);
     const candidateIps = [incomingIp, forwardedIp].filter(Boolean);
-    const allowed = candidateIps.some((ip) => WEBHOOK_IP_ALLOWLIST.includes(ip));
+    const allowed = candidateIps.some((ip) => {
+      if (!net.isIP(ip)) return false;
+      return WEBHOOK_IP_BLOCKLIST.check(ip, getIpVersionLabel(ip));
+    });
     if (!allowed) {
       logSecurityEvent(req, 'payment.webhook.ip_not_allowed', {
         incomingIp,
@@ -155,7 +210,7 @@ class PaymentsService {
     }
   }
 
-  async ensureUniqueWebhookEvent(payload, req) {
+  async ensureUniqueWebhookEvent(payload, req, signatureHeader) {
     const eventIdHeader = String(req?.headers?.['x-payment-event-id'] || '').trim();
     const fallbackEventId = process.env.NODE_ENV === 'test'
       ? `test_evt_${payload.paymentId}_${payload.providerPaymentId}_${Date.now()}`
@@ -165,9 +220,15 @@ class PaymentsService {
       throw Object.assign(new Error('Missing webhook eventId'), { status: 400 });
     }
 
+    const signatureDigest = crypto
+      .createHash('sha256')
+      .update(String(signatureHeader || ''))
+      .digest('hex');
+
     try {
       await PaymentWebhookEvent.create({
         eventId,
+        signatureDigest,
         paymentId: payload.paymentId,
         providerPaymentId: payload.providerPaymentId,
         provider: payload.provider,
@@ -176,7 +237,7 @@ class PaymentsService {
       });
     } catch (err) {
       if (err.code === 11000) {
-        logSecurityEvent(req, 'payment.webhook.replay_rejected', { eventId, paymentId: payload.paymentId });
+        logSecurityEvent(req, 'payment.webhook.replay_rejected', { eventId, paymentId: payload.paymentId, provider: payload.provider });
         throw Object.assign(new Error('Duplicate webhook event rejected'), { status: 409 });
       }
       throw err;
@@ -203,7 +264,6 @@ class PaymentsService {
 
     this.assertWebhookIp(req);
     this.assertWebhookTimestamp(payload, req);
-    await this.ensureUniqueWebhookEvent(payload, req);
 
     const signatureValid = this.verifyWebhookSignature(payload, signatureHeader);
     if (!signatureValid) {
@@ -213,6 +273,8 @@ class PaymentsService {
       });
       throw Object.assign(new Error('Invalid payment webhook signature'), { status: 401 });
     }
+    // Only authenticated webhooks may create persistent replay records.
+    await this.ensureUniqueWebhookEvent(payload, req, signatureHeader);
 
     const existing = await Payment.findOne({ paymentId: payload.paymentId });
     if (!existing) {
@@ -237,10 +299,28 @@ class PaymentsService {
         providerPaymentId: payload.providerPaymentId,
       });
 
-      // Mark failed only if it hasn't been consumed (already handled above).
-      existing.status = 'failed';
-      existing.metadata = { ...(existing.metadata || {}), verificationMismatch: true, providerPayload: payload };
-      await existing.save();
+      // Mark failed atomically only for non-terminal states to prevent
+      // concurrent consume() from being overwritten back to failed.
+      const mismatchMarked = await Payment.findOneAndUpdate(
+        {
+          _id: existing._id,
+          status: { $in: ['created', 'processing', 'verified', 'failed'] },
+        },
+        {
+          $set: {
+            status: 'failed',
+            metadata: { ...(existing.metadata || {}), verificationMismatch: true, providerPayload: payload },
+          },
+        },
+        { new: true }
+      );
+
+      if (!mismatchMarked || mismatchMarked.status === 'consumed') {
+        logSecurityEvent(req, 'payment.webhook.mismatch_ignored_terminal_state', {
+          paymentId: payload.paymentId,
+          currentStatus: mismatchMarked?.status || 'unknown',
+        }, 'info');
+      }
       throw Object.assign(new Error('Payment verification mismatch'), { status: 400 });
     }
 
@@ -380,4 +460,7 @@ class PaymentsService {
   }
 }
 
-module.exports = new PaymentsService();
+const paymentsService = new PaymentsService();
+paymentsService.validatePaymentWebhookSecurityConfig = validatePaymentWebhookSecurityConfig;
+
+module.exports = paymentsService;
