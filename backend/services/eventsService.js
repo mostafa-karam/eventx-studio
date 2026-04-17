@@ -237,7 +237,7 @@ class EventsService {
 
     // FIX H-02 — Strip bookedBy to prevent data leak for non-organizers
     async getSeats(eventId, user) {
-        const event = await Event.findById(eventId).select('seating title date venue.name organizer');
+        const event = await Event.findById(eventId).select('seating title date venue.name organizer status');
         if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
 
         const isAuthorized = user && (user.role === 'admin' || event.organizer.toString() === user._id.toString());
@@ -328,11 +328,24 @@ class EventsService {
         return event;
     }
 
-    async getMyWaitlists(user) {
+    async getMyWaitlists(user, { page = 1, limit = 20 } = {}) {
+        page = this.toPositiveInt(page, 1);
+        limit = Math.min(this.toPositiveInt(limit, 20), 100);
+        const skip = (page - 1) * limit;
         const Waitlist = require('../models/Waitlist');
-        return await Waitlist.find({ user: user._id })
-            .populate('event', 'title date venue images category pricing')
-            .sort({ createdAt: -1 });
+        const query = { user: user._id };
+        const [waitlists, total] = await Promise.all([
+            Waitlist.find(query)
+                .populate('event', 'title date venue images category pricing')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Waitlist.countDocuments(query)
+        ]);
+        return {
+            waitlists,
+            pagination: { current: page, pages: Math.max(1, Math.ceil(total / limit)), total, limit }
+        };
     }
 }
 

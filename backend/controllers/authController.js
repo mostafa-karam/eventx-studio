@@ -82,7 +82,12 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     logger.error('Login error: ' + error.message);
-    if (error.status) return res.status(error.status).json({ success: false, message: error.message, lockTimeRemaining: error.lockTimeRemaining, attemptsRemaining: error.attemptsRemaining, emailVerificationRequired: error.emailVerificationRequired, email: error.email });
+    if (error.status) {
+      if (error.status === 400) {
+        return res.status(400).json({ success: false, message: error.message });
+      }
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
     res.status(500).json({ success: false, message: 'Server error during login' });
   }
 };
@@ -90,7 +95,7 @@ exports.login = async (req, res) => {
 // POST /api/auth/refresh — get new access token using refresh token
 exports.refreshToken = async (req, res) => {
   try {
-    const incomingRefresh = req.body.refreshToken || req.cookies?.refreshToken;
+    const incomingRefresh = req.cookies?.refreshToken;
     if (!incomingRefresh) return res.status(400).json({ success: false, message: 'Refresh token required' });
 
     // Removed dynamic require
@@ -207,10 +212,13 @@ exports.changePassword = async (req, res) => {
 
     user.password = newPassword;
     
-    // SECURITY (Phase 2.5): Invalidate sessions on password change
-    // Keep only the current session active, invalidate all others 
-    user.activeSessions = user.activeSessions.filter(s => s.sessionId === req.sessionId);
-    user.clearAllSessionRefreshTokens();
+    // Invalidate all other sessions while preserving the current one.
+    const currentSessionId = req.sessionId;
+    user.activeSessions = (user.activeSessions || []).filter(s => s.sessionId === currentSessionId);
+    user.activeSessions.forEach((session) => {
+      session.revokedAt = undefined;
+      session.lastActivity = new Date();
+    });
     user.refreshToken = undefined;
     user.refreshTokenExpires = undefined;
 
@@ -501,8 +509,32 @@ exports.requestRoleUpgrade = async (req, res) => {
 // GET /api/auth/role-upgrade-requests (Admin)
 exports.getRoleUpgradeRequests = async (req, res) => {
   try {
-    const users = await User.find({ 'roleUpgradeRequest.status': 'pending' }).select('name email roleUpgradeRequest createdAt');
-    res.json({ success: true, data: { requests: users } });
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const skip = (page - 1) * limit;
+    const query = { 'roleUpgradeRequest.status': 'pending' };
+
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .select('name email roleUpgradeRequest createdAt')
+        .sort({ 'roleUpgradeRequest.requestedAt': -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        requests: users,
+        pagination: {
+          current: page,
+          pages: Math.max(1, Math.ceil(total / limit)),
+          total,
+          limit,
+        },
+      },
+    });
   } catch (error) {
     logger.error('Get role upgrade requests error: ' + error.message);
     res.status(500).json({ success: false, message: 'Server error' });

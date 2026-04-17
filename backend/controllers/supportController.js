@@ -5,10 +5,20 @@ const logger = require('../utils/logger');
 // @access  Private
 exports.getTickets = async (req, res) => {
     try {
-        const tickets = await SupportTicket.find({ userId: req.user._id })
-            .populate('assignedTo', 'name email')
-            .populate('responses.userId', 'name email')
-            .sort({ createdAt: -1 });
+        const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+        const skip = (page - 1) * limit;
+        const query = { userId: req.user._id };
+
+        const [tickets, total] = await Promise.all([
+            SupportTicket.find(query)
+                .populate('assignedTo', 'name email')
+                .populate('responses.userId', 'name email')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            SupportTicket.countDocuments(query)
+        ]);
 
         res.json({
             success: true,
@@ -26,7 +36,13 @@ exports.getTickets = async (req, res) => {
                     assignedTo: ticket.assignedTo,
                     attachments: ticket.attachments,
                     responses: ticket.responses
-                }))
+                })),
+                pagination: {
+                    current: page,
+                    pages: Math.max(1, Math.ceil(total / limit)),
+                    total,
+                    limit
+                }
             }
         });
     } catch (error) {

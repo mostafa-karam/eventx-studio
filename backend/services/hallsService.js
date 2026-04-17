@@ -91,33 +91,48 @@ class HallsService {
   /**
    * Get a single hall by ID.
    */
-  async getHallById(hallId) {
+  async getHallById(hallId, user) {
     const hall = await Hall.findById(hallId).populate('createdBy', 'name email');
     if (!hall) throw Object.assign(new Error('Hall not found'), { status: 404 });
+    const isPrivileged = user && (user.role === 'admin' || user.role === 'venue_admin');
+    const isOwner = user && hall.createdBy && hall.createdBy._id.toString() === user._id.toString();
+    if (hall.status !== 'active' && !isPrivileged && !isOwner) {
+      throw Object.assign(new Error('Hall not found'), { status: 404 });
+    }
     return hall;
   }
 
   /**
    * Get hall availability for a date range.
    */
-  async getHallAvailability(hallId, { from, to } = {}) {
+  async getHallAvailability(hallId, user, { from, to } = {}) {
     const hall = await Hall.findById(hallId);
     if (!hall) throw Object.assign(new Error('Hall not found'), { status: 404 });
+    const isPrivileged = user && (user.role === 'admin' || user.role === 'venue_admin');
+    const isOwner = user && hall.createdBy && hall.createdBy.toString() === user._id.toString();
+    const canViewSensitiveAvailability = isPrivileged || isOwner;
+    if (hall.status !== 'active' && !canViewSensitiveAvailability) {
+      throw Object.assign(new Error('Hall not found'), { status: 404 });
+    }
 
     const startDate = from ? new Date(from) : new Date();
     const endDate = to ? new Date(to) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    const bookings = await HallBooking.find({
+    const bookingQuery = HallBooking.find({
       hall: hallId,
       // FIX M-06 — Include pending and maintenance blocks in availability checks to prevent booking conflicts
       status: { $in: ['approved', 'pending', 'maintenance'] },
       startDate: { $lt: endDate },
       endDate: { $gt: startDate },
     })
-      .populate('organizer', 'name')
-      .populate('event', 'title')
-      .select('startDate endDate organizer event status')
+      .select(canViewSensitiveAvailability
+        ? 'startDate endDate organizer event status'
+        : 'startDate endDate status')
       .sort({ startDate: 1 });
+    if (canViewSensitiveAvailability) {
+      bookingQuery.populate('organizer', 'name').populate('event', 'title');
+    }
+    const bookings = await bookingQuery;
 
     return {
       hall: { _id: hall._id, name: hall.name, capacity: hall.capacity, status: hall.status },

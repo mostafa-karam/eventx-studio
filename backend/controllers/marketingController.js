@@ -36,35 +36,58 @@ const assertEventOwnershipIfProvided = async (user, eventId) => {
 exports.getCampaigns = async (req, res) => {
     try {
         const query = req.user.role === 'admin' ? {} : { createdBy: req.user._id };
-        const campaigns = await Campaign.find(query)
-            .populate('eventId', 'title')
-            .sort({ createdAt: -1 });
+        const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+        const skip = (page - 1) * limit;
+
+        const [campaigns, totalCampaigns, allMetrics] = await Promise.all([
+            Campaign.find(query)
+                .populate('eventId', 'title')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Campaign.countDocuments(query),
+            Campaign.aggregate([
+                { $match: query },
+                {
+                    $group: {
+                        _id: null,
+                        totalCampaigns: { $sum: 1 },
+                        activeCampaigns: { $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } },
+                        totalRecipients: { $sum: '$metrics.sent' },
+                        totalOpened: { $sum: '$metrics.opened' },
+                        totalClicked: { $sum: '$metrics.clicked' },
+                        totalConversions: { $sum: '$metrics.conversions' }
+                    }
+                }
+            ])
+        ]);
 
         // Calculate overall stats
+        const metrics = allMetrics[0] || {
+            totalCampaigns: 0,
+            activeCampaigns: 0,
+            totalRecipients: 0,
+            totalOpened: 0,
+            totalClicked: 0,
+            totalConversions: 0
+        };
         const stats = {
-            totalCampaigns: campaigns.length,
-            activeCampaigns: campaigns.filter(c => c.status === 'active').length,
-            totalRecipients: campaigns.reduce((sum, c) => sum + c.metrics.sent, 0),
-            avgOpenRate: 0,
-            avgClickRate: 0,
-            avgConversionRate: 0,
-            totalConversions: campaigns.reduce((sum, c) => sum + c.metrics.conversions, 0),
+            totalCampaigns: metrics.totalCampaigns,
+            activeCampaigns: metrics.activeCampaigns,
+            totalRecipients: metrics.totalRecipients,
+            avgOpenRate: metrics.totalRecipients > 0
+                ? Math.round((metrics.totalOpened / metrics.totalRecipients) * 100)
+                : 0,
+            avgClickRate: metrics.totalRecipients > 0
+                ? Math.round((metrics.totalClicked / metrics.totalRecipients) * 100)
+                : 0,
+            avgConversionRate: metrics.totalRecipients > 0
+                ? Math.round((metrics.totalConversions / metrics.totalRecipients) * 100)
+                : 0,
+            totalConversions: metrics.totalConversions,
             revenue: 0
         };
-
-        // Calculate average rates
-        const sentCampaigns = campaigns.filter(c => c.metrics.sent > 0);
-        if (sentCampaigns.length > 0) {
-            stats.avgOpenRate = Math.round(
-                sentCampaigns.reduce((sum, c) => sum + (c.metrics.opened / c.metrics.sent * 100), 0) / sentCampaigns.length
-            );
-            stats.avgClickRate = Math.round(
-                sentCampaigns.reduce((sum, c) => sum + (c.metrics.clicked / c.metrics.sent * 100), 0) / sentCampaigns.length
-            );
-            stats.avgConversionRate = Math.round(
-                sentCampaigns.reduce((sum, c) => sum + (c.metrics.conversions / c.metrics.sent * 100), 0) / sentCampaigns.length
-            );
-        }
 
         // Revenue tracking requires real payment integration — show 0 until implemented
         stats.revenue = 0;
@@ -89,7 +112,13 @@ exports.getCampaigns = async (req, res) => {
                     clicked: campaign.metrics.clicked,
                     conversions: campaign.metrics.conversions
                 })),
-                stats
+                stats,
+                pagination: {
+                    current: page,
+                    pages: Math.max(1, Math.ceil(totalCampaigns / limit)),
+                    total: totalCampaigns,
+                    limit
+                }
             }
         });
     } catch (error) {

@@ -264,8 +264,8 @@ exports.publishEvent = async (req, res) => {
 // @access  Private
 exports.getMyWaitlists = async (req, res) => {
     try {
-        const waitlists = await eventsService.getMyWaitlists(req.user);
-        res.json({ success: true, data: { waitlists } });
+        const result = await eventsService.getMyWaitlists(req.user, req.query);
+        res.json({ success: true, data: result });
     } catch (error) {
         logger.error('Get my waitlists error:', error);
         res.status(500).json({ success: false, message: 'Server error while fetching waitlists' });

@@ -50,6 +50,6 @@ A dense file fulfilling standard execution lifecycle phases:
 1. **Preflight Checks**: Verifies existence of required `.env` attributes (`JWT_SECRET`, `MONGODB_URI`). Hard exits if deficient.
 2. **Setup Subsystems**: Executes `connectDB()`, initializes the internal winston logger.
 3. **Bind Middlewares**: Express properties (`express.json()`), CORS, Rate Limiters, CSRF mappings, Helmet injection.
-4. **Mount Routes**: Overlays the `/routes` directories into `/api/v1/*`.
+4. **Mount Routes**: Overlays the `/routes` directories into `/api/*`.
 5. **Attach Trailing Handlers**: Hooks `errorHandler` middleware definitively to catch all 500 exceptions escaping routes sequentially.
 6. **Listener Action**: Fires `app.listen()` broadcasting server up-state via port `5000`.

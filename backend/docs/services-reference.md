@@ -6,24 +6,43 @@ The `/services` directory is the most critical infrastructure layer in the backe
 
 The core transaction engine for the platform. Booking a ticket cannot simply be a `Ticket.create` operation.
 
-### `bookSeat({ eventId, userId, seatNumber, payment })`
-- **Verification Hook**: Looks up the target `Event`. If `event.status !== 'published'` or `availableSeats <= 0`, throws explicitly localized HTTP 400s.
-- **Deduction Engine**: Subtracts internal capacity logic mathematically via `event.bookSeat(seatNumber)` which prevents double-counting inside MongoDB schemas dynamically.
-- **Creation Chain**: Saves the mutated `Event`, then writes the actual `Ticket`.
-- **System WebHook**: Reaches into `notificationService` dynamically pushing a 'Booking Confirmed' alert to the user.
+### `bookSeat({ eventId, userId, seatNumber, payment, couponCode, metadata })`
+- **Verification Hook**: Resolves a bookable event through `ticketsService.findBookableEvent()` (published + not past date).
+- **Atomic Seat Mutation**: Uses DB-level atomic updates (`findOneAndUpdate`) to mark seat state and adjust capacity/analytics safely.
+- **Coupon Enforcement**: Validates coupon applicability and expected payment amount server-side before ticket issue.
+- **Transaction Handling**:
+  - Uses MongoDB transactions when `ENABLE_TRANSACTIONS=true`.
+  - In production, if transactions are explicitly required but unavailable, fails closed with operational error.
+  - In non-transactional dev/test fallback, applies compensating rollback logic.
+- **Notification**: Sends confirmation through `notificationService.notify(...)` after persistence.
 
 ### `cancelBooking(ticketId, userId)`
-- Safely reverses the transaction. Performs an atomic `findOneAndUpdate($inc)` operation on the Event seating count to safely unlock the seat back to the pool instantly.
+- Reverses booking inside a transaction and unlocks capacity/seat state.
 - Checks the `Waitlist` queue; if a pending user matches, re-sends availability `Notification`.
 
-## 2. `analyticsService.js` (Aggregation Logic)
+## 2. `ticketsService.js` (Ticket lifecycle + QR integrity)
+
+### `checkinByQR(qrCode, eventId, user)`
+- Requires JSON QR payload with `ticketId` + `sig`.
+- Rejects non-JSON/raw ticket IDs (fail-closed).
+- Verifies HMAC signature using `QR_HMAC_SECRET`.
+- Enforces organizer/admin authorization for check-in.
+
+### `bookMultiSeats(...)`
+- Updates seat-map state and inserts tickets as a single unit when transactions are enabled.
+- Executes the post-insert population query while session is active (avoids closed-session query errors).
+
+## 3. `analyticsService.js` (Aggregation Logic)
 
 Pulls heavy calculation loads away from standard controllers. Leverages Node optimizations for grouping big datasets.
 
-### `getDashboardMetrics()`
-- Sums global metrics via `Ticket.aggregate([{ $group: { _id: null, totalRevenue: { $sum: "$amount" } } }])` which executes natively in C++ inside the MongoDB engine, radically reducing memory usage compared to mapping arrays inside JS blocks.
+### Key analytics methods
+- `getDashboardOverview()` for global KPI metrics.
+- `getAttendeeDemographics(user, eventId?)` with organizer/event scoping.
+- `getAttendeeGrowth(user, eventId?)` now supports per-event growth scoping.
+- Aggregations use MongoDB pipelines for performance and consistency.
 
-## 3. `notificationService.js` (Broadcast Signals)
+## 4. `notificationService.js` (Broadcast Signals)
 
 A unified sender. Instead of controllers making messy `Notification.create` queries, this provides clean wrappers:
 ### `notify(userId, payload)`

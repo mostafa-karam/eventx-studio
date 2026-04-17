@@ -66,15 +66,20 @@ Every validator chain ends with the `validate` function, which checks `validatio
 
 | Validator | Used On | Key Rules |
 | :--- | :--- | :--- |
-| `registerValidator` | `POST /auth/register` | `name` required (max 50), `email` required + valid + normalized, `password` min 8, `role` must be `user` or `organizer`, `age` 13-120 |
+| `registerValidator` | `POST /auth/register` | `name` required (max 50), `email` required + valid + normalized, `password` strong policy enforced, `role` must be `user` or `organizer`, `age` 13-120 |
 | `loginValidator` | `POST /auth/login` | `email` required + valid, `password` required |
-| `updateProfileValidator` | `PUT /users/profile` | All optional. `name` max 50, `age` 13-120, `gender` must be enum |
-| `changePasswordValidator` | `POST /auth/updatepassword` | `currentPassword` required, `newPassword` required min 8 |
+| `updateProfileValidator` | `PUT /auth/profile` and `PUT /users/profile/me` | All optional. `name` max 50, `age` 13-120, `gender` must be enum |
+| `changePasswordValidator` | `PUT /auth/change-password` | `currentPassword` required, `newPassword` required with stronger minimum length/policy |
 | `createEventValidator` | `POST /events` | `title` required max 100, `description` required max 2000, `category` must be valid enum, `date` ISO 8601, `endDate` must be after `date`, venue fields required, `totalSeats` min 1, pricing validated |
 | `updateEventValidator` | `PUT /events/:id` | Same as create but all fields optional |
 | `createHallValidator` | `POST /halls` | `name` required max 100, `capacity` min 1, `hourlyRate` min 0 |
 | `updateHallValidator` | `PUT /halls/:id` | Same as create hall but all fields optional |
 | `createBookingValidator` | `POST /halls/request` | `hall` ID required, `startDate` and `endDate` ISO 8601, `endDate` must be after `startDate` |
+
+Additional hardening validators now enforced in routes:
+- coupon validate requires `eventId` + `amount` shape checks.
+- booking initiate requires valid `eventId`.
+- account delete requires `password` type/constraints.
 
 ### Security Note on `normalizeEmail`
 The `gmail_remove_dots: false` option is explicitly set. Gmail treats `john.doe@gmail.com` and `johndoe@gmail.com` as the same inbox, but our system preserves dots to avoid confusing users who registered with a specific format.

@@ -13,6 +13,8 @@ let attendeeUser;
 let eventId;
 let client;
 
+jest.setTimeout(30000);
+
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();

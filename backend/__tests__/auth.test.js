@@ -113,11 +113,11 @@ describe('Auth Endpoints', () => {
             password: 'UniqueTestPass!2026'
         });
 
-        // Because email verification is required and we did not mock it to skip, 
-        // it will return 403 Email verification required for now.
-        // In our authController, unverified accounts get 403 on login.
-        expect(res.statusCode).toBe(403);
-        expect(res.body.emailVerificationRequired).toBe(true);
+        // Login failures intentionally use a uniform response to prevent
+        // account-state enumeration (unverified vs non-existing users).
+        expect(res.statusCode).toBe(401);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toBe('Invalid email or password');
     });
 
   it('allows login with a valid 2FA TOTP code', async () => {

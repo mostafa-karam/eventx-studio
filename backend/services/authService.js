@@ -192,42 +192,28 @@ exports.loginUser = async (email, password, twoFactorCode, deviceInfo) => {
   const user = await User.findOne({ email: email.toLowerCase() })
     .select('+password +loginAttempts +lockUntil +twoFactorSecret +twoFactorEnabled +refreshToken');
 
+  const invalidCredentialsError = () => Object.assign(new Error('Invalid email or password'), { status: 401 });
+
   if (!user) {
-    const error = new Error('Invalid email or password');
-    error.status = 401;
-    throw error;
+    throw invalidCredentialsError();
   }
 
   if (user.isLocked) {
-    const lockTime = user.lockUntil ? Math.ceil((user.lockUntil - Date.now()) / 1000 / 60) : 0;
-    const error = new Error('Account is temporarily locked due to too many failed login attempts');
-    error.status = 423;
-    error.lockTimeRemaining = lockTime;
-    throw error;
+    throw invalidCredentialsError();
   }
 
   if (!user.isActive) {
-    const error = new Error('Account is deactivated. Please contact support.');
-    error.status = 403;
-    throw error;
+    throw invalidCredentialsError();
   }
 
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
     await user.incLoginAttempts();
-    const remaining = Math.max(0, 5 - (user.loginAttempts + 1));
-    const error = new Error('Invalid email or password');
-    error.status = 401;
-    error.attemptsRemaining = remaining;
-    throw error;
+    throw invalidCredentialsError();
   }
 
   if (!user.emailVerified) {
-    const error = new Error('Please verify your email address before logging in');
-    error.status = 403;
-    error.emailVerificationRequired = true;
-    error.email = user.email;
-    throw error;
+    throw invalidCredentialsError();
   }
 
   if (user.twoFactorEnabled) {

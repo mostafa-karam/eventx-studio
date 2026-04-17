@@ -17,7 +17,7 @@ exports.getHalls = async (req, res) => {
 // @access  Private (all authenticated users)
 exports.getHallById = async (req, res) => {
     try {
-        const hall = await hallsService.getHallById(req.params.id);
+        const hall = await hallsService.getHallById(req.params.id, req.user);
         res.json({ success: true, data: { hall } });
     } catch (error) {
         logger.error('Get hall error:', error);
@@ -31,7 +31,7 @@ exports.getHallById = async (req, res) => {
 // @access  Private (all authenticated users)
 exports.getHallAvailability = async (req, res) => {
     try {
-        const result = await hallsService.getHallAvailability(req.params.id, req.query);
+        const result = await hallsService.getHallAvailability(req.params.id, req.user, req.query);
         res.json({ success: true, data: result });
     } catch (error) {
         logger.error('Get availability error:', error);

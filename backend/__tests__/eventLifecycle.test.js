@@ -13,6 +13,8 @@ let authToken;
 let testEventId;
 let client;
 
+jest.setTimeout(30000);
+
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();

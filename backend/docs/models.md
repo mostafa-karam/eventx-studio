@@ -29,9 +29,9 @@ The central entity for the platform linking Organizers to Attendees.
 ## 3. Ticket (`models/Ticket.js`)
 Transitory bridging entity connecting one `User` to one `Event`.
 - **`seatNumber`**: String reference to assigned position (e.g., "A-01"), often automatically generated.
-- **`status`**: State mapping (`booked`, `used`, `cancelled`).
+- **`status`**: State mapping (`booked`, `used`, `cancelled`, `expired`).
 - **`payment`**: Embedded receipt block detailing `status`, `amount`, and `paymentMethod`.
-- **`qrCode`**: A randomly generated cryptographic UUID used entirely for the Organizer Check-in Flow.
+- **`qrCode`**: HMAC-signed JSON payload containing ticket metadata + signature (`sig`) for tamper detection.
 - **`checkIn`**: Mutated by `ticketsController.js` to log exact physical arrival times (`isCheckedIn`, `checkInTime`).
 
 ## 4. Hall (`models/Hall.js`)
@@ -71,3 +71,4 @@ Marketing schema isolating outbound broadcasting strategies. Records targeted me
 
 ## 13. AuditLog (`models/AuditLog.js`)
 Immutably written by middleware systems. Tracks `actorRole`, `action`, `resource`, and the source `ip` for high-end security traceback routines on administrative actions.
+Includes `user.delete` action enum for account deletion traceability.

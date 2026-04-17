@@ -9,7 +9,7 @@ This backend applies layered controls across transport, auth/session, CSRF, inpu
 - Request sanitization middleware plus `express-mongo-sanitize`.
 - `hpp` for HTTP parameter pollution defense.
 - JWT access and refresh token separation.
-- Cookie parsing with signed/secure handling support.
+- Cookie parsing with dedicated `COOKIE_SIGNING_SECRET`.
 
 ## Secrets and Sensitive Configuration
 
@@ -34,7 +34,9 @@ Never reuse one secret for multiple domains.
 ## Upload Hardening
 
 - Upload route requires authentication.
-- Current implementation validates both extension and file signature before serving.
+- Upload metadata is persisted and file reads are access-controlled:
+  - owner or admin only
+  - cross-user filename guessing does not grant access
 - Retrieval endpoint: `GET /api/upload/files/:filename`.
 - Response uses `X-Content-Type-Options: nosniff`.
 
@@ -44,15 +46,13 @@ Never reuse one secret for multiple domains.
 - In production, requests without `Origin` are rejected.
 - Set `TRUST_PROXY` only when behind a trusted reverse proxy.
 
-## Known Security Gaps (Current Audit)
+## Security Posture Notes
 
-The following issues were identified and should be remediated:
+- QR check-in requires signed JSON payloads; raw/unsigned ticket IDs are rejected.
+- Simulated payment token minting endpoints are gated in production.
+- Refresh-token flow validates user active/verified state.
+- Password reset revokes refresh/session state.
+- Hall-booking visibility and counts are scoped to authorization context.
 
-1. High: `venue_admin` can currently list platform-wide hall bookings instead of own halls only.
-2. Medium: event create/update controllers rely on `req.body` instead of strictly using validated payload.
-3. Medium: `verify-email` and `resend-verification` do not have dedicated abuse rate limiting.
-4. Medium: coupon mutations lack explicit request validators.
-5. Low: upload MIME signature check performs synchronous file reads.
-6. Low: development email sink can store sensitive links/tokens in plain temp logs.
-
-Track these items in engineering backlog and validate fixes with regression tests.
+Residual operational risk to track:
+- Development email sink writes links/tokens to local temp logs when SMTP is not configured (acceptable for local dev only).

@@ -14,6 +14,8 @@ let organizerToken;
 let organizer;
 let eventId;
 
+jest.setTimeout(30000);
+
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
