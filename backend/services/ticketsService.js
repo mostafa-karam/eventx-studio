@@ -13,6 +13,7 @@ const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 const Coupon = require('../models/Coupon');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 const QR_OPTIONS = {
   errorCorrectionLevel: 'M',
@@ -317,25 +318,32 @@ class TicketsService {
   async checkinByQR(qrCode, eventId, user) {
     if (!qrCode) throw Object.assign(new Error('QR code is required'), { status: 400 });
 
-    let ticketIdValue = qrCode;
+    let parsed;
     try {
-      const parsed = JSON.parse(qrCode);
-      if (parsed.ticketId) {
-        ticketIdValue = parsed.ticketId;
-        const { sig, ...qrData } = parsed;
-        if (sig) {
-          const expectedSig = crypto
-            .createHmac('sha256', config.secrets.qrHmac)
-            .update(JSON.stringify(qrData))
-            .digest('hex');
-          if (sig !== expectedSig) {
-            throw Object.assign(new Error('Invalid or tampered QR code'), { status: 400 });
-          }
-        }
-      }
-    } catch (e) {
-      if (e.status) throw e;
-      /* ignore JSON parse error — treat as raw ticket id */
+      parsed = JSON.parse(qrCode);
+    } catch (_e) {
+      // Fail closed: we do not accept unsigned/raw ticket IDs.
+      throw Object.assign(new Error('Invalid or tampered QR code'), { status: 400 });
+    }
+
+    // Require a signed JSON QR payload.
+    if (!parsed || typeof parsed !== 'object') {
+      throw Object.assign(new Error('Invalid or tampered QR code'), { status: 400 });
+    }
+
+    const { sig, ...qrData } = parsed;
+    const ticketIdValue = qrData?.ticketId;
+    if (!ticketIdValue || !sig) {
+      throw Object.assign(new Error('Invalid or tampered QR code'), { status: 400 });
+    }
+
+    // Always validate signature.
+    const expectedSig = crypto
+      .createHmac('sha256', config.secrets.qrHmac)
+      .update(JSON.stringify(qrData))
+      .digest('hex');
+    if (sig !== expectedSig) {
+      throw Object.assign(new Error('Invalid or tampered QR code'), { status: 400 });
     }
 
     const ticket = await Ticket.findOne({ ticketId: ticketIdValue })
@@ -480,54 +488,86 @@ class TicketsService {
   async bookMultiSeats({ eventId, event, seatsChosen, userId, expectedAmount, paymentMethod, transactionId, couponCode, metadata }) {
     const totalRevenue = event.pricing.type === 'paid' ? (expectedAmount * seatsChosen.length) : 0;
 
-    const updateResult = await Event.updateOne(
-      {
-        _id: eventId,
-        'seating.seatMap': {
-          $not: { $elemMatch: { seatNumber: { $in: seatsChosen }, isBooked: true } },
-        },
-      },
-      {
-        $set: {
-          'seating.seatMap.$[elem].isBooked': true,
-          'seating.seatMap.$[elem].bookedBy': userId,
-        },
-        $inc: {
-          'seating.availableSeats': -seatsChosen.length,
-          'analytics.bookings': seatsChosen.length,
-          'analytics.revenue': totalRevenue,
-        },
-      },
-      { arrayFilters: [{ 'elem.seatNumber': { $in: seatsChosen } }] }
-    );
-
-    if (updateResult.modifiedCount === 0) {
-      throw Object.assign(new Error('One or more selected seats were already booked. Please refresh and try again.'), { status: 400 });
+    const useSession = process.env.ENABLE_TRANSACTIONS === 'true';
+    let session = null;
+    if (useSession) {
+      try {
+        session = await mongoose.startSession();
+        session.startTransaction();
+      } catch (err) {
+        if (process.env.NODE_ENV === 'production') {
+          throw Object.assign(new Error('Database transactions are required but unavailable'), { status: 500 });
+        }
+        logger.warn('Unable to start transaction for multi-book; falling back to non-transactional flow:', err.message);
+        session = null;
+      }
     }
 
-    const ticketsToInsert = seatsChosen.map(seatNumber => ({
-      event: eventId,
-      user: userId,
-      seatNumber,
-      payment: {
-        amount: expectedAmount,
-        currency: event.pricing.currency,
-        paymentMethod,
-        transactionId: transactionId || undefined,
-        status: event.pricing.type === 'free' || transactionId ? 'completed' : 'pending',
-        paymentDate: event.pricing.type === 'free' || transactionId ? new Date() : null,
-      },
-      metadata: {
-        ...metadata,
-        couponCode: couponCode || undefined,
-      },
-    }));
+    const sessionOptions = session ? { session } : {};
 
-    const createdTickets = await Ticket.insertMany(ticketsToInsert);
+    try {
+      const updateResult = await Event.updateOne(
+        {
+          _id: eventId,
+          'seating.seatMap': {
+            $not: { $elemMatch: { seatNumber: { $in: seatsChosen }, isBooked: true } },
+          },
+        },
+        {
+          $set: {
+            'seating.seatMap.$[elem].isBooked': true,
+            'seating.seatMap.$[elem].bookedBy': userId,
+          },
+          $inc: {
+            'seating.availableSeats': -seatsChosen.length,
+            'analytics.bookings': seatsChosen.length,
+            'analytics.revenue': totalRevenue,
+          },
+        },
+        { arrayFilters: [{ 'elem.seatNumber': { $in: seatsChosen } }], ...sessionOptions }
+      );
 
-    return Ticket.find({ _id: { $in: createdTickets.map(t => t._id) } })
-      .populate('event', 'title date venue pricing')
-      .populate('user', 'name email');
+      if (updateResult.modifiedCount === 0) {
+        throw Object.assign(new Error('One or more selected seats were already booked. Please refresh and try again.'), { status: 400 });
+      }
+
+      const ticketsToInsert = seatsChosen.map(seatNumber => ({
+        event: eventId,
+        user: userId,
+        seatNumber,
+        payment: {
+          amount: expectedAmount,
+          currency: event.pricing.currency,
+          paymentMethod,
+          transactionId: transactionId || undefined,
+          status: event.pricing.type === 'free' || transactionId ? 'completed' : 'pending',
+          paymentDate: event.pricing.type === 'free' || transactionId ? new Date() : null,
+        },
+        metadata: {
+          ...metadata,
+          couponCode: couponCode || undefined,
+        },
+      }));
+
+      const createdTickets = await Ticket.insertMany(ticketsToInsert, session ? { session } : undefined);
+
+      if (session) {
+        await session.commitTransaction();
+      }
+
+      const query = Ticket.find({ _id: { $in: createdTickets.map(t => t._id) } })
+        .populate('event', 'title date venue pricing')
+        .populate('user', 'name email');
+      if (session) query.session(session);
+      return query;
+    } catch (e) {
+      if (session) {
+        await session.abortTransaction().catch(() => {});
+      }
+      throw e;
+    } finally {
+      if (session) session.endSession();
+    }
   }
 }
 

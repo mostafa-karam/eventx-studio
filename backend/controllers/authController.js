@@ -319,6 +319,13 @@ exports.resetPassword = async (req, res) => {
     user.passwordResetExpires = undefined;
     user.loginAttempts = 0;
     user.lockUntil = undefined;
+
+    // SECURITY (Phase 2.3): Revoke all existing refresh tokens/sessions after password reset.
+    // Password-reset is unauthenticated (token-based), so we invalidate every session.
+    user.activeSessions = [];
+    user.refreshToken = undefined;
+    user.refreshTokenExpires = undefined;
+
     await user.save();
 
     await auditService.log({

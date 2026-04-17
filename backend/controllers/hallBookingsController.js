@@ -76,6 +76,7 @@ exports.getPlatformBookings = async (req, res) => {
 
         // Count by status for quick stats
         const statusCounts = await HallBooking.aggregate([
+            { $match: query },
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]);
 
@@ -247,11 +248,7 @@ exports.scheduleMaintenance = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Hall, start date, and end date are required' });
         }
 
-        // Verify hall exists
-        const hall = await Hall.findById(hallId);
-        if (!hall) {
-            return res.status(404).json({ success: false, message: 'Hall not found' });
-        }
+        await assertHallOwnershipForVenueAdmin(req, hallId);
 
         // Check for existing conflicts (approved or maintenance)
         const existingBooking = await HallBooking.findOne({
@@ -293,7 +290,9 @@ exports.scheduleMaintenance = async (req, res) => {
         });
     } catch (error) {
         logger.error('Schedule maintenance error:', error);
-        res.status(500).json({ success: false, message: 'Server error while scheduling maintenance' });
+        const status = error.status || 500;
+        const message = error.status ? error.message : 'Server error while scheduling maintenance';
+        res.status(status).json({ success: false, message });
     }
 };
 

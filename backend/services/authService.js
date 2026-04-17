@@ -20,6 +20,65 @@ const {
 
 const REFRESH_SECRET = config.secrets.jwtRefresh;
 
+// ---- TOTP verification (RFC-6238) ----
+// We use this instead of `otplib` so Jest doesn't fail parsing otplib's ESM deps.
+const base32Decode = (input) => {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const clean = String(input).toUpperCase().replace(/=+$/g, '').replace(/[\s-]/g, '');
+
+  let bits = 0;
+  let value = 0;
+  const bytes = [];
+
+  for (const ch of clean) {
+    const idx = alphabet.indexOf(ch);
+    if (idx === -1) throw new Error(`Invalid base32 character: ${ch}`);
+    value = (value << 5) | idx;
+    bits += 5;
+    while (bits >= 8) {
+      bytes.push((value >> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+
+  return Buffer.from(bytes);
+};
+
+const generateTotp = (secret, timeMs = Date.now(), stepSeconds = 30, digits = 6) => {
+  const key = base32Decode(secret);
+  const counter = BigInt(Math.floor(timeMs / (stepSeconds * 1000)));
+
+  const buf = Buffer.alloc(8);
+  let tmp = counter;
+  for (let i = 7; i >= 0; i -= 1) {
+    buf[i] = Number(tmp & 0xffn);
+    tmp >>= 8n;
+  }
+
+  const hmac = crypto.createHmac('sha1', key).update(buf).digest();
+  const offset = hmac[19] & 0x0f;
+  const codeInt = (hmac.readUInt32BE(offset) & 0x7fffffff) % (10 ** digits);
+  return String(codeInt).padStart(digits, '0');
+};
+
+const verifyTotpCode = (token, secret, { windowSteps = 1, stepSeconds = 30, digits = 6 } = {}) => {
+  if (!token || !secret) return false;
+  const expectedDigits = String(digits);
+  const cleanToken = String(token).trim();
+
+  if (!/^\d+$/.test(cleanToken)) return false;
+  if (cleanToken.length !== digits) return false;
+  if (!Number.isFinite(Number(expectedDigits))) return false;
+
+  const now = Date.now();
+  for (let offset = -windowSteps; offset <= windowSteps; offset += 1) {
+    const timeMs = now + offset * stepSeconds * 1000;
+    if (generateTotp(secret, timeMs, stepSeconds, digits) === cleanToken) return true;
+  }
+
+  return false;
+};
+
 const verifyRefreshToken = (token) => {
   try {
     const decoded = jwt.verify(token, REFRESH_SECRET);
@@ -176,8 +235,10 @@ exports.loginUser = async (email, password, twoFactorCode, deviceInfo) => {
       return { twoFactorRequired: true, message: 'Two-factor authentication code required' };
     }
 
-    const { authenticator } = require('otplib');
-    const isValid = authenticator.check(twoFactorCode, user.twoFactorSecret);
+    const plainTwoFactorSecret = user.getTwoFactorSecret();
+    const isValid = plainTwoFactorSecret
+      ? verifyTotpCode(twoFactorCode, plainTwoFactorSecret)
+      : false;
     if (!isValid) {
       const error = new Error('Invalid 2FA code');
       error.status = 401;
@@ -208,6 +269,20 @@ exports.processRefreshToken = async (incomingRefresh, deviceInfo) => {
   if (!user) {
     const error = new Error('User not found');
     error.status = 401;
+    throw error;
+  }
+
+  // Enforce user state before rotating refresh/access tokens.
+  // This prevents inactive/unverified accounts from using still-valid refresh tokens.
+  if (!user.isActive) {
+    const error = new Error('Account is deactivated. Please contact support.');
+    error.status = 403;
+    throw error;
+  }
+
+  if (!user.emailVerified) {
+    const error = new Error('Please verify your email address before logging in');
+    error.status = 403;
     throw error;
   }
 

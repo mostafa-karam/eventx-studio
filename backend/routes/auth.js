@@ -15,6 +15,7 @@ const {
   changePasswordValidator,
   roleUpgradeRequestValidator,
   roleUpgradeDecisionValidator,
+  deleteAccountValidator,
 } = require('../middleware/validators');
 const authController = require('../controllers/authController');
 
@@ -99,6 +100,6 @@ router.get('/users', authenticate, requireAdmin, authController.getAllUsers);
 router.post('/role-upgrade', authenticate, roleUpgradeRequestValidator, authController.requestRoleUpgrade);
 router.get('/role-upgrade-requests', authenticate, requireAdmin, authController.getRoleUpgradeRequests);
 router.put('/role-upgrade-requests/:userId', authenticate, requireAdmin, roleUpgradeDecisionValidator, authController.updateRoleUpgradeRequest);
-router.delete('/account', authenticate, authController.deleteAccount);
+router.delete('/account', authenticate, deleteAccountValidator, authController.deleteAccount);
 
 module.exports = router;

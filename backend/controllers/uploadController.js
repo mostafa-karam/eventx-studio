@@ -1,6 +1,7 @@
 const logger = require('../utils/logger');
 const path = require('path');
 const fs = require('fs');
+const Upload = require('../models/Upload');
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
@@ -87,6 +88,25 @@ exports.uploadFiles = async (req, res) => {
         const baseUrl = process.env.BACKEND_URL ||
             `${req.protocol}://${req.get('host')}`;
 
+        const uploadRecords = validatedFiles.map((file) => ({
+            owner: req.user._id,
+            filename: file.filename,
+            originalName: file.originalname,
+            mimeType: file.mimetype,
+            size: file.size,
+        }));
+
+        try {
+            await Upload.insertMany(uploadRecords, { ordered: true });
+        } catch (err) {
+            // Ensure we do not keep orphaned files when metadata persistence fails.
+            await Promise.allSettled(
+                validatedFiles.map((file) => fs.promises.unlink(file.path))
+            );
+            logger.error('Upload metadata persistence error: ' + err.message);
+            return res.status(500).json({ success: false, message: 'Upload failed' });
+        }
+
         const urls = validatedFiles.map(file => ({
             url: `${baseUrl}/api/upload/files/${file.filename}`,
             alt: file.sanitizedAlt || 'Uploaded image',
@@ -115,7 +135,18 @@ exports.getUploadedFile = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid file name' });
         }
 
-        const filePath = path.join(UPLOADS_DIR, requestedName);
+        const uploadRecord = await Upload.findOne({ filename: requestedName }).select('owner filename');
+        if (!uploadRecord) {
+            return res.status(404).json({ success: false, message: 'File not found' });
+        }
+
+        const isOwner = String(uploadRecord.owner) === String(req.user._id);
+        const isAdmin = req.user.role === 'admin';
+        if (!isOwner && !isAdmin) {
+            return res.status(404).json({ success: false, message: 'File not found' });
+        }
+
+        const filePath = path.join(UPLOADS_DIR, uploadRecord.filename);
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ success: false, message: 'File not found' });
         }

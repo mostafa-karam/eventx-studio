@@ -366,7 +366,7 @@ exports.getAttendeeInsights = async (req, res) => {
         trends: {
           registrationTrend: trendData,
           attendanceRate: attendees.length > 0
-            ? Math.round((attendees.filter((a) => a.status === 'attended').length / attendees.length) * 100)
+            ? Math.round((attendees.filter((a) => a.checkedIn === true || a.ticketStatus === 'used').length / attendees.length) * 100)
             : 0,
         },
         totalAttendees: attendees.length,
@@ -441,7 +441,7 @@ exports.getAllAttendeeInsights = async (req, res) => {
       data: {
         overview: {
           totalAttendees: attendees.length,
-          uniqueAttendees: attendees.length, // simplified
+          uniqueAttendees: new Set(attendees.map(a => String(a.userId))).size,
           averageAge: Math.round(averageAge),
           topLocation,
           dominantAgeGroup,

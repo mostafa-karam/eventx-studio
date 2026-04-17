@@ -71,7 +71,11 @@ app.use(helmet({
 }));
 
 // Parse cookies for httpOnly token support
-app.use(cookieParser(process.env.CSRF_SECRET || process.env.JWT_SECRET));
+const cookieSigningSecret = process.env.COOKIE_SIGNING_SECRET;
+if (!cookieSigningSecret) {
+  throw new Error('COOKIE_SIGNING_SECRET is required');
+}
+app.use(cookieParser(cookieSigningSecret));
 
 // Global rate limiter
 app.use(globalLimiter);

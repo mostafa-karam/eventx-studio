@@ -17,6 +17,7 @@ const Waitlist = require('../models/Waitlist');
 const Campaign = require('../models/Campaign');
 const SupportTicket = require('../models/SupportTicket');
 const AuditLog = require('../models/AuditLog');
+const bookingService = require('../services/bookingService');
 
 const connectDB = async () => {
     try {
@@ -255,8 +256,10 @@ const seedData = async () => {
             title: 'Electric Summer SoundFest',
             description: `<p>${faker.lorem.paragraphs(2)}</p>`,
             category: 'concert',
-            date: pastEventDate,
-            endDate: new Date(pastEventDate.getTime() + 6 * 60 * 60 * 1000),
+            // Seed bookings using bookingService (requires future + published),
+            // then we will move this event back to the past and mark completed.
+            date: futureEventDate,
+            endDate: new Date(futureEventDate.getTime() + 6 * 60 * 60 * 1000),
             venue: {
                 name: musicArena.name,
                 address: musicArena.location.address,
@@ -271,7 +274,7 @@ const seedData = async () => {
                 seatMap: generateSeatMap(250)
             },
             organizer: organizer2._id,
-            status: 'completed',
+            status: 'published',
             hall: musicArena._id,
             analytics: { views: faker.number.int({ min: 1500, max: 4000 }), bookings: 0, revenue: 0 },
             tags: ['Music', 'Summer', 'Live', 'Festival']
@@ -287,21 +290,16 @@ const seedData = async () => {
             const seatNum = (i % 10) + 1;
             const seatNumber = `${row}-${String(seatNum).padStart(2, '0')}`;
 
-            await eventTech.bookSeat(seatNumber, user._id);
-
-            const ticket = await Ticket.create({
-                event: eventTech._id,
-                user: user._id,
-                seatNumber: seatNumber,
-                status: 'booked',
+            const { ticket } = await bookingService.bookSeat({
+                eventId: eventTech._id,
+                userId: user._id,
+                seatNumber,
                 payment: {
-                    status: 'completed',
                     amount: eventTech.pricing.amount,
-                    currency: eventTech.pricing.currency,
-                    paymentMethod: 'credit_card',
-                    paymentDate: new Date()
+                    method: 'credit_card',
+                    transactionId: `seed_tx_tech_${i}_${Date.now()}`
                 },
-                qrCode: faker.string.uuid()
+                metadata: { source: 'web' }
             });
 
             // True Database Notification!
@@ -338,23 +336,23 @@ const seedData = async () => {
             const seatNum = (seatIndex % 10) + 1;
             const seatNumber = `${row}-${String(seatNum).padStart(2, '0')}`;
 
-            await eventMusic.bookSeat(seatNumber, user._id);
-
-            const ticket = await Ticket.create({
-                event: eventMusic._id,
-                user: user._id,
-                seatNumber: seatNumber,
-                status: checkedIn ? 'used' : 'booked',
+            const { ticket } = await bookingService.bookSeat({
+                eventId: eventMusic._id,
+                userId: user._id,
+                seatNumber,
                 payment: {
-                    status: 'completed',
                     amount: eventMusic.pricing.amount,
-                    currency: eventMusic.pricing.currency,
-                    paymentMethod: 'paypal',
-                    paymentDate: faker.date.past()
+                    method: 'paypal',
+                    transactionId: `seed_tx_music_${i}_${Date.now()}`
                 },
-                qrCode: faker.string.uuid(),
-                checkIn: { isCheckedIn: checkedIn, checkInTime: checkedIn ? eventMusic.date : null }
+                metadata: { source: 'web' }
             });
+
+            if (checkedIn) {
+                // Mark as attended (used) via model method for consistency.
+                ticket.performCheckIn(organizer2._id);
+                await ticket.save();
+            }
 
             await Notification.create({
                 title: 'Here is your ticket!',
@@ -378,6 +376,10 @@ const seedData = async () => {
                 });
             }
         }
+        // Move the music event into the past and mark completed after seeding.
+        eventMusic.date = pastEventDate;
+        eventMusic.endDate = new Date(pastEventDate.getTime() + 6 * 60 * 60 * 1000);
+        eventMusic.status = 'completed';
         await eventMusic.save();
 
         // 8. Create Sales & Discounts (Coupons)

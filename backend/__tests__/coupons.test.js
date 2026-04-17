@@ -9,6 +9,8 @@ const crypto = require('crypto');
 const { generateAccessToken } = require('../utils/authUtils');
 const { createTestClient } = require('../test-utils/testClient');
 
+jest.setTimeout(30000);
+
 let mongoServer;
 let adminToken;
 let userToken;
@@ -104,7 +106,8 @@ describe('Coupon Endpoints', () => {
 
         const res = await client.csrfRequest('post', '/api/coupons/validate', {
             code: 'VALID20',
-            eventId: testEvent._id
+            eventId: testEvent._id,
+            amount: 100
         }, { Authorization: `Bearer ${userToken}` });
 
         expect(res.statusCode).toBe(200);
@@ -127,7 +130,8 @@ describe('Coupon Endpoints', () => {
 
         const res = await client.csrfRequest('post', '/api/coupons/validate', {
             code: 'EXPIRED',
-            eventId: testEvent._id
+            eventId: testEvent._id,
+            amount: 100
         }, { Authorization: `Bearer ${userToken}` });
 
         expect(res.statusCode).toBe(400);
@@ -148,7 +152,8 @@ describe('Coupon Endpoints', () => {
 
         const res = await client.csrfRequest('post', '/api/coupons/validate', {
             code: 'MAXED',
-            eventId: testEvent._id
+            eventId: testEvent._id,
+            amount: 100
         }, { Authorization: `Bearer ${userToken}` });
 
         expect(res.statusCode).toBe(400);
@@ -179,11 +184,54 @@ describe('Coupon Endpoints', () => {
 
         const res = await client.csrfRequest('post', '/api/coupons/validate', {
             code: 'SPECIFIC',
-            eventId: testEvent._id
+            eventId: testEvent._id,
+            amount: 100
         }, { Authorization: `Bearer ${userToken}` });
 
         expect(res.statusCode).toBe(400);
         expect(res.body.success).toBe(false);
         expect(res.body.message).toMatch(/applicable|invalid|valid/i);
+    });
+
+    it('should reject validate request with invalid eventId', async () => {
+        await Coupon.create({
+            code: 'VALID20',
+            discountType: 'percentage',
+            discountValue: 20,
+            createdBy: admin._id,
+            isActive: true
+        });
+
+        const res = await client.csrfRequest('post', '/api/coupons/validate', {
+            code: 'VALID20',
+            eventId: 'not-a-mongo-id',
+            amount: 100
+        }, { Authorization: `Bearer ${userToken}` });
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toBe('Validation failed');
+        expect(res.body.errors.some((err) => /Event ID/.test(err))).toBe(true);
+    });
+
+    it('should reject validate request with malformed amount', async () => {
+        await Coupon.create({
+            code: 'VALID20',
+            discountType: 'percentage',
+            discountValue: 20,
+            createdBy: admin._id,
+            isActive: true
+        });
+
+        const res = await client.csrfRequest('post', '/api/coupons/validate', {
+            code: 'VALID20',
+            eventId: testEvent._id,
+            amount: 'abc'
+        }, { Authorization: `Bearer ${userToken}` });
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toBe('Validation failed');
+        expect(res.body.errors.some((err) => /Amount/.test(err))).toBe(true);
     });
 });

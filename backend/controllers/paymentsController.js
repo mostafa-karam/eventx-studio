@@ -7,6 +7,10 @@ const { signPaymentToken } = require('../utils/paymentTokens');
 // @access  Private
 exports.processPayment = async (req, res) => {
     try {
+        if (process.env.NODE_ENV === 'production') {
+            return res.status(404).json({ success: false, message: 'Not available in production' });
+        }
+
         const { amount, currency = 'USD', quantity = 1, paymentMethod = 'credit_card', bookingId = null, eventId = null } = req.body || {};
 
         if (typeof amount !== 'number' || amount <= 0) {

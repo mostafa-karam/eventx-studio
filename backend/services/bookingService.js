@@ -84,6 +84,13 @@ exports.bookSeat = async ({ eventId, userId, seatNumber, payment, couponCode, me
       session = await mongoose.startSession();
       session.startTransaction();
     } catch (err) {
+      // Fail-closed in production when transactions were explicitly enabled.
+      if (process.env.NODE_ENV === 'production') {
+        const e = new Error('Database transactions are required but unavailable');
+        e.status = 500;
+        throw e;
+      }
+
       logger.warn('Unable to start transaction; falling back to non-transactional booking flow:', err.message);
       session = null;
       useSession = false;

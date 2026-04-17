@@ -285,6 +285,7 @@ exports.getAttendeeDemographics = async (user, eventId) => {
         _id: null,
         attendees: {
           $push: {
+            userId: '$userData._id',
             name: '$userData.name',
             age: '$userData.age',
             gender: '$userData.gender',
@@ -295,6 +296,8 @@ exports.getAttendeeDemographics = async (user, eventId) => {
             eventDate: '$eventData.date',
             eventCategory: '$eventData.category',
             bookingDate: '$bookingDate',
+            ticketStatus: '$status',
+            checkedIn: '$checkIn.isCheckedIn',
           },
         },
       },
@@ -328,21 +331,23 @@ exports.getEventBookingTrend = async (eventId) => {
 /**
  * Calculate growth for a metric between two periods.
  */
-exports.getAttendeeGrowth = async (user) => {
+exports.getAttendeeGrowth = async (user, eventId) => {
   const now = new Date();
   const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 30));
   const sixtyDaysAgo = new Date(new Date().setDate(now.getDate() - 60));
 
-  const matchCondition = {
-    status: { $in: ['booked', 'used'] },
-  };
+  const baseMatch = { status: { $in: ['booked', 'used'] } };
+  const eventObjectId = eventId ? new mongoose.Types.ObjectId(eventId) : null;
 
   if (user.role !== 'admin') {
-    // We need to join with events to check organizer
+    // Join with events to scope to organizer (and optionally eventId)
+    const match = { ...baseMatch, 'eventData.organizer': user._id };
+    if (eventObjectId) match.event = eventObjectId;
+
     const tickets = await Ticket.aggregate([
       { $lookup: { from: 'events', localField: 'event', foreignField: '_id', as: 'eventData' } },
       { $unwind: '$eventData' },
-      { $match: { 'eventData.organizer': user._id, status: { $in: ['booked', 'used'] } } },
+      { $match: match },
       {
         $facet: {
           currentPeriod: [
@@ -362,9 +367,12 @@ exports.getAttendeeGrowth = async (user) => {
     return growth;
   } else {
     // Admin sees everything, simpler query
+    const adminMatch = { ...baseMatch };
+    if (eventObjectId) adminMatch.event = eventObjectId;
+
     const [current, previous] = await Promise.all([
-      Ticket.countDocuments({ ...matchCondition, bookingDate: { $gte: thirtyDaysAgo } }),
-      Ticket.countDocuments({ ...matchCondition, bookingDate: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } })
+      Ticket.countDocuments({ ...adminMatch, bookingDate: { $gte: thirtyDaysAgo } }),
+      Ticket.countDocuments({ ...adminMatch, bookingDate: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } })
     ]);
     const growth = previous === 0 ? (current > 0 ? 100 : 0) : Math.round(((current - previous) / previous) * 100);
     return growth;

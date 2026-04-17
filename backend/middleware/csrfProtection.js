@@ -2,7 +2,11 @@ const crypto = require('crypto');
 const { doubleCsrf } = require('csrf-csrf');
 const config = require('../config');
 
-const csrfSecret = process.env.CSRF_SECRET || config.secrets.jwt;
+const csrfSecret = process.env.CSRF_SECRET;
+if (!csrfSecret) {
+  // Fail closed: CSRF must always use an explicit secret.
+  throw new Error('CSRF_SECRET is required');
+}
 const {
   tokenCookieName,
   sessionCookieName,

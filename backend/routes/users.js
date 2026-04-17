@@ -1,11 +1,11 @@
 const express = require('express');
-const asyncHandler = require('../utils/asyncHandler');
 
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const usersController = require('../controllers/usersController');
 const authController = require('../controllers/authController');
 const {
   adminUserUpdateValidator,
+  updateProfileValidator,
   userStatusValidator,
 } = require('../middleware/validators');
 
@@ -13,7 +13,7 @@ const router = express.Router();
 
 // Static routes MUST come before parameterized /:id routes
 router.get('/profile/me', authenticate, authController.getCurrentUser);
-router.put('/profile/me', authenticate, authController.updateProfile);
+router.put('/profile/me', authenticate, updateProfileValidator, authController.updateProfile);
 router.get('/organizer/:id', usersController.getOrganizerProfile);
 
 router.get('/', authenticate, requireAdmin, usersController.getUsers);

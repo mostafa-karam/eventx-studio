@@ -17,6 +17,7 @@ const auditLogSchema = new mongoose.Schema({
       'user.deactivate',
       'user.activate',
       'user.role_change',
+      'user.delete',
       'event.create',
       'event.update',
       'event.delete',

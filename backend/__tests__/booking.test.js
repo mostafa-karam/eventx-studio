@@ -10,6 +10,8 @@ let authToken;
 let testEventId;
 let client;
 
+jest.setTimeout(30000);
+
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
@@ -99,6 +101,16 @@ describe('Booking Endpoints', () => {
         expect(res.statusCode).toBe(200);
         expect(res.body.success).toBe(true);
         expect(res.body.data.bookingSession).toBeDefined();
+    });
+
+    it('should reject booking initiation with invalid eventId', async () => {
+        const res = await client.csrfRequest('post', '/api/booking/initiate', {
+            eventId: 'not-a-mongo-id'
+        }, { Authorization: `Bearer ${authToken}` });
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toBe('Validation failed');
     });
 
     it('should book a free ticket successfully', async () => {
@@ -208,4 +220,23 @@ describe('Booking Endpoints', () => {
             expect(ticket.user._id).toBeDefined();
         });
     });
+
+    it('should issue simulated payment test token outside production', async () => {
+        const originalNodeEnv = process.env.NODE_ENV;
+        process.env.NODE_ENV = 'test';
+
+        try {
+            const res = await client.csrfRequest('post', '/api/payments/test-token', {
+                eventId: testEventId
+            }, { Authorization: `Bearer ${authToken}` });
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(res.body.data.token).toBeDefined();
+            expect(res.body.data.transactionId).toBeDefined();
+        } finally {
+            process.env.NODE_ENV = originalNodeEnv;
+        }
+    });
+
 });

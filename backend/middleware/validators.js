@@ -462,6 +462,11 @@ const confirmBookingValidator = [
   validate,
 ];
 
+const initiateBookingValidator = [
+  mongoIdField('eventId', 'Event ID'),
+  validate,
+];
+
 const roleUpgradeRequestValidator = [
   stringField('reason', 'Reason', { max: 500 }),
   stringField('organizationName', 'Organization name', { max: 150 }),
@@ -670,6 +675,27 @@ const updateCouponValidator = [
 
 const validateCouponValidator = [
   stringField('code', 'Coupon code', { min: 3, max: 20 }),
+  mongoIdField('eventId', 'Event ID'),
+  body('amount')
+    .exists({ values: 'falsy' })
+    .withMessage('Amount is required')
+    .bail()
+    .isFloat({ min: 0, max: 1000000 })
+    .withMessage('Amount must be a valid number between 0 and 1000000')
+    .toFloat(),
+  validate,
+];
+
+const deleteAccountValidator = [
+  body('password')
+    .exists({ values: 'falsy' })
+    .withMessage('Password is required')
+    .bail()
+    .isString()
+    .withMessage('Password must be a string')
+    .bail()
+    .isLength({ min: 1, max: 200 })
+    .withMessage('Password must be between 1 and 200 characters'),
   validate,
 ];
 
@@ -685,6 +711,7 @@ module.exports = {
   updateHallValidator,
   createBookingValidator,
   confirmBookingValidator,
+  initiateBookingValidator,
   roleUpgradeRequestValidator,
   roleUpgradeDecisionValidator,
   adminUserUpdateValidator,
@@ -696,4 +723,5 @@ module.exports = {
   createCouponValidator,
   updateCouponValidator,
   validateCouponValidator,
+  deleteAccountValidator,
 };

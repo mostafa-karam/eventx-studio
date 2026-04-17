@@ -12,6 +12,7 @@ let mongoServer;
 let adminToken;
 let organizerToken;
 let organizer;
+let eventId;
 
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
@@ -75,6 +76,7 @@ beforeAll(async () => {
             revenue: 100
         }
     });
+    eventId = event._id;
 
     await Ticket.create({
         event: event._id,
@@ -88,7 +90,8 @@ beforeAll(async () => {
         event: event._id,
         user: admin._id,
         seatNumber: 'S002',
-        status: 'booked',
+        status: 'used',
+        checkIn: { isCheckedIn: true, checkInTime: new Date(), checkInBy: admin._id },
         payment: { status: 'completed', amount: 50, currency: 'USD' }
     });
 });
@@ -146,6 +149,105 @@ describe('Analytics Endpoints', () => {
         expect(res.body.success).toBe(true);
         expect(res.body.data.event).toBeDefined();
         expect(res.body.data.event.analytics.views).toBe(15);
+    });
+
+    it('should return correct attendanceRate and deduped uniqueAttendees in attendee insights', async () => {
+        const attendeeRes = await request(app)
+            .get(`/api/analytics/attendee-insights?eventId=${eventId}`)
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(attendeeRes.statusCode).toBe(200);
+        expect(attendeeRes.body.success).toBe(true);
+        // 2 tickets total, 1 checked in (used)
+        expect(attendeeRes.body.data.trends.attendanceRate).toBe(50);
+
+        const allRes = await request(app)
+            .get('/api/analytics/all-attendee-insights')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(allRes.statusCode).toBe(200);
+        expect(allRes.body.success).toBe(true);
+        // Both tickets belong to the same user (admin) => unique should be 1
+        expect(allRes.body.data.overview.uniqueAttendees).toBe(1);
+    });
+
+    it('should scope growth to the requested eventId (event analytics)', async () => {
+        const now = Date.now();
+        const twentyDaysAgo = new Date(now - 20 * 24 * 60 * 60 * 1000);
+        const fortyDaysAgo = new Date(now - 40 * 24 * 60 * 60 * 1000);
+
+        const growthEvent = await Event.create({
+            title: 'Growth Scoped Event',
+            description: 'Growth event',
+            category: 'conference',
+            date: new Date(Date.now() + 86400000),
+            venue: { name: 'VG', address: 'AG', city: 'CG', country: 'UAE', capacity: 100 },
+            organizer: organizer._id,
+            seating: { totalSeats: 100, availableSeats: 99 },
+            pricing: { type: 'paid', amount: 50, currency: 'USD' },
+            status: 'published',
+            analytics: { views: 0, bookings: 0, revenue: 0 }
+        });
+
+        // Another event with extra tickets in current period that must NOT affect growthEvent growth.
+        const otherEvent = await Event.create({
+            title: 'Other Analytics Event',
+            description: 'Other event',
+            category: 'conference',
+            date: new Date(Date.now() + 86400000),
+            venue: { name: 'V2', address: 'A2', city: 'C2', country: 'UAE', capacity: 100 },
+            organizer: organizer._id,
+            seating: { totalSeats: 100, availableSeats: 99 },
+            pricing: { type: 'paid', amount: 50, currency: 'USD' },
+            status: 'published',
+            analytics: { views: 0, bookings: 0, revenue: 0 }
+        });
+
+        await Ticket.create({
+            event: growthEvent._id,
+            user: organizer._id,
+            seatNumber: 'S010',
+            status: 'booked',
+            bookingDate: twentyDaysAgo,
+            payment: { status: 'completed', amount: 50, currency: 'USD' }
+        });
+
+        await Ticket.create({
+            event: growthEvent._id,
+            user: organizer._id,
+            seatNumber: 'S011',
+            status: 'booked',
+            bookingDate: fortyDaysAgo,
+            payment: { status: 'completed', amount: 50, currency: 'USD' }
+        });
+
+        // These tickets are for the other event and should not change growth for eventId.
+        await Ticket.create({
+            event: otherEvent._id,
+            user: organizer._id,
+            seatNumber: 'S020',
+            status: 'booked',
+            bookingDate: twentyDaysAgo,
+            payment: { status: 'completed', amount: 50, currency: 'USD' }
+        });
+
+        await Ticket.create({
+            event: otherEvent._id,
+            user: organizer._id,
+            seatNumber: 'S021',
+            status: 'booked',
+            bookingDate: twentyDaysAgo,
+            payment: { status: 'completed', amount: 50, currency: 'USD' }
+        });
+
+        const res = await request(app)
+            .get(`/api/analytics/events/${growthEvent._id}`)
+            .set('Authorization', `Bearer ${organizerToken}`);
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.success).toBe(true);
+        // For eventId: current=1, previous=1 => growth 0
+        expect(res.body.data.growth).toBe(0);
     });
 
     it('should prevent fetching singular event metrics for non-owned event', async () => {

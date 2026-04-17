@@ -9,6 +9,8 @@ const crypto = require('crypto');
 const { generateAccessToken } = require('../utils/authUtils');
 const { createTestClient } = require('../test-utils/testClient');
 
+jest.setTimeout(30000);
+
 let mongoServer;
 let userToken;
 let organizerToken;

@@ -53,7 +53,8 @@ exports.getPublicEventById = async (req, res) => {
     try {
         const event = await Event.findOne({ _id: req.params.id, status: 'published' })
             .populate('organizer', 'name')
-            .populate('hall', 'name location');
+            .populate('hall', 'name location')
+            .select('-seating.seatMap.bookedBy');
 
         if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
 

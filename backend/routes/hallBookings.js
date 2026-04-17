@@ -34,6 +34,6 @@ router.put('/:id/approve', authenticate, requireVenueAdmin, asyncHandler(approve
 router.put('/:id/reject', authenticate, requireVenueAdmin, asyncHandler(rejectBooking));
 
 // DELETE /api/hall-bookings/:id
-router.delete('/:id', authenticate, requireOrganizer, asyncHandler(cancelBooking));
+router.delete('/:id', authenticate, asyncHandler(cancelBooking));
 
 module.exports = router;

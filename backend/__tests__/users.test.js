@@ -3,9 +3,12 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
 const User = require('../models/User');
+const AuditLog = require('../models/AuditLog');
 const crypto = require('crypto');
 const { generateAccessToken } = require('../utils/authUtils');
 const { createTestClient } = require('../test-utils/testClient');
+
+jest.setTimeout(30000);
 
 let mongoServer;
 let adminToken;
@@ -85,6 +88,17 @@ describe('User Management Endpoints', () => {
         expect(updatedUser.interests).toContain('coding');
     });
 
+    it('should enforce profile validators on /api/users/profile/me (no bypass)', async () => {
+        const tooLongName = 'a'.repeat(51);
+        const res = await client.csrfRequest('put', '/api/users/profile/me', {
+            name: tooLongName
+        }, { Authorization: `Bearer ${userToken}` });
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toBe('Validation failed');
+    });
+
     it('should allow user to request a role upgrade', async () => {
         const res = await client.csrfRequest('post', '/api/auth/role-upgrade', {
             reason: 'I want to organize tech meetups',
@@ -136,5 +150,30 @@ describe('User Management Endpoints', () => {
         }, { Authorization: `Bearer ${userToken}` }); // using 'organizer' token (user was upgraded in prev test)
 
         expect(res.statusCode).toBe(403);
+    });
+
+    it('should write a user.delete audit log when admin deletes a user', async () => {
+        const victim = await User.create({
+            name: 'Delete Target',
+            email: `delete_target_${Date.now()}@example.com`,
+            password: 'UniqueTestPass!2026',
+            role: 'user',
+            isActive: true,
+            emailVerified: true
+        });
+
+        const res = await client.csrfRequest(
+            'delete',
+            `/api/users/${victim._id}`,
+            undefined,
+            { Authorization: `Bearer ${adminToken}` }
+        );
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.success).toBe(true);
+
+        const audit = await AuditLog.findOne({ action: 'user.delete', resource: 'User' }).sort({ timestamp: -1 });
+        expect(audit).toBeTruthy();
+        expect(String(audit.resourceId)).toBe(String(victim._id));
     });
 });
