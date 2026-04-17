@@ -3,8 +3,6 @@
 This folder contains the backend technical references for the Node.js + Express + MongoDB API.
 Last updated: 2026-04-17
 
-Last updated: 2026-04-17
-
 ## Start Here
 
 - [Setup Guide](./setup.md) - local setup, environment, run scripts

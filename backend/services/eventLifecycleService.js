@@ -72,7 +72,7 @@ class EventLifecycleService {
       }
 
       return { ticketsCancelled: tickets.length, usersNotified: uniqueUserIds.length };
-    }, { allowFallback: true });
+    }, { allowFallback: process.env.NODE_ENV === 'test' });
 
     logger.info(`Event ${eventId} cancelled by ${organizer._id}. Notified ${usersNotified} users.`);
     event.status = 'cancelled';

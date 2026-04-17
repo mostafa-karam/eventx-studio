@@ -4,6 +4,11 @@ const asyncHandler = require('../utils/asyncHandler');
 const router = express.Router();
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const {
+  mongoIdParamValidator,
+  createCategoryValidator,
+  updateCategoryValidator,
+} = require('../middleware/validators');
+const {
   getCategories,
   createCategory,
   getCategoryById,
@@ -19,15 +24,28 @@ router.get('/', authenticate, asyncHandler(getCategories));
 router.get('/stats/overview', authenticate, requireAdmin, asyncHandler(getCategoryStats));
 
 // Create new category
-router.post('/', authenticate, requireAdmin, asyncHandler(createCategory));
+router.post('/', authenticate, requireAdmin, createCategoryValidator, asyncHandler(createCategory));
 
 // Get specific category
-router.get('/:id', authenticate, asyncHandler(getCategoryById));
+router.get('/:id', authenticate, mongoIdParamValidator('id', 'Category ID'), asyncHandler(getCategoryById));
 
 // Update category
-router.put('/:id', authenticate, requireAdmin, asyncHandler(updateCategory));
+router.put(
+  '/:id',
+  authenticate,
+  requireAdmin,
+  mongoIdParamValidator('id', 'Category ID'),
+  updateCategoryValidator,
+  asyncHandler(updateCategory)
+);
 
 // Delete category (soft delete)
-router.delete('/:id', authenticate, requireAdmin, asyncHandler(deleteCategory));
+router.delete(
+  '/:id',
+  authenticate,
+  requireAdmin,
+  mongoIdParamValidator('id', 'Category ID'),
+  asyncHandler(deleteCategory)
+);
 
 module.exports = router;

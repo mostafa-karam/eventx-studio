@@ -255,11 +255,11 @@ exports.updateCampaign = async (req, res) => {
             }
         }
 
-        campaign.name = name || campaign.name;
-        campaign.subject = subject || campaign.subject;
-        campaign.content = content || campaign.content;
-        campaign.targetAudience = targetAudience || campaign.targetAudience;
-        campaign.scheduledAt = scheduledAt || campaign.scheduledAt;
+        if (name !== undefined) campaign.name = name;
+        if (subject !== undefined) campaign.subject = subject;
+        if (content !== undefined) campaign.content = content;
+        if (targetAudience !== undefined) campaign.targetAudience = targetAudience;
+        if (scheduledAt !== undefined) campaign.scheduledAt = scheduledAt;
 
         await campaign.save();
 

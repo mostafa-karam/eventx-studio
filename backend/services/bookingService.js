@@ -15,6 +15,7 @@ const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const Coupon = require('../models/Coupon');
 const Waitlist = require('../models/Waitlist');
+const Payment = require('../models/Payment');
 const notificationService = require('./notificationService');
 const logger = require('../utils/logger');
 const ticketsService = require('./ticketsService');
@@ -83,37 +84,54 @@ exports.bookSeat = async ({
   couponCode,
   metadata = {},
   idempotencyKey,
+  paymentId,
 }) => {
-  // Use explicit env var instead of private driver topology sniffing (M-03)
-  // Only start session when transactions are actually needed (M-14)
-  let useSession = process.env.ENABLE_TRANSACTIONS !== 'false';
-  let session = null;
-  if (useSession) {
-    try {
-      session = await mongoose.startSession();
-      session.startTransaction();
-    } catch (err) {
-      // Fail-closed in production when transactions were explicitly enabled.
-      if (process.env.NODE_ENV === 'production') {
-        const e = new Error('Database transactions are required but unavailable');
-        e.status = 500;
-        throw e;
+  const transactionsRequired = (process.env.NODE_ENV === 'production'
+    || String(process.env.REQUIRE_DB_TRANSACTIONS || '').toLowerCase() === 'true')
+    && process.env.NODE_ENV !== 'test';
+  const allowNonTransactional = process.env.NODE_ENV === 'test'
+    || (process.env.NODE_ENV !== 'production'
+      && String(process.env.ALLOW_NON_TXN_BOOKING || '').toLowerCase() === 'true');
+
+  const isTxnUnsupported = (err) => {
+    if (!err) return false;
+    if (err.code === 20 || err.codeName === 'IllegalOperation') return true;
+    const msg = String(err.message || '');
+    return msg.includes('Transaction numbers are only allowed')
+      || msg.includes('replica set member or mongos');
+  };
+
+  let attempt = 0;
+  let forceNoSession = false;
+  while (attempt < 2) {
+    attempt += 1;
+
+    let session = null;
+    let useSession = !forceNoSession;
+    if (useSession) {
+      try {
+        session = await mongoose.startSession();
+        session.startTransaction();
+      } catch (err) {
+        if (transactionsRequired) {
+          const e = new Error('Database transactions are required but unavailable');
+          e.status = 500;
+          throw e;
+        }
+        if (!allowNonTransactional) {
+          const e = new Error('Database transactions are unavailable (set ALLOW_NON_TXN_BOOKING=true only for local dev)');
+          e.status = 500;
+          throw e;
+        }
+        logger.warn(`Booking transaction unavailable; using compatibility fallback: ${err.message}`);
+        useSession = false;
+        session = null;
       }
-
-      logger.warn(`Unable to start transaction; falling back to non-transactional booking flow: ${err.message}`);
-      session = null;
-      useSession = false;
     }
-  } else {
-    logger.warn('Transactions disabled (ENABLE_TRANSACTIONS != true); using non-transactional booking flow.');
-  }
 
-  const sessionOptions = session ? { session } : {};
-  let couponIncremented = false;
-  let couponIdToRollback = null;
-  let seatMutation = null; // { type: 'named'|'ga', seatNumber, revenueInc }
+    const sessionOptions = useSession ? { session } : {};
 
-  try {
+    try {
     if (idempotencyKey) {
       const existingByIdempotencyQuery = Ticket.findOne({
         event: eventId,
@@ -187,11 +205,43 @@ exports.bookSeat = async ({
         err.status = 400;
         throw err;
       }
-      couponIncremented = true;
-      couponIdToRollback = appliedCoupon._id;
     }
 
     const finalAmount = payment?.amount ?? (event.pricing?.amount || 0);
+    const requiredCurrency = event.pricing?.currency || 'USD';
+
+    const requiresTxnForIntegrity = event.pricing?.type === 'paid' || Boolean(couponCode);
+    if (requiresTxnForIntegrity && !useSession && process.env.NODE_ENV !== 'test') {
+      throw Object.assign(new Error('Booking requires database transactions to be enabled'), { status: 500 });
+    }
+
+    // Validate payment (do not consume yet) for paid bookings.
+    let paymentVerifiedRecord = null;
+    if (event.pricing?.type === 'paid') {
+      if (!paymentId) {
+        const err = new Error('paymentId is required for paid bookings');
+        err.status = 400;
+        throw err;
+      }
+
+      const paymentQuery = Payment.findOne({
+        paymentId: String(paymentId),
+        user: userId,
+        event: eventId,
+        status: 'verified',
+        amount: Number(finalAmount),
+        currency: String(requiredCurrency).toUpperCase(),
+        quantity: 1,
+      });
+      if (useSession) paymentQuery.session(session);
+      paymentVerifiedRecord = await paymentQuery.exec();
+      if (!paymentVerifiedRecord) {
+        logger.warn(`Rejected unverified/invalid payment during booking paymentId=${paymentId} user=${userId} event=${eventId}`);
+        const err = new Error('Payment not verified');
+        err.status = 400;
+        throw err;
+      }
+    }
 
     // Determine seat number — pick first available if none specified
     let selectedSeat = seatNumber;
@@ -230,7 +280,6 @@ exports.bookSeat = async ({
         },
         { new: true, ...sessionOptions }
       );
-      seatMutation = { type: 'named', seatNumber: selectedSeat, revenueInc };
     } else if (event.seating) {
       // General admission — just decrement available seats atomically
       updatedEvent = await Event.findOneAndUpdate(
@@ -247,7 +296,6 @@ exports.bookSeat = async ({
         },
         { new: true, ...sessionOptions }
       );
-      seatMutation = { type: 'ga', seatNumber: selectedSeat, revenueInc };
     }
 
     if (!updatedEvent) {
@@ -276,8 +324,19 @@ exports.bookSeat = async ({
 
     await ticket.save(useSession ? { session } : undefined);
 
+    // Consume payment at the end of the transaction to prevent partial failures burning payments.
+    if (event.pricing?.type === 'paid') {
+      const consumeResult = await Payment.updateOne(
+        { _id: paymentVerifiedRecord._id, status: 'verified' },
+        { $set: { status: 'consumed', consumedAt: new Date() } },
+        useSession ? { session } : undefined
+      );
+      if (!consumeResult || consumeResult.modifiedCount !== 1) {
+        throw Object.assign(new Error('Payment is no longer available'), { status: 409 });
+      }
+    }
+
     if (useSession) {
-      // Commit the transaction — all-or-nothing
       await session.commitTransaction();
     }
 
@@ -291,50 +350,36 @@ exports.bookSeat = async ({
       metadata: { eventId: event._id, ticketId: ticket._id },
     });
 
-    return { ticket, event: updatedEvent };
-  } catch (error) {
-    if (session) {
-      await session.abortTransaction().catch(() => {});
-    } else {
-      // Compensating rollback for non-transactional flow to preserve integrity.
-      if (couponIncremented && couponIdToRollback) {
-        await Coupon.updateOne({ _id: couponIdToRollback, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1 } }).catch(() => {});
+      return { ticket, event: updatedEvent };
+    } catch (error) {
+      if (useSession && session) {
+        await session.abortTransaction().catch(() => {});
       }
-      if (seatMutation) {
-        const rollbackUpdate = {
-          $inc: {
-            'seating.availableSeats': 1,
-            'analytics.bookings': -1,
-            'analytics.revenue': -(seatMutation.revenueInc || 0),
-          },
-        };
-        if (seatMutation.type === 'named') {
-          await Event.updateOne(
-            { _id: eventId, 'seating.seatMap.seatNumber': seatMutation.seatNumber, 'seating.seatMap.bookedBy': userId },
-            {
-              ...rollbackUpdate,
-              $set: { 'seating.seatMap.$.isBooked': false, 'seating.seatMap.$.bookedBy': null },
-            }
-          ).catch(() => {});
-        } else {
-          await Event.updateOne({ _id: eventId }, rollbackUpdate).catch(() => {});
+
+      // Retry once without a transaction in non-production only when explicitly allowed.
+      if (!transactionsRequired && allowNonTransactional && useSession && session && isTxnUnsupported(error) && process.env.NODE_ENV !== 'production' && attempt === 1) {
+        logger.warn(`Retrying booking without transaction due to unsupported transactions: ${error.message}`);
+        forceNoSession = true;
+        continue;
+      }
+
+      if (error?.code === 11000) {
+        const duplicateTicket = await Ticket.findOne({
+          event: eventId,
+          user: userId,
+          status: { $in: ['booked', 'used'] },
+        });
+        if (duplicateTicket) {
+          return { ticket: duplicateTicket, event: null, idempotentReplay: true };
         }
       }
+      throw error;
+    } finally {
+      if (session) session.endSession();
     }
-    if (error?.code === 11000) {
-      const duplicateTicket = await Ticket.findOne({
-        event: eventId,
-        user: userId,
-        status: { $in: ['booked', 'used'] },
-      });
-      if (duplicateTicket) {
-        return { ticket: duplicateTicket, event: null, idempotentReplay: true };
-      }
-    }
-    throw error;
-  } finally {
-    if (session) session.endSession();
   }
+
+  throw Object.assign(new Error('Booking failed'), { status: 500 });
 };
 
 /**

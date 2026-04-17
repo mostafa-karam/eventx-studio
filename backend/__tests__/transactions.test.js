@@ -44,7 +44,7 @@ describe('Transaction enforcement', () => {
     await expect(
       ticketsService.bookMultiSeats({
         eventId: '507f1f77bcf86cd799439011',
-        event: { pricing: { type: 'paid', currency: 'USD' } },
+        event: { pricing: { type: 'free', currency: 'USD' } },
         seatsChosen: ['S001'],
         userId: '507f1f77bcf86cd799439012',
         expectedAmount: 10,
@@ -76,7 +76,7 @@ describe('Transaction enforcement', () => {
     await expect(
       ticketsService.bookMultiSeats({
         eventId: '507f1f77bcf86cd799439011',
-        event: { pricing: { type: 'paid', currency: 'USD' } },
+        event: { pricing: { type: 'free', currency: 'USD' } },
         seatsChosen: ['S001', 'S002'],
         userId: '507f1f77bcf86cd799439012',
         expectedAmount: 10,
@@ -122,7 +122,7 @@ describe('Transaction enforcement', () => {
 
     const result = await ticketsService.bookMultiSeats({
       eventId: '507f1f77bcf86cd799439011',
-      event: { pricing: { type: 'paid', currency: 'USD' } },
+      event: { pricing: { type: 'free', currency: 'USD' } },
       seatsChosen: ['S001'],
       userId: '507f1f77bcf86cd799439012',
       expectedAmount: 10,
@@ -137,6 +137,34 @@ describe('Transaction enforcement', () => {
     expect(session.commitTransaction).toHaveBeenCalledTimes(1);
     expect(query.exec).toHaveBeenCalledTimes(1);
     expect(session.endSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not persist seat map during prepareSeatsForBooking preflight', async () => {
+    const event = {
+      seating: {
+        totalSeats: 3,
+        seatMap: [],
+      },
+      save: jest.fn(),
+    };
+
+    jest.spyOn(Ticket, 'find').mockReturnValue({
+      select: jest.fn().mockResolvedValue([
+        { seatNumber: 'S001', user: '507f1f77bcf86cd799439099' },
+      ]),
+    });
+
+    const seats = await ticketsService.prepareSeatsForBooking(
+      event,
+      '507f1f77bcf86cd799439011',
+      2,
+      []
+    );
+
+    expect(seats).toEqual(['S002', 'S003']);
+    expect(event.seating.seatMap).toHaveLength(3);
+    expect(event.seating.availableSeats).toBe(2);
+    expect(event.save).not.toHaveBeenCalled();
   });
 });
 

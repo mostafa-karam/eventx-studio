@@ -1,5 +1,6 @@
 const sanitizeHtml = require('sanitize-html');
 const AppError = require('../utils/AppError');
+const { logSecurityEvent } = require('../utils/securityLog');
 
 const BLOCKED_KEY_PATTERN = /[$.]/;
 const BLOCKED_FIELD_NAMES = new Set(['__proto__', 'prototype', 'constructor']);
@@ -78,6 +79,7 @@ const sanitizeRequest = (req, _res, next) => {
     || findSuspiciousField(req.params);
 
   if (suspiciousField) {
+    logSecurityEvent(req, 'request.suspicious_payload', { suspiciousField });
     return next(new AppError(`Invalid request payload. Disallowed field "${suspiciousField}" detected.`, 400));
   }
 

@@ -10,6 +10,7 @@ const Hall = require('../models/Hall');
 const HallBooking = require('../models/HallBooking');
 const { escapeRegex } = require('../utils/helpers');
 const { enforceOwnership } = require('../utils/authorization');
+const logger = require('../utils/logger');
 
 class HallsService {
   /**
@@ -17,14 +18,20 @@ class HallsService {
    */
   buildQuery(queryParams, user) {
     const query = {};
+    const isAdmin = user?.role === 'admin';
+    const isVenueAdmin = user?.role === 'venue_admin';
 
     if (queryParams.ids) {
       query._id = { $in: queryParams.ids.split(',') };
     }
 
+    if (isVenueAdmin) {
+      query.createdBy = user._id;
+    }
+
     // Status filtering — non-privileged users always see only active halls
     if (queryParams.status) {
-      if (user && (user.role === 'admin' || user.role === 'venue_admin')) {
+      if (isAdmin || isVenueAdmin) {
         query.status = queryParams.status;
       } else {
         query.status = 'active';
@@ -94,9 +101,14 @@ class HallsService {
   async getHallById(hallId, user) {
     const hall = await Hall.findById(hallId).populate('createdBy', 'name email');
     if (!hall) throw Object.assign(new Error('Hall not found'), { status: 404 });
-    const isPrivileged = user && (user.role === 'admin' || user.role === 'venue_admin');
+    const isAdmin = user?.role === 'admin';
+    const isVenueAdmin = user?.role === 'venue_admin';
     const isOwner = user && hall.createdBy && hall.createdBy._id.toString() === user._id.toString();
-    if (hall.status !== 'active' && !isPrivileged && !isOwner) {
+    if (isVenueAdmin && !isOwner) {
+      logger.warn(`Unauthorized hall access attempt hall=${hallId} actor=${user?._id}`);
+      throw Object.assign(new Error('Not authorized to access this hall'), { status: 403 });
+    }
+    if (hall.status !== 'active' && !isAdmin && !isOwner) {
       throw Object.assign(new Error('Hall not found'), { status: 404 });
     }
     return hall;
@@ -108,9 +120,14 @@ class HallsService {
   async getHallAvailability(hallId, user, { from, to } = {}) {
     const hall = await Hall.findById(hallId);
     if (!hall) throw Object.assign(new Error('Hall not found'), { status: 404 });
-    const isPrivileged = user && (user.role === 'admin' || user.role === 'venue_admin');
+    const isAdmin = user?.role === 'admin';
+    const isVenueAdmin = user?.role === 'venue_admin';
     const isOwner = user && hall.createdBy && hall.createdBy.toString() === user._id.toString();
-    const canViewSensitiveAvailability = isPrivileged || isOwner;
+    if (isVenueAdmin && !isOwner) {
+      logger.warn(`Unauthorized hall availability access attempt hall=${hallId} actor=${user?._id}`);
+      throw Object.assign(new Error('Not authorized to access this hall'), { status: 403 });
+    }
+    const canViewSensitiveAvailability = isAdmin || isOwner;
     if (hall.status !== 'active' && !canViewSensitiveAvailability) {
       throw Object.assign(new Error('Hall not found'), { status: 404 });
     }

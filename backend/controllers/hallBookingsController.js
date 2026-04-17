@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const config = require('../config');
 const logger = require('../utils/logger');
 const HallBooking = require('../models/HallBooking');
 const Hall = require('../models/Hall');
@@ -307,10 +308,12 @@ exports.approveBooking = async (req, res) => {
         session = await mongoose.startSession();
         const topologyType = mongoose.connection.client.topology.description?.type || '';
         useSession = topologyType.includes('ReplicaSet');
-        
-        if (useSession) {
-            session.startTransaction();
+
+        if (!useSession && config.security.db?.requireTransactions) {
+            throw Object.assign(new Error('Database transactions are required but unavailable'), { status: 500 });
         }
+
+        if (useSession) session.startTransaction();
 
         const sessionOptions = useSession ? { session } : {};
 

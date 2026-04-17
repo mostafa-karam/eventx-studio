@@ -2,12 +2,16 @@ const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 
 const { authenticate, requireAdmin, requireOrganizer, requireRole } = require('../middleware/auth');
+const {
+  bookTicketValidator,
+  bookMultiTicketsValidator,
+} = require('../middleware/validators');
 const ticketsController = require('../controllers/ticketsController');
 
 const router = express.Router();
 
-router.post('/book', authenticate, ticketsController.bookTicket);
-router.post('/book-multi', authenticate, ticketsController.bookMultiTickets);
+router.post('/book', authenticate, bookTicketValidator, ticketsController.bookTicket);
+router.post('/book-multi', authenticate, bookMultiTicketsValidator, ticketsController.bookMultiTickets);
 router.get('/my-tickets', authenticate, ticketsController.getMyTickets);
 router.get('/organizer', authenticate, requireOrganizer, ticketsController.getOrganizerTickets);
 router.get('/admin', authenticate, requireAdmin, ticketsController.getTicketsAdmin);

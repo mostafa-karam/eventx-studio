@@ -1,9 +1,10 @@
-jest.mock('../utils/paymentTokens', () => ({
-    signPaymentToken: jest.fn(() => 'signed-payment-token'),
+jest.mock('../services/paymentsService', () => ({
+    createPaymentIntent: jest.fn(),
+    handleVerificationWebhook: jest.fn(),
 }));
 
-const { processPayment, testToken } = require('../controllers/paymentsController');
-const { signPaymentToken } = require('../utils/paymentTokens');
+const { processPayment, verifyPaymentWebhook } = require('../controllers/paymentsController');
+const paymentsService = require('../services/paymentsService');
 
 const createMockRes = () => {
     const res = {};
@@ -12,69 +13,68 @@ const createMockRes = () => {
     return res;
 };
 
-describe('paymentsController simulation gating', () => {
-    const originalNodeEnv = process.env.NODE_ENV;
-
+describe('paymentsController', () => {
     afterEach(() => {
-        process.env.NODE_ENV = originalNodeEnv;
         jest.clearAllMocks();
     });
 
-    it('blocks processPayment in production', async () => {
-        process.env.NODE_ENV = 'production';
-
+    it('creates a payment intent', async () => {
         const req = {
-            body: { amount: 100, quantity: 1, currency: 'USD' },
+            validatedBody: { amount: 100, quantity: 2, currency: 'USD', eventId: '507f1f77bcf86cd799439011' },
             user: { _id: 'user-1' },
         };
         const res = createMockRes();
 
-        await processPayment(req, res);
-
-        expect(res.status).toHaveBeenCalledWith(404);
-        expect(res.json).toHaveBeenCalledWith({
-            success: false,
-            message: 'Not available in production',
+        paymentsService.createPaymentIntent.mockResolvedValue({
+            paymentId: 'pay_abcdefghijklmnopqrstuvwx',
+            status: 'processing',
+            amount: 100,
+            currency: 'USD',
+            quantity: 2,
+            method: 'credit_card',
+            event: req.validatedBody.eventId,
+            provider: 'mock_psp',
+            createdAt: new Date().toISOString(),
         });
-        expect(signPaymentToken).not.toHaveBeenCalled();
-    });
-
-    it('blocks testToken in production', async () => {
-        process.env.NODE_ENV = 'production';
-
-        const req = { body: { eventId: 'event-1' }, user: { _id: 'user-1' } };
-        const res = createMockRes();
-
-        await testToken(req, res);
-
-        expect(res.status).toHaveBeenCalledWith(404);
-        expect(res.json).toHaveBeenCalledWith({
-            success: false,
-            message: 'Not available in production',
-        });
-        expect(signPaymentToken).not.toHaveBeenCalled();
-    });
-
-    it('allows processPayment in non-production environments', async () => {
-        process.env.NODE_ENV = 'test';
-
-        const req = {
-            body: { amount: 150, quantity: 3, currency: 'USD', eventId: 'event-2' },
-            user: { _id: 'user-2' },
-        };
-        const res = createMockRes();
 
         await processPayment(req, res);
 
-        expect(signPaymentToken).toHaveBeenCalledTimes(1);
-        expect(res.status).not.toHaveBeenCalledWith(404);
+        expect(paymentsService.createPaymentIntent).toHaveBeenCalledTimes(1);
+        expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith(
             expect.objectContaining({
                 success: true,
                 data: expect.objectContaining({
-                    token: 'signed-payment-token',
+                    paymentId: 'pay_abcdefghijklmnopqrstuvwx',
                 }),
             })
         );
+    });
+
+    it('handles payment verification webhook', async () => {
+        const req = {
+            validatedBody: {
+                paymentId: 'pay_abcdefghijklmnopqrstuvwx',
+                providerPaymentId: 'pp_123',
+                status: 'verified',
+                provider: 'mock_psp',
+                amount: 100,
+                currency: 'USD',
+            },
+            headers: { 'x-payment-signature': 'aa'.repeat(32) },
+        };
+        const res = createMockRes();
+
+        paymentsService.handleVerificationWebhook.mockResolvedValue({
+            paymentId: 'pay_abcdefghijklmnopqrstuvwx',
+            status: 'verified',
+            providerPaymentId: 'pp_123',
+            verifiedAt: new Date().toISOString(),
+        });
+
+        await verifyPaymentWebhook(req, res);
+
+        expect(paymentsService.handleVerificationWebhook).toHaveBeenCalledTimes(1);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
 });

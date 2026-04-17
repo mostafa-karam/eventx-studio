@@ -80,13 +80,25 @@ const verifyPaymentToken = (token) => {
     throw new Error('Invalid payment token structure');
   }
 
+  // Guard malformed signatures before constant-time comparison.
+  if (typeof sig !== 'string' || !/^[a-f0-9]{64}$/i.test(sig)) {
+    throw new Error('Invalid payment token signature');
+  }
+
   // Recompute HMAC and compare
   const expectedSig = crypto
     .createHmac('sha256', getSecret())
     .update(JSON.stringify(data))
     .digest('hex');
 
-  if (!crypto.timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expectedSig, 'hex'))) {
+  const providedSigBuffer = Buffer.from(sig, 'hex');
+  const expectedSigBuffer = Buffer.from(expectedSig, 'hex');
+
+  if (providedSigBuffer.length !== expectedSigBuffer.length) {
+    throw new Error('Invalid payment token signature');
+  }
+
+  if (!crypto.timingSafeEqual(providedSigBuffer, expectedSigBuffer)) {
     logger.warn('Payment token HMAC mismatch — possible tampering');
     throw new Error('Invalid payment token signature');
   }

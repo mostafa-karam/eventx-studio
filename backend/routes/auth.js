@@ -16,6 +16,10 @@ const {
   roleUpgradeRequestValidator,
   roleUpgradeDecisionValidator,
   deleteAccountValidator,
+  verifyEmailValidator,
+  resetPasswordValidator,
+  twoFactorEnableValidator,
+  twoFactorDisableValidator,
 } = require('../middleware/validators');
 const authController = require('../controllers/authController');
 
@@ -86,13 +90,13 @@ router.get('/me', authenticate, authController.getCurrentUser);
 router.post('/logout', authenticate, authController.logout);
 router.put('/profile', authenticate, updateProfileValidator, authController.updateProfile);
 router.put('/change-password', authenticate, changePasswordValidator, authController.changePassword);
-router.post('/verify-email', registerLimiter, authController.verifyEmail);
+router.post('/verify-email', registerLimiter, verifyEmailValidator, authController.verifyEmail);
 router.post('/resend-verification', registerLimiter, authController.resendVerification);
 router.post('/forgot-password', passwordResetLimiter, authController.forgotPassword);
-router.post('/reset-password', passwordResetLimiter, authController.resetPassword);
+router.post('/reset-password', passwordResetLimiter, resetPasswordValidator, authController.resetPassword);
 router.post('/2fa/setup', authenticate, authController.setup2FA);
-router.post('/2fa/enable', authenticate, loginLimiter, authController.enable2FA);
-router.delete('/2fa', authenticate, loginLimiter, authController.disable2FA);
+router.post('/2fa/enable', authenticate, loginLimiter, twoFactorEnableValidator, authController.enable2FA);
+router.delete('/2fa', authenticate, loginLimiter, twoFactorDisableValidator, authController.disable2FA);
 router.get('/sessions', authenticate, authController.getSessions);
 router.delete('/sessions/:sessionId', authenticate, authController.deleteSession);
 router.delete('/sessions', authenticate, authController.deleteOtherSessions);

@@ -457,10 +457,6 @@ const confirmBookingValidator = [
   stringField('bookingId', 'Booking ID', { optional: true, max: 120 }),
   stringField('paymentMethod', 'Payment method', { optional: true, max: 50 }),
   stringField('couponCode', 'Coupon code', { optional: true, max: 40 }),
-  body('paymentToken')
-    .optional()
-    .isString()
-    .withMessage('Payment token must be a string'),
   body('idempotencyKey')
     .optional()
     .isString()
@@ -656,6 +652,62 @@ const createCouponValidator = [
   validate,
 ];
 
+const createCategoryValidator = [
+  stringField('name', 'Category name', { min: 2, max: 60 }),
+  stringField('description', 'Description', { optional: true, max: 300 }),
+  body('color')
+    .optional()
+    .isString()
+    .withMessage('Color must be a string')
+    .bail()
+    .trim()
+    .matches(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)
+    .withMessage('Color must be a valid hex color'),
+  body('emoji')
+    .optional()
+    .isString()
+    .withMessage('Emoji must be a string')
+    .bail()
+    .trim()
+    .isLength({ min: 1, max: 8 })
+    .withMessage('Emoji must be between 1 and 8 characters'),
+  validate,
+];
+
+const updateCategoryValidator = [
+  body('name')
+    .optional()
+    .isString()
+    .withMessage('Category name must be a string')
+    .bail()
+    .trim()
+    .isLength({ min: 2, max: 60 })
+    .withMessage('Category name must be between 2 and 60 characters'),
+  stringField('description', 'Description', { optional: true, max: 300 }),
+  body('color')
+    .optional()
+    .isString()
+    .withMessage('Color must be a string')
+    .bail()
+    .trim()
+    .matches(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)
+    .withMessage('Color must be a valid hex color'),
+  body('emoji')
+    .optional()
+    .isString()
+    .withMessage('Emoji must be a string')
+    .bail()
+    .trim()
+    .isLength({ min: 1, max: 8 })
+    .withMessage('Emoji must be between 1 and 8 characters'),
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .withMessage('isActive must be a boolean')
+    .toBoolean(),
+  validate,
+];
+
 const updateCouponValidator = [
   stringField('description', 'Description', { optional: true, max: 200 }),
   body('maxUses')
@@ -708,6 +760,231 @@ const deleteAccountValidator = [
   validate,
 ];
 
+const verifyEmailValidator = [
+  body('token')
+    .exists({ values: 'falsy' })
+    .withMessage('Verification token is required')
+    .bail()
+    .isString()
+    .withMessage('Verification token must be a string')
+    .trim()
+    .isLength({ min: 16, max: 512 })
+    .withMessage('Verification token length is invalid'),
+  validate,
+];
+
+const resetPasswordValidator = [
+  body('token')
+    .exists({ values: 'falsy' })
+    .withMessage('Reset token is required')
+    .bail()
+    .isString()
+    .withMessage('Reset token must be a string')
+    .trim()
+    .isLength({ min: 16, max: 512 })
+    .withMessage('Reset token length is invalid'),
+  body('password')
+    .exists({ values: 'falsy' })
+    .withMessage('Password is required')
+    .bail()
+    .isString()
+    .withMessage('Password must be a string')
+    .isLength({ min: 12, max: 200 })
+    .withMessage('Password must be between 12 and 200 characters'),
+  validate,
+];
+
+const twoFactorEnableValidator = [
+  body('code')
+    .exists({ values: 'falsy' })
+    .withMessage('2FA code is required')
+    .bail()
+    .isString()
+    .withMessage('2FA code must be a string')
+    .trim()
+    .matches(/^\d{6,8}$/)
+    .withMessage('2FA code must be 6 to 8 digits'),
+  validate,
+];
+
+const twoFactorDisableValidator = [
+  body('password')
+    .exists({ values: 'falsy' })
+    .withMessage('Password is required')
+    .bail()
+    .isString()
+    .withMessage('Password must be a string')
+    .isLength({ min: 1, max: 200 })
+    .withMessage('Password must be between 1 and 200 characters'),
+  validate,
+];
+
+const createPaymentValidator = [
+  mongoIdField('eventId', 'Event ID'),
+  body('amount')
+    .exists({ values: 'falsy' })
+    .withMessage('Amount is required')
+    .bail()
+    .isFloat({ min: 0.01, max: 1000000 })
+    .withMessage('Amount must be a valid number between 0.01 and 1000000')
+    .toFloat(),
+  body('currency')
+    .optional()
+    .isString()
+    .withMessage('Currency must be a string')
+    .trim()
+    .isLength({ min: 3, max: 3 })
+    .withMessage('Currency must be a 3-letter code'),
+  body('quantity')
+    .optional()
+    .isInt({ min: 1, max: 10 })
+    .withMessage('Quantity must be between 1 and 10')
+    .toInt(),
+  body('paymentMethod')
+    .optional()
+    .isString()
+    .withMessage('Payment method must be a string')
+    .bail()
+    .isIn(['credit_card', 'debit_card', 'paypal', 'bank_transfer'])
+    .withMessage('Unsupported payment method'),
+  validate,
+];
+
+const paymentWebhookValidator = [
+  body('eventId')
+    .optional()
+    .isString()
+    .withMessage('eventId must be a string')
+    .trim()
+    .isLength({ min: 6, max: 120 })
+    .withMessage('eventId length is invalid'),
+  body('paymentId')
+    .exists({ values: 'falsy' })
+    .withMessage('paymentId is required')
+    .bail()
+    .isString()
+    .withMessage('paymentId must be a string')
+    .trim()
+    .matches(/^pay_[a-zA-Z0-9]{24}$/)
+    .withMessage('paymentId format is invalid'),
+  body('providerPaymentId')
+    .exists({ values: 'falsy' })
+    .withMessage('providerPaymentId is required')
+    .bail()
+    .isString()
+    .withMessage('providerPaymentId must be a string')
+    .trim()
+    .isLength({ min: 6, max: 100 })
+    .withMessage('providerPaymentId length is invalid'),
+  body('status')
+    .exists({ values: 'falsy' })
+    .withMessage('status is required')
+    .bail()
+    .isString()
+    .withMessage('status must be a string')
+    .bail()
+    .isIn(['verified', 'failed'])
+    .withMessage('status must be verified or failed'),
+  body('amount')
+    .exists({ values: 'falsy' })
+    .withMessage('amount is required')
+    .bail()
+    .isFloat({ min: 0.01, max: 1000000 })
+    .withMessage('amount must be valid')
+    .toFloat(),
+  body('currency')
+    .exists({ values: 'falsy' })
+    .withMessage('currency is required')
+    .bail()
+    .isString()
+    .withMessage('currency must be a string')
+    .trim()
+    .isLength({ min: 3, max: 3 })
+    .withMessage('currency must be a 3-letter code'),
+  body('provider')
+    .optional()
+    .isString()
+    .withMessage('provider must be a string')
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('provider length is invalid'),
+  body('timestamp')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('timestamp must be a valid Unix milliseconds integer')
+    .toInt(),
+  validate,
+];
+
+const bookTicketValidator = [
+  mongoIdField('eventId', 'Event ID'),
+  body('seatNumber')
+    .optional()
+    .isString()
+    .withMessage('seatNumber must be a string')
+    .trim()
+    .isLength({ min: 1, max: 30 })
+    .withMessage('seatNumber length is invalid'),
+  body('paymentMethod')
+    .optional()
+    .isIn(['free', 'credit_card', 'debit_card', 'paypal', 'bank_transfer'])
+    .withMessage('Unsupported payment method'),
+  body('transactionId')
+    .optional()
+    .isString()
+    .withMessage('transactionId must be a string')
+    .trim()
+    .isLength({ min: 6, max: 120 })
+    .withMessage('transactionId length is invalid'),
+  body('couponCode')
+    .optional()
+    .isString()
+    .withMessage('couponCode must be a string')
+    .trim()
+    .isLength({ min: 3, max: 20 })
+    .withMessage('couponCode length is invalid'),
+  validate,
+];
+
+const bookMultiTicketsValidator = [
+  mongoIdField('eventId', 'Event ID'),
+  body('quantity')
+    .optional()
+    .isInt({ min: 1, max: 10 })
+    .withMessage('quantity must be between 1 and 10')
+    .toInt(),
+  body('seatNumbers')
+    .optional()
+    .isArray({ max: 10 })
+    .withMessage('seatNumbers must be an array with max 10 items'),
+  body('seatNumbers.*')
+    .optional()
+    .isString()
+    .withMessage('Each seat number must be a string')
+    .trim()
+    .isLength({ min: 1, max: 30 })
+    .withMessage('seat number length is invalid'),
+  body('paymentMethod')
+    .optional()
+    .isIn(['free', 'credit_card', 'debit_card', 'paypal', 'bank_transfer'])
+    .withMessage('Unsupported payment method'),
+  body('transactionId')
+    .optional()
+    .isString()
+    .withMessage('transactionId must be a string')
+    .trim()
+    .isLength({ min: 6, max: 120 })
+    .withMessage('transactionId length is invalid'),
+  body('couponCode')
+    .optional()
+    .isString()
+    .withMessage('couponCode must be a string')
+    .trim()
+    .isLength({ min: 3, max: 20 })
+    .withMessage('couponCode length is invalid'),
+  validate,
+];
+
 module.exports = {
   validate,
   registerValidator,
@@ -732,5 +1009,15 @@ module.exports = {
   createCouponValidator,
   updateCouponValidator,
   validateCouponValidator,
+  createCategoryValidator,
+  updateCategoryValidator,
+  verifyEmailValidator,
+  resetPasswordValidator,
+  twoFactorEnableValidator,
+  twoFactorDisableValidator,
   deleteAccountValidator,
+  createPaymentValidator,
+  paymentWebhookValidator,
+  bookTicketValidator,
+  bookMultiTicketsValidator,
 };

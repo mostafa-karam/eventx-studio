@@ -12,6 +12,7 @@ const QRCode = require('qrcode');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 const Coupon = require('../models/Coupon');
+const Payment = require('../models/Payment');
 const config = require('../config');
 const logger = require('../utils/logger');
 
@@ -456,9 +457,9 @@ class TicketsService {
         const idx = seatIndexByNumber.get(t.seatNumber);
         if (idx !== undefined) { generatedSeatMap[idx].isBooked = true; generatedSeatMap[idx].bookedBy = t.user; }
       }
+      // Keep this purely in-memory for selection; booking commit happens atomically in bookMultiSeats.
       event.seating.seatMap = generatedSeatMap;
       event.seating.availableSeats = Math.max(0, (event.seating.totalSeats || 0) - existingTickets.length);
-      await event.save();
     }
 
     const seatsChosen = [];
@@ -485,28 +486,80 @@ class TicketsService {
   /**
    * Atomically book multiple seats and create tickets.
    */
-  async bookMultiSeats({ eventId, event, seatsChosen, userId, expectedAmount, paymentMethod, transactionId, couponCode, metadata }) {
+  async bookMultiSeats({ eventId, event, seatsChosen, userId, expectedAmount, paymentMethod, transactionId, couponCode, metadata, paymentId }) {
     const totalRevenue = event.pricing.type === 'paid' ? (expectedAmount * seatsChosen.length) : 0;
+    const transactionsRequired = (process.env.NODE_ENV === 'production'
+      || String(process.env.REQUIRE_DB_TRANSACTIONS || '').toLowerCase() === 'true')
+      && process.env.NODE_ENV !== 'test';
+    const allowNonTransactional = process.env.NODE_ENV === 'test'
+      || (process.env.NODE_ENV !== 'production'
+        && String(process.env.ALLOW_NON_TXN_BOOKING || '').toLowerCase() === 'true');
 
-    const useSession = process.env.ENABLE_TRANSACTIONS === 'true';
-    let session = null;
-    if (useSession) {
-      try {
-        session = await mongoose.startSession();
-        session.startTransaction();
-      } catch (err) {
-        if (process.env.NODE_ENV === 'production') {
-          throw Object.assign(new Error('Database transactions are required but unavailable'), { status: 500 });
+    const isTxnUnsupported = (err) => {
+      if (!err) return false;
+      if (err.code === 20 || err.codeName === 'IllegalOperation') return true;
+      const msg = String(err.message || '');
+      return msg.includes('Transaction numbers are only allowed')
+        || msg.includes('replica set member or mongos');
+    };
+
+    let attempt = 0;
+    let forceNoSession = false;
+    while (attempt < 2) {
+      attempt += 1;
+
+      let session = null;
+      let useSession = !forceNoSession;
+      if (useSession) {
+        try {
+          session = await mongoose.startSession();
+          session.startTransaction();
+        } catch (err) {
+          if (transactionsRequired) {
+            throw Object.assign(new Error('Database transactions are required but unavailable'), { status: 500 });
+          }
+          if (!allowNonTransactional) {
+            throw Object.assign(new Error('Database transactions are unavailable (set ALLOW_NON_TXN_BOOKING=true only for local dev)'), { status: 500 });
+          }
+          logger.warn(`Multi-book transaction unavailable; using compatibility fallback: ${err.message}`);
+          useSession = false;
+          session = null;
         }
-        logger.warn('Unable to start transaction for multi-book; falling back to non-transactional flow:', err.message);
-        session = null;
       }
-    }
 
-    const sessionOptions = session ? { session } : {};
+      const sessionOptions = useSession ? { session } : {};
 
-    try {
-      const updateResult = await Event.updateOne(
+      try {
+        const requiresTxnForIntegrity = event.pricing?.type === 'paid' || Boolean(couponCode);
+        if (requiresTxnForIntegrity && !useSession && process.env.NODE_ENV !== 'test') {
+          throw Object.assign(new Error('Booking requires database transactions to be enabled'), { status: 500 });
+        }
+
+        // Validate payment (do not consume yet) for paid bookings.
+        let verifiedPayment = null;
+        if (event.pricing?.type === 'paid') {
+          if (!paymentId) {
+            throw Object.assign(new Error('paymentId is required for paid bookings'), { status: 400 });
+          }
+
+          const paymentQuery = Payment.findOne({
+            paymentId: String(paymentId),
+            user: userId,
+            event: eventId,
+            status: 'verified',
+            amount: Number(expectedAmount * seatsChosen.length),
+            currency: String(event.pricing?.currency || 'USD').toUpperCase(),
+            quantity: seatsChosen.length,
+          });
+          if (useSession) paymentQuery.session(session);
+          verifiedPayment = await paymentQuery.exec();
+          if (!verifiedPayment) {
+            logger.warn(`Rejected multi-book payment verification paymentId=${paymentId} user=${userId} event=${eventId}`);
+            throw Object.assign(new Error('Payment not verified'), { status: 400 });
+          }
+        }
+
+        const updateResult = await Event.updateOne(
         {
           _id: eventId,
           'seating.seatMap': {
@@ -527,9 +580,9 @@ class TicketsService {
         { arrayFilters: [{ 'elem.seatNumber': { $in: seatsChosen } }], ...sessionOptions }
       );
 
-      if (updateResult.modifiedCount === 0) {
-        throw Object.assign(new Error('One or more selected seats were already booked. Please refresh and try again.'), { status: 400 });
-      }
+        if (updateResult.modifiedCount === 0) {
+          throw Object.assign(new Error('One or more selected seats were already booked. Please refresh and try again.'), { status: 400 });
+        }
 
       const ticketsToInsert = seatsChosen.map(seatNumber => ({
         event: eventId,
@@ -550,29 +603,51 @@ class TicketsService {
         },
       }));
 
-      const createdTickets = await Ticket.insertMany(ticketsToInsert, session ? { session } : undefined);
+        const createdTickets = await Ticket.insertMany(ticketsToInsert, useSession ? { session } : undefined);
 
-      if (session) {
-        await session.commitTransaction();
-      }
+        // Consume payment at the end of the transaction to prevent partial failures burning payments.
+        if (event.pricing?.type === 'paid') {
+          const consumeResult = await Payment.updateOne(
+            { _id: verifiedPayment._id, status: 'verified' },
+            { $set: { status: 'consumed', consumedAt: new Date() } },
+            useSession ? { session } : undefined
+          );
+          if (!consumeResult || consumeResult.modifiedCount !== 1) {
+            throw Object.assign(new Error('Payment is no longer available'), { status: 409 });
+          }
+        }
 
-      const query = Ticket.find({ _id: { $in: createdTickets.map(t => t._id) } })
+        if (useSession) {
+          await session.commitTransaction();
+        }
+
+        const query = Ticket.find({ _id: { $in: createdTickets.map(t => t._id) } })
         .populate('event', 'title date venue pricing')
         .populate('user', 'name email');
-      if (session) query.session(session);
+        if (useSession) query.session(session);
 
       // Execute while session is still alive; returning a lazy Query would
       // run after finally() ends the session and can trigger driver errors.
-      const populatedTickets = await query.exec();
-      return populatedTickets;
-    } catch (e) {
-      if (session) {
-        await session.abortTransaction().catch(() => {});
+        const populatedTickets = await query.exec();
+        return populatedTickets;
+      } catch (e) {
+        if (useSession && session) {
+          await session.abortTransaction().catch(() => {});
+        }
+
+        if (!transactionsRequired && allowNonTransactional && useSession && session && isTxnUnsupported(e) && process.env.NODE_ENV !== 'production' && attempt === 1) {
+          logger.warn(`Retrying multi-book without transaction due to unsupported transactions: ${e.message}`);
+          forceNoSession = true;
+          continue;
+        }
+
+        throw e;
+      } finally {
+        if (session) session.endSession();
       }
-      throw e;
-    } finally {
-      if (session) session.endSession();
     }
+
+    throw Object.assign(new Error('Booking failed'), { status: 500 });
   }
 }
 

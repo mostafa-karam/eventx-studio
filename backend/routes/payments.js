@@ -3,9 +3,14 @@ const asyncHandler = require('../utils/asyncHandler');
 
 const { authenticate } = require('../middleware/auth');
 const { paymentLimiter } = require('../middleware/rateLimiter');
+const idempotency = require('../middleware/idempotency');
 const {
-    processPayment,
-    testToken
+    createPaymentValidator,
+    paymentWebhookValidator,
+} = require('../middleware/validators');
+const {
+    createPayment,
+    verifyPaymentWebhook,
 } = require('../controllers/paymentsController');
 
 const router = express.Router();
@@ -14,11 +19,11 @@ const router = express.Router();
 router.use(paymentLimiter);
 
 // POST /api/payments/process
-// Simulates payment processing and returns a payment receipt
-router.post('/process', authenticate, asyncHandler(processPayment));
+// Creates a payment intent (processing state)
+router.post('/process', authenticate, idempotency({ ttlSeconds: 60 * 60 }), createPaymentValidator, asyncHandler(createPayment));
 
-// POST /api/payments/test-token
-// Issues a short-lived signed token for simulated payments. Requires auth.
-router.post('/test-token', authenticate, asyncHandler(testToken));
+// POST /api/payments/webhook/verify
+// Mock PSP callback that marks payment as verified/failed using signed payload
+router.post('/webhook/verify', idempotency({ ttlSeconds: 24 * 60 * 60 }), paymentWebhookValidator, asyncHandler(verifyPaymentWebhook));
 
 module.exports = router;

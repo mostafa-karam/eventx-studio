@@ -56,11 +56,16 @@ router.post('/', authenticate, uploadLimiter, upload.array('images', 10), asyncH
 router.get('/files/:filename', authenticate, asyncHandler(getUploadedFile));
 
 // Handle multer errors (e.g. file too large, wrong type)
-router.use((err, _req, res, _next) => {
-    if (err instanceof multer.MulterError || err.message) {
+router.use((err, _req, res, next) => {
+    if (err instanceof multer.MulterError) {
         return res.status(400).json({ success: false, message: err.message });
     }
-    res.status(500).json({ success: false, message: 'Upload failed' });
+
+    if (err instanceof Error && err.message === 'Only JPEG, PNG, WebP, and GIF images are allowed') {
+        return res.status(400).json({ success: false, message: err.message });
+    }
+
+    return next(err);
 });
 
 module.exports = router;

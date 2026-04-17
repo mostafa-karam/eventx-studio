@@ -1,82 +1,81 @@
 const logger = require('../utils/logger');
-const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
-const { signPaymentToken } = require('../utils/paymentTokens');
+const paymentsService = require('../services/paymentsService');
+const { logSecurityEvent } = require('../utils/securityLog');
 
-// @desc    Simulates payment processing and returns a payment receipt with HMAC-signed token
+// @desc    Create payment intent in processing state
 // @access  Private
-exports.processPayment = async (req, res) => {
+exports.createPayment = async (req, res) => {
     try {
-        if (process.env.NODE_ENV === 'production') {
-            return res.status(404).json({ success: false, message: 'Not available in production' });
-        }
-
-        const { amount, currency = 'USD', quantity = 1, paymentMethod = 'credit_card', bookingId = null, eventId = null } = req.body || {};
-
-        if (typeof amount !== 'number' || amount <= 0) {
-            return res.status(400).json({ success: false, message: 'Valid amount is required' });
-        }
-
-        // In production, integrate with a PSP (Stripe, etc.)
-        // For this project, simulate success and issue an HMAC-signed token
-        const txId = `tx_${uuidv4().replace(/-/g, '').slice(0, 24)}`;
-
-        // HMAC-signed token binds (txId, userId, eventId, amount, quantity, currency)
-        const token = signPaymentToken({
-            txId,
+        const { amount, currency, quantity = 1, paymentMethod = 'credit_card', eventId } = req.validatedBody || req.body || {};
+        const payment = await paymentsService.createPaymentIntent({
             userId: req.user._id,
-            eventId: eventId || null,
-            amount,
-            quantity,
+            eventId,
+            amount: Number(amount),
             currency,
+            quantity: Number(quantity),
+            paymentMethod,
         });
 
+        return res.status(200).json({
+            success: true,
+            data: {
+                paymentId: payment.paymentId,
+                transactionId: payment.paymentId,
+                payment: {
+                    id: payment.paymentId,
+                    status: payment.status,
+                    amount: payment.amount,
+                    currency: payment.currency,
+                    quantity: payment.quantity,
+                    method: payment.method,
+                    eventId: payment.event,
+                    provider: payment.provider,
+                    createdAt: payment.createdAt,
+                },
+            },
+        });
+    } catch (err) {
+        logger.error('Payment create error:', err);
+        if (err.status) {
+            return res.status(err.status).json({ success: false, message: err.message });
+        }
+        return res.status(500).json({ success: false, message: 'Payment creation failed' });
+    }
+};
+
+// @desc    Verify payment webhook (mock PSP callback)
+// @access  Provider webhook (signed)
+exports.verifyPaymentWebhook = async (req, res) => {
+    try {
+        const signature = req.headers['x-payment-signature'];
+        const payment = await paymentsService.handleVerificationWebhook(req.validatedBody || req.body || {}, signature, req);
         return res.json({
             success: true,
             data: {
-                paymentId: txId,
-                token,        // HMAC token
                 payment: {
-                    id: txId,
-                    status: 'succeeded',
-                    amount,
-                    currency,
-                    method: paymentMethod,
-                    processedAt: new Date().toISOString(),
-                    bookingId,
-                    eventId,
-                }
-            }
+                    id: payment.paymentId,
+                    status: payment.status,
+                    providerPaymentId: payment.providerPaymentId,
+                    verifiedAt: payment.verifiedAt,
+                },
+            },
         });
     } catch (err) {
-        logger.error('Payment process error:', err);
-        return res.status(500).json({ success: false, message: 'Payment processing failed' });
-    }
-};
-
-// @desc    Issues a short-lived signed token for simulated payments (dev/test ONLY)
-// @access  Private
-exports.testToken = async (req, res) => {
-    try {
-        const { eventId } = req.body || {};
-        // Gate test token behind non-production environment
-        if (process.env.NODE_ENV === 'production') {
-            return res.status(404).json({ success: false, message: 'Not available in production' });
+        logSecurityEvent(req, 'payment.webhook.rejected', {
+            status: err.status || err.statusCode || 500,
+            reason: err.message,
+        });
+        logger.warn(`Payment webhook rejected: ${err.message}`);
+        if (err.status) {
+            return res.status(err.status).json({ success: false, message: err.message });
         }
-
-        const txId = `tx_${uuidv4().replace(/-/g, '').slice(0, 20)}`;
-        const token = signPaymentToken({
-            txId,
-            userId: req.user._id,
-            eventId: eventId || null,
-            amount: 0,
-            quantity: 1,
-            currency: 'USD',
-        });
-
-        return res.json({ success: true, data: { transactionId: txId, token } });
-    } catch (err) {
-        logger.error('Issue test payment token error:', err);
-        return res.status(500).json({ success: false, message: 'Failed to issue test payment token' });
+        return res.status(500).json({ success: false, message: 'Payment verification failed' });
     }
 };
+
+// Backward-compatible aliases for older internal tests/consumers.
+exports.processPayment = exports.createPayment;
+exports.testToken = async (_req, res) => res.status(404).json({
+    success: false,
+    message: 'Endpoint removed. Use /api/payments/process and provider webhook verification.',
+});

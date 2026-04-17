@@ -8,7 +8,6 @@ const logger = require('../utils/logger');
 const Event = require('../models/Event');
 const bookingService = require('../services/bookingService');
 const auditService = require('../services/auditService');
-const { verifyPaymentToken } = require('../utils/paymentTokens');
 const ticketsService = require('../services/ticketsService');
 
 // @desc    Initiates a booking session
@@ -61,7 +60,6 @@ exports.confirmBooking = async (req, res) => {
         bookingId,
         paymentMethod = 'credit_card',
         couponCode,
-        paymentToken,
     } = req.validatedBody || req.body || {};
 
     try {
@@ -102,31 +100,11 @@ exports.confirmBooking = async (req, res) => {
             }
         }
 
-        // Verify payment token BEFORE proceeding with booking
+        // Require server-verified payment for paid events.
         if (event.pricing?.type === 'paid') {
-            if (!paymentToken) {
-                return res.status(400).json({ success: false, message: 'Payment token is required for paid events' });
-            }
-            try {
-                const verifiedPayment = verifyPaymentToken(paymentToken);
-                if (!paymentId) {
-                    return res.status(400).json({ success: false, message: 'paymentId is required for paid events' });
-                }
-                // Ensure token matches user, event, and amount
-                if (verifiedPayment.userId.toString() !== req.user._id.toString() ||
-                    verifiedPayment.eventId !== eventId ||
-                    Number(verifiedPayment.amount) !== Number(expectedAmount) ||
-                    Number(verifiedPayment.quantity) !== 1 ||
-                    verifiedPayment.currency !== (event.pricing?.currency || 'USD')) {
-                    return res.status(400).json({ success: false, message: 'Invalid payment token - amount, quantity, or event mismatch' });
-                }
-                // Bind paymentId to a verified transaction id to prevent tampering/replay.
-                if (!verifiedPayment.txId || String(verifiedPayment.txId) !== String(paymentId)) {
-                    return res.status(400).json({ success: false, message: 'Invalid payment token - transaction mismatch' });
-                }
-            } catch (err) {
-                logger.warn('Payment token verification failed: ' + err.message);
-                return res.status(400).json({ success: false, message: 'Invalid or expired payment token' });
+            if (!paymentId) {
+                logger.warn(`Booking rejected: missing paymentId for paid event user=${req.user._id} event=${eventId}`);
+                return res.status(400).json({ success: false, message: 'paymentId is required for paid events' });
             }
         }
 
@@ -140,6 +118,7 @@ exports.confirmBooking = async (req, res) => {
             },
             couponCode,
             idempotencyKey,
+            paymentId,
         });
 
         const Ticket = require('../models/Ticket');

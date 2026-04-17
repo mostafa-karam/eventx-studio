@@ -49,6 +49,10 @@ const generateSeatMap = (totalSeats) => {
 
 const seedData = async () => {
     try {
+        if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DESTRUCTIVE_SEED !== 'true') {
+            throw new Error('Refusing to run destructive seed in production without ALLOW_DESTRUCTIVE_SEED=true');
+        }
+
         console.log('--- Connecting to database... ---');
         await connectDB();
 
@@ -431,12 +435,13 @@ const seedData = async () => {
         });
 
         console.log('\n--- Database Seeded Successfully! ---');
-        console.log('Use the following credentials to test your panels:');
-        console.log('🔑 Admin:      admin@eventx.com     / password123');
-        console.log('🔑 Organizer:  organizer@techx.com  / password123');
-        console.log('🔑 Venue Mngr: venue@eventx.com     / password123');
-        console.log('🔑 User:       user@eventx.com      / password123');
+        console.log('Use the following users to test your panels:');
+        console.log('🔑 Admin:      admin@eventx.com');
+        console.log('🔑 Organizer:  organizer@techx.com');
+        console.log('🔑 Venue Mngr: venue@eventx.com');
+        console.log('🔑 User:       user@eventx.com');
         console.log('🔑 + 20 random attendees with faker emails');
+        console.log('Password is loaded from DEMO_SEED_PASSWORD in your environment.');
 
         process.exit();
     } catch (error) {

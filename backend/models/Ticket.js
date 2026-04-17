@@ -161,7 +161,6 @@ ticketSchema.index(
     unique: true,
     partialFilterExpression: {
       status: { $in: ['booked', 'used'] },
-      'metadata.bulkBooking': { $ne: true },
     },
     name: 'uniq_active_booking_per_event_user',
   }

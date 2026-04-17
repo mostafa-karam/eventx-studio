@@ -3,13 +3,29 @@ const Hall = require('../models/Hall');
 const logger = require('../utils/logger');
 const { escapeRegex } = require('../utils/helpers');
 
+const parsePositiveInt = (value, fallback, max = 100) => {
+    if (value === undefined) return fallback;
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isInteger(parsed) || parsed < 1) return null;
+    return Math.min(parsed, max);
+};
+
+const parseOptionalDate = (value) => {
+    if (value === undefined) return undefined;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date;
+};
+
 // @desc    Get published events with filters
 // @access  Public
 exports.getPublicEvents = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        // FIX C-03 — Cap limit to prevent DoS via uncapped public query (e.g. ?limit=999999)
-        const limit = Math.min(parseInt(req.query.limit) || 12, 100);
+        const page = parsePositiveInt(req.query.page, 1);
+        const limit = parsePositiveInt(req.query.limit, 12);
+        if (!page || !limit) {
+            return res.status(400).json({ success: false, message: 'page and limit must be positive integers' });
+        }
         const skip = (page - 1) * limit;
 
         const filter = { status: 'published', date: { $gte: new Date() } };
@@ -25,8 +41,13 @@ exports.getPublicEvents = async (req, res) => {
                 { tags: { $in: [new RegExp(safeSearch, 'i')] } },
             ];
         }
-        if (req.query.dateFrom) filter.date.$gte = new Date(req.query.dateFrom);
-        if (req.query.dateTo) filter.date.$lte = new Date(req.query.dateTo);
+        const dateFrom = parseOptionalDate(req.query.dateFrom);
+        const dateTo = parseOptionalDate(req.query.dateTo);
+        if (dateFrom === null || dateTo === null) {
+            return res.status(400).json({ success: false, message: 'dateFrom/dateTo must be valid ISO dates' });
+        }
+        if (dateFrom) filter.date.$gte = dateFrom;
+        if (dateTo) filter.date.$lte = dateTo;
 
         const [events, total] = await Promise.all([
             Event.find(filter)
@@ -72,14 +93,24 @@ exports.getPublicEventById = async (req, res) => {
 // @access  Public
 exports.getPublicHalls = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        // FIX C-03 — Cap limit to prevent DoS via uncapped public query (e.g. ?limit=999999)
-        const limit = Math.min(parseInt(req.query.limit) || 12, 100);
+        const page = parsePositiveInt(req.query.page, 1);
+        const limit = parsePositiveInt(req.query.limit, 12);
+        if (!page || !limit) {
+            return res.status(400).json({ success: false, message: 'page and limit must be positive integers' });
+        }
         const skip = (page - 1) * limit;
 
         const filter = { status: 'active' };
-        if (req.query.minCapacity) filter.capacity = { $gte: parseInt(req.query.minCapacity) };
-        if (req.query.maxCapacity) filter.capacity = { ...filter.capacity, $lte: parseInt(req.query.maxCapacity) };
+        const minCapacity = parsePositiveInt(req.query.minCapacity, undefined, Number.MAX_SAFE_INTEGER);
+        const maxCapacity = parsePositiveInt(req.query.maxCapacity, undefined, Number.MAX_SAFE_INTEGER);
+        if (minCapacity === null || maxCapacity === null) {
+            return res.status(400).json({ success: false, message: 'minCapacity/maxCapacity must be positive integers' });
+        }
+        if (minCapacity && maxCapacity && minCapacity > maxCapacity) {
+            return res.status(400).json({ success: false, message: 'minCapacity cannot be greater than maxCapacity' });
+        }
+        if (minCapacity) filter.capacity = { $gte: minCapacity };
+        if (maxCapacity) filter.capacity = { ...filter.capacity, $lte: maxCapacity };
         if (req.query.equipment) filter.equipment = { $in: [req.query.equipment] };
         if (req.query.search) filter.name = { $regex: escapeRegex(req.query.search), $options: 'i' };
 

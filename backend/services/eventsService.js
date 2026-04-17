@@ -242,7 +242,7 @@ class EventsService {
                 Notification.deleteMany({ 'metadata.eventId': String(eventId) }, session ? { session } : undefined),
                 Event.deleteOne({ _id: eventId }, session ? { session } : undefined),
             ]);
-        }, { allowFallback: true });
+        }, { allowFallback: process.env.NODE_ENV === 'test' });
         return true;
     }
 

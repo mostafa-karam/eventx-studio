@@ -57,7 +57,7 @@ exports.getCategories = async (req, res) => {
 // @access  Private
 exports.createCategory = async (req, res) => {
     try {
-        const { name, description, color, emoji } = req.body;
+        const { name, description, color, emoji } = req.validatedBody || req.body;
 
         const category = new EventCategory({
             name,
@@ -140,7 +140,7 @@ exports.getCategoryById = async (req, res) => {
 // @access  Private
 exports.updateCategory = async (req, res) => {
     try {
-        const { name, description, color, emoji, isActive } = req.body;
+        const { name, description, color, emoji, isActive } = req.validatedBody || req.body;
 
         const category = await EventCategory.findById(req.params.id);
 
@@ -152,10 +152,10 @@ exports.updateCategory = async (req, res) => {
         }
 
         // Update fields
-        if (name) category.name = name;
+        if (name !== undefined) category.name = name;
         if (description !== undefined) category.description = description;
-        if (color) category.color = color;
-        if (emoji) category.emoji = emoji;
+        if (color !== undefined) category.color = color;
+        if (emoji !== undefined) category.emoji = emoji;
         if (isActive !== undefined) category.isActive = isActive;
 
         await category.save();

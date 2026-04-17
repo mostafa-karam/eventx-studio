@@ -16,7 +16,7 @@ The primary JWT gatekeeper. Called on every route that requires a logged-in user
 **Execution Flow:**
 1. **Token Extraction**: Checks `Authorization: Bearer <token>` header first, then falls back to `req.cookies.accessToken` or `req.cookies.token` (HttpOnly cookie).
 2. **Sanitization**: Filters out literal strings `"undefined"` and `"null"` that can arrive from broken frontend states.
-3. **JWT Verification**: Calls `jwt.verify(token, JWT_SECRET)`. If the token is expired (`TokenExpiredError`), returns `401`. If malformed (`JsonWebTokenError`), logs the first 10 chars of the bad token for diagnostics and returns `401`.
+3. **JWT Verification**: Calls `jwt.verify(token, JWT_SECRET)` and enforces token type plus mandatory `iss` and `aud` claim matching. Expired tokens return `401`, malformed/invalid claim tokens return `401`.
 4. **User Lookup**: Fetches the user from the database via `User.findById(decoded.id).select('-password')`.
 5. **Account Status Checks**:
    - `isActive === false` → `401 Account is deactivated`

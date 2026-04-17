@@ -186,6 +186,29 @@ const connectDB = async () => {
   }
 };
 
+const verifyDbTransactions = async () => {
+  // Fail closed on misconfigured Mongo topology.
+  if (!config.security.db?.requireTransactions) return;
+
+  try {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    await session.abortTransaction().catch(() => {});
+    session.endSession();
+  } catch (err) {
+    logger.error(`MongoDB transactions are required but unavailable: ${err.message}`);
+    process.exit(1);
+  }
+};
+
+const verifyRateLimitRedisConfigured = () => {
+  if (config.env !== 'production') return;
+  if (!config.security.rateLimit.redisUrl) {
+    logger.error('REDIS_URL is required for production rate limiting');
+    process.exit(1);
+  }
+};
+
 // ─── Routes ──────────────────────────────────────────────────────────
 const apiRoutes = require('./routes');
 
@@ -226,6 +249,8 @@ app.use('*', (_req, res) =>
 app.use(errorHandler);
 const startServer = async () => {
   await connectDB();
+  verifyRateLimitRedisConfigured();
+  await verifyDbTransactions();
 
 
 

@@ -2,7 +2,6 @@ const logger = require('../utils/logger');
 const ticketsService = require('../services/ticketsService');
 const bookingService = require('../services/bookingService');
 const notificationService = require('../services/notificationService');
-const { verifyPaymentToken } = require('../utils/paymentTokens');
 const Ticket = require('../models/Ticket');
 
 // @route   POST /api/tickets/book
@@ -10,7 +9,8 @@ const Ticket = require('../models/Ticket');
 // @access  Private
 exports.bookTicket = async (req, res) => {
   try {
-    const { eventId, seatNumber, paymentMethod = 'free', transactionId, maskedLast4 } = req.body;
+    const payload = req.validatedBody || req.body || {};
+    const { eventId, seatNumber, paymentMethod = 'free', transactionId, maskedLast4 } = payload;
 
     if (!eventId) {
       return res.status(400).json({ success: false, message: 'Event ID is required' });
@@ -28,27 +28,13 @@ exports.bookTicket = async (req, res) => {
       return res.status(400).json({ success: false, message: 'You already have a ticket for this event' });
     }
 
-    const couponCode = req.body.couponCode || null;
-    const paymentToken = req.body.paymentToken;
+    const couponCode = payload.couponCode || null;
     const expectedAmount = await ticketsService.calculateExpectedAmount(event, couponCode);
 
     if (event.pricing?.type === 'paid') {
-      if (paymentToken === 'undefined' || paymentToken === 'null' || !paymentToken) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing payment token' });
-      }
-      try {
-        const payload = verifyPaymentToken(paymentToken);
-        if (payload.txId !== transactionId ||
-          payload.userId.toString() !== req.user._id.toString() ||
-          payload.eventId !== eventId ||
-          Number(payload.amount) !== Number(expectedAmount) ||
-          Number(payload.quantity) !== 1 ||
-          payload.currency !== (event.pricing?.currency || 'USD')) {
-          return res.status(400).json({ success: false, message: 'Invalid payment token - amount, quantity, or event mismatch' });
-        }
-      } catch (err) {
-        logger.warn('Payment token verification failed: ' + err.message);
-        return res.status(400).json({ success: false, message: 'Invalid or expired payment token' });
+      if (!transactionId) {
+        logger.warn(`Booking rejected: missing paymentId for paid event user=${req.user._id} event=${eventId}`);
+        return res.status(400).json({ success: false, message: 'paymentId is required for paid events' });
       }
     }
 
@@ -58,6 +44,7 @@ exports.bookTicket = async (req, res) => {
       seatNumber,
       payment: { amount: expectedAmount, method: paymentMethod, transactionId },
       couponCode,
+      paymentId: transactionId,
       metadata: {
         userAgent: req.get('User-Agent'),
         ipAddress: req.ip,
@@ -93,8 +80,18 @@ exports.bookTicket = async (req, res) => {
 // @access  Private
 exports.bookMultiTickets = async (req, res) => {
   try {
-    const { eventId, quantity = 1, seatNumbers = [], paymentMethod = 'free', transactionId, paymentToken, couponCode = null } = req.body || {};
+    const payload = req.validatedBody || req.body || {};
+    const { eventId, quantity = 1, seatNumbers = [], paymentMethod = 'free', transactionId, couponCode = null } = payload;
     const qty = Math.max(1, Math.min(parseInt(quantity, 10) || 1, 10));
+
+    // Security policy: one active booking per (user,event).
+    // Multi-ticket purchases must be modeled as separate attendees/users at a higher level.
+    if (qty > 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only one active ticket per user is allowed for an event. Please book one ticket per attendee.',
+      });
+    }
 
     if (!eventId) {
       return res.status(400).json({ success: false, message: 'Event ID is required' });
@@ -103,27 +100,9 @@ exports.bookMultiTickets = async (req, res) => {
     const event = await ticketsService.findBookableEvent(eventId);
     const expectedAmount = await ticketsService.calculateExpectedAmount(event, couponCode);
 
-    if (event.pricing?.type === 'paid') {
-      if (!transactionId) {
-        return res.status(400).json({ success: false, message: 'Paid events require a verified payment. Please use the booking flow.' });
-      }
-      if (paymentToken === 'undefined' || paymentToken === 'null' || !paymentToken) {
-        return res.status(400).json({ success: false, message: 'Payment token is required to complete a paid booking' });
-      }
-      try {
-        const payload = verifyPaymentToken(paymentToken);
-        if (payload.txId !== transactionId ||
-          payload.userId.toString() !== req.user._id.toString() ||
-          payload.eventId !== eventId ||
-          Number(payload.amount) !== Number(expectedAmount * qty) ||
-          Number(payload.quantity) !== qty ||
-          payload.currency !== (event.pricing?.currency || 'USD')) {
-          return res.status(400).json({ success: false, message: 'Invalid payment token - amount, quantity, or event mismatch' });
-        }
-      } catch (err) {
-        logger.warn('Multi-book payment token verification failed: ' + err.message);
-        return res.status(400).json({ success: false, message: 'Invalid or expired payment token' });
-      }
+    if (event.pricing?.type === 'paid' && !transactionId) {
+      logger.warn(`Multi-booking rejected: missing paymentId user=${req.user._id} event=${eventId}`);
+      return res.status(400).json({ success: false, message: 'paymentId is required for paid events' });
     }
 
 
@@ -140,13 +119,13 @@ exports.bookMultiTickets = async (req, res) => {
       ipAddress: req.ip,
       source: 'web',
     };
-    if (req.body && req.body.maskedLast4) {
-      metadata.last4 = String(req.body.maskedLast4).slice(-4);
+    if (payload.maskedLast4) {
+      metadata.last4 = String(payload.maskedLast4).slice(-4);
     }
 
     const populated = await ticketsService.bookMultiSeats({
       eventId, event, seatsChosen, userId: req.user._id,
-      expectedAmount, paymentMethod, transactionId, couponCode, metadata,
+      expectedAmount, paymentMethod, transactionId, couponCode, metadata, paymentId: transactionId,
     });
 
     return res.status(201).json({ success: true, message: 'Tickets booked successfully', data: { tickets: populated } });

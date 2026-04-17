@@ -90,7 +90,7 @@ beforeAll(async () => {
 
     await Ticket.create({
         event: event._id,
-        user: admin._id,
+        user: user._id,
         seatNumber: 'S002',
         status: 'used',
         checkIn: { isCheckedIn: true, checkInTime: new Date(), checkInBy: admin._id },
@@ -169,8 +169,8 @@ describe('Analytics Endpoints', () => {
 
         expect(allRes.statusCode).toBe(200);
         expect(allRes.body.success).toBe(true);
-        // Both tickets belong to the same user (admin) => unique should be 1
-        expect(allRes.body.data.overview.uniqueAttendees).toBe(1);
+        // Tickets belong to two different users => unique should be 2
+        expect(allRes.body.data.overview.uniqueAttendees).toBe(2);
     });
 
     it('should scope growth to the requested eventId (event analytics)', async () => {
@@ -205,9 +205,26 @@ describe('Analytics Endpoints', () => {
             analytics: { views: 0, bookings: 0, revenue: 0 }
         });
 
+        const growthUserCurrent = await User.create({
+            name: 'Growth Attendee Current',
+            email: `growth_current_${Date.now()}@example.com`,
+            password: 'UniqueTestPass!2026',
+            role: 'user',
+            isActive: true,
+            emailVerified: true
+        });
+        const growthUserPrevious = await User.create({
+            name: 'Growth Attendee Previous',
+            email: `growth_previous_${Date.now()}@example.com`,
+            password: 'UniqueTestPass!2026',
+            role: 'user',
+            isActive: true,
+            emailVerified: true
+        });
+
         await Ticket.create({
             event: growthEvent._id,
-            user: organizer._id,
+            user: growthUserCurrent._id,
             seatNumber: 'S010',
             status: 'booked',
             bookingDate: twentyDaysAgo,
@@ -216,7 +233,7 @@ describe('Analytics Endpoints', () => {
 
         await Ticket.create({
             event: growthEvent._id,
-            user: organizer._id,
+            user: growthUserPrevious._id,
             seatNumber: 'S011',
             status: 'booked',
             bookingDate: fortyDaysAgo,
@@ -224,9 +241,26 @@ describe('Analytics Endpoints', () => {
         });
 
         // These tickets are for the other event and should not change growth for eventId.
+        const otherUser1 = await User.create({
+            name: 'Other Event Attendee 1',
+            email: `other1_${Date.now()}@example.com`,
+            password: 'UniqueTestPass!2026',
+            role: 'user',
+            isActive: true,
+            emailVerified: true
+        });
+        const otherUser2 = await User.create({
+            name: 'Other Event Attendee 2',
+            email: `other2_${Date.now()}@example.com`,
+            password: 'UniqueTestPass!2026',
+            role: 'user',
+            isActive: true,
+            emailVerified: true
+        });
+
         await Ticket.create({
             event: otherEvent._id,
-            user: organizer._id,
+            user: otherUser1._id,
             seatNumber: 'S020',
             status: 'booked',
             bookingDate: twentyDaysAgo,
@@ -235,7 +269,7 @@ describe('Analytics Endpoints', () => {
 
         await Ticket.create({
             event: otherEvent._id,
-            user: organizer._id,
+            user: otherUser2._id,
             seatNumber: 'S021',
             status: 'booked',
             bookingDate: twentyDaysAgo,

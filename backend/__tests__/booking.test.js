@@ -4,6 +4,7 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
 const User = require('../models/User');
 const { createTestClient } = require('../test-utils/testClient');
+const crypto = require('crypto');
 
 let mongoServer;
 let authToken;
@@ -158,7 +159,7 @@ describe('Booking Endpoints', () => {
         expect(getRes.body.data.tickets.length).toBeGreaterThan(0);
     });
 
-    it('should book multiple paid tickets with a verified payment token', async () => {
+    it('should book a paid ticket with a verified payment', async () => {
         // Create a paid event
         const paidEventRes = await client.csrfRequest('post', '/api/events', {
             title: 'Paid Test Event',
@@ -190,6 +191,90 @@ describe('Booking Endpoints', () => {
         await client.csrfRequest('post', `/api/events/${paidEventId}/publish`, undefined, { Authorization: `Bearer ${authToken}` });
 
         const paymentRes = await client.csrfRequest('post', '/api/payments/process', {
+            amount: 50,
+            currency: 'USD',
+            quantity: 1,
+            paymentMethod: 'credit_card',
+            eventId: paidEventId
+        }, { Authorization: `Bearer ${authToken}` });
+
+        expect(paymentRes.statusCode).toBe(200);
+        expect(paymentRes.body.success).toBe(true);
+        const { paymentId } = paymentRes.body.data;
+
+        // Verify payment via signed mock PSP webhook
+        const webhookPayload = {
+            paymentId,
+            providerPaymentId: `pp_${Date.now()}`,
+            status: 'verified',
+            provider: 'mock_psp',
+            amount: 50,
+            currency: 'USD',
+        };
+        const signatureSecret = process.env.PAYMENT_PROVIDER_WEBHOOK_SECRET || process.env.PAYMENT_HMAC_SECRET;
+        const signature = crypto
+            .createHmac('sha256', signatureSecret)
+            .update(JSON.stringify({
+                paymentId: String(webhookPayload.paymentId),
+                providerPaymentId: String(webhookPayload.providerPaymentId),
+                status: String(webhookPayload.status).toLowerCase(),
+                provider: String(webhookPayload.provider),
+                amount: Number(webhookPayload.amount),
+                currency: String(webhookPayload.currency).trim().toUpperCase(),
+            }))
+            .digest('hex');
+
+        const verifyRes = await client.csrfRequest('post', '/api/payments/webhook/verify', webhookPayload, {
+            'x-payment-signature': signature,
+        });
+        expect(verifyRes.statusCode).toBe(200);
+        expect(verifyRes.body.success).toBe(true);
+
+        const bookRes = await client.csrfRequest('post', '/api/tickets/book', {
+            eventId: paidEventId,
+            paymentMethod: 'credit_card',
+            transactionId: paymentId
+        }, { Authorization: `Bearer ${authToken}` });
+
+        expect(bookRes.statusCode).toBe(201);
+        expect(bookRes.body.success).toBe(true);
+        expect(bookRes.body.data.ticket).toBeDefined();
+        expect(bookRes.body.data.ticket.payment.amount).toBe(50);
+        expect(bookRes.body.data.ticket.payment.currency).toBe('USD');
+        expect(bookRes.body.data.ticket.payment.transactionId).toBe(paymentId);
+    });
+
+    it('should reject payment webhook verification with invalid signature', async () => {
+        // Create a paid event for payment flow
+        const paidEventRes = await client.csrfRequest('post', '/api/events', {
+            title: 'Paid Token Reject Event',
+            description: 'Paid event description',
+            date: new Date(Date.now() + 86400000).toISOString(),
+            venue: {
+                name: 'Paid Venue',
+                address: '456 Paid St',
+                city: 'Paid City',
+                country: 'USA',
+                capacity: 100
+            },
+            pricing: {
+                type: 'paid',
+                amount: 50,
+                currency: 'USD'
+            },
+            seating: {
+                totalSeats: 10,
+                availableSeats: 10,
+                seatMap: []
+            },
+            category: 'conference',
+            tags: ['paid']
+        }, { Authorization: `Bearer ${authToken}` });
+
+        const paidEventId = paidEventRes.body.data.event._id;
+        await client.csrfRequest('post', `/api/events/${paidEventId}/publish`, undefined, { Authorization: `Bearer ${authToken}` });
+
+        const paymentRes = await client.csrfRequest('post', '/api/payments/process', {
             amount: 100,
             currency: 'USD',
             quantity: 2,
@@ -197,46 +282,23 @@ describe('Booking Endpoints', () => {
             eventId: paidEventId
         }, { Authorization: `Bearer ${authToken}` });
 
-        expect(paymentRes.statusCode).toBe(200);
-        expect(paymentRes.body.success).toBe(true);
-        const { paymentId, token } = paymentRes.body.data;
+        const { paymentId } = paymentRes.body.data;
 
-        const bookRes = await client.csrfRequest('post', '/api/tickets/book-multi', {
-            eventId: paidEventId,
-            quantity: 2,
-            paymentMethod: 'credit_card',
-            transactionId: paymentId,
-            paymentToken: token
-        }, { Authorization: `Bearer ${authToken}` });
+        const webhookPayload = {
+            paymentId,
+            providerPaymentId: `pp_${Date.now()}`,
+            status: 'verified',
+            provider: 'mock_psp',
+            amount: 100,
+            currency: 'USD',
+        };
 
-        expect(bookRes.statusCode).toBe(201);
-        expect(bookRes.body.success).toBe(true);
-        expect(Array.isArray(bookRes.body.data.tickets)).toBe(true);
-        expect(bookRes.body.data.tickets).toHaveLength(2);
-        bookRes.body.data.tickets.forEach(ticket => {
-            expect(ticket.payment.amount).toBe(50);
-            expect(ticket.payment.currency).toBe('USD');
-            expect(ticket.payment.transactionId).toBe(paymentId);
-            expect(ticket.user._id).toBeDefined();
+        const verifyRes = await client.csrfRequest('post', '/api/payments/webhook/verify', webhookPayload, {
+            'x-payment-signature': '00'.repeat(32),
         });
-    });
 
-    it('should issue simulated payment test token outside production', async () => {
-        const originalNodeEnv = process.env.NODE_ENV;
-        process.env.NODE_ENV = 'test';
-
-        try {
-            const res = await client.csrfRequest('post', '/api/payments/test-token', {
-                eventId: testEventId
-            }, { Authorization: `Bearer ${authToken}` });
-
-            expect(res.statusCode).toBe(200);
-            expect(res.body.success).toBe(true);
-            expect(res.body.data.token).toBeDefined();
-            expect(res.body.data.transactionId).toBeDefined();
-        } finally {
-            process.env.NODE_ENV = originalNodeEnv;
-        }
+        expect(verifyRes.statusCode).toBe(401);
+        expect(verifyRes.body.success).toBe(false);
     });
 
 });
