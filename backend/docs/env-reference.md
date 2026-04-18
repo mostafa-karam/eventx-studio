@@ -37,6 +37,11 @@ Last updated: 2026-04-17
 
 If `EMAIL_HOST` is missing in development, the app may write email output to a local temp sink for debugging.
 
+## Database / booking integrity
+
+- `ALLOW_NON_TXN_BOOKING` - When `true`, allows booking flows to fall back if MongoDB transactions are unavailable (e.g. standalone `mongod` without replica set). **Local development only.** Must never be set in production; the server refuses to start if it is enabled while `NODE_ENV=production`.
+- `REQUIRE_DB_TRANSACTIONS` - When `true`, requires transactional MongoDB for critical writes (default-on in production via config).
+
 ## Runtime and Utility
 
 - `PORT` - server port (default `5000`)
@@ -45,7 +50,8 @@ If `EMAIL_HOST` is missing in development, the app may write email output to a l
 - `JWT_ISSUER` / `JWT_AUDIENCE` - optional JWT claim hardening
 - `API_URL` - Swagger/OpenAPI server URL
 - `REQUEST_BODY_LIMIT` - max incoming payload size
-- rate-limit tuning vars (`RATE_LIMIT_*`, `AUTH_*`, `PAYMENT_RATE_LIMIT_MAX`)
+- rate-limit tuning vars (`RATE_LIMIT_*`, `AUTH_*`, `PAYMENT_RATE_LIMIT_MAX`, `QR_LOOKUP_RATE_LIMIT_WINDOW_MS`, `QR_LOOKUP_RATE_LIMIT_MAX`)
+- export / analytics caps: `MAX_CSV_EXPORT_ROWS` (default 50000), `CSV_EXPORT_BATCH_SIZE` (default 500), `MAX_ATTENDEE_INSIGHTS_ROWS` (default 10000), `ANALYTICS_CSV_BATCH_SIZE` (default 500)
 - `REDIS_URL` / `REDIS_RATE_LIMIT_PREFIX` for distributed rate limiting with graceful fallback
 - `DEMO_SEED_PASSWORD` - required for `seed` and `seed:all`
 

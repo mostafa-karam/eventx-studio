@@ -15,6 +15,12 @@ const Coupon = require('../models/Coupon');
 const Payment = require('../models/Payment');
 const config = require('../config');
 const logger = require('../utils/logger');
+const {
+  toMinor,
+  fromMinor,
+  normalizeCurrency,
+  paymentAmountMatchOrLegacy,
+} = require('../utils/money');
 
 const QR_OPTIONS = {
   errorCorrectionLevel: 'M',
@@ -25,12 +31,51 @@ const QR_OPTIONS = {
 };
 
 class TicketsService {
+  async performAtomicCheckIn(ticketId, checkInBy) {
+    const checkedInAt = new Date();
+    const updated = await Ticket.findOneAndUpdate(
+      {
+        _id: ticketId,
+        status: 'booked',
+        'checkIn.isCheckedIn': { $ne: true },
+      },
+      {
+        $set: {
+          status: 'used',
+          'checkIn.isCheckedIn': true,
+          'checkIn.checkInTime': checkedInAt,
+          'checkIn.checkInBy': checkInBy,
+        },
+      },
+      { new: true }
+    )
+      .populate('event', 'title date organizer')
+      .populate('user', 'name email');
+
+    if (updated) {
+      return updated;
+    }
+
+    const latest = await Ticket.findById(ticketId).select('status checkIn');
+    if (!latest) {
+      throw Object.assign(new Error('Ticket not found'), { status: 404 });
+    }
+    if (latest.checkIn?.isCheckedIn || latest.status === 'used') {
+      throw Object.assign(new Error('Ticket is already checked in'), { status: 409 });
+    }
+    if (latest.status === 'cancelled') {
+      throw Object.assign(new Error('Cannot check in a cancelled ticket'), { status: 409 });
+    }
+    throw Object.assign(new Error('Ticket is not eligible for check-in'), { status: 409 });
+  }
+
   /**
    * Calculate the expected payment amount after applying a coupon.
    */
   async calculateExpectedAmount(event, couponCode) {
-    let amount = Number(event.pricing?.amount || 0);
-    if (!couponCode) return amount;
+    const cur = normalizeCurrency(event.pricing?.currency || 'USD');
+    const baseMinor = toMinor(Number(event.pricing?.amount || 0), cur);
+    if (!couponCode) return fromMinor(baseMinor, cur);
 
     const coupon = await Coupon.findOne({ code: couponCode.toUpperCase().trim(), isActive: true });
     if (!coupon) {
@@ -52,11 +97,14 @@ class TicketsService {
       }
     }
 
-    const discount = coupon.discountType === 'percentage'
-      ? Math.min(amount, amount * (coupon.discountValue / 100))
-      : Math.min(amount, coupon.discountValue || 0);
+    let discountMinor = 0;
+    if (coupon.discountType === 'percentage') {
+      discountMinor = Math.min(baseMinor, Math.round((baseMinor * coupon.discountValue) / 100));
+    } else {
+      discountMinor = Math.min(baseMinor, toMinor(coupon.discountValue || 0, cur));
+    }
 
-    return Math.max(0, amount - discount);
+    return fromMinor(Math.max(0, baseMinor - discountMinor), cur);
   }
 
   /**
@@ -308,9 +356,7 @@ class TicketsService {
       throw Object.assign(new Error('Not authorized to check in tickets for this event'), { status: 403 });
     }
 
-    ticket.performCheckIn(user._id);
-    await ticket.save();
-    return ticket;
+    return this.performAtomicCheckIn(ticket._id, user._id);
   }
 
   /**
@@ -361,9 +407,7 @@ class TicketsService {
       throw Object.assign(new Error('Not authorized to scan tickets for this event'), { status: 403 });
     }
 
-    ticket.performCheckIn(user._id);
-    await ticket.save();
-    return ticket;
+    return this.performAtomicCheckIn(ticket._id, user._id);
   }
 
   /**
@@ -542,14 +586,19 @@ class TicketsService {
             throw Object.assign(new Error('paymentId is required for paid bookings'), { status: 400 });
           }
 
+          const payCurrency = normalizeCurrency(event.pricing?.currency || 'USD');
+          const perSeatMinor = toMinor(expectedAmount, payCurrency);
+          const totalMinor = perSeatMinor * seatsChosen.length;
+          const legacyTotal = expectedAmount * seatsChosen.length;
+
           const paymentQuery = Payment.findOne({
             paymentId: String(paymentId),
             user: userId,
             event: eventId,
             status: 'verified',
-            amount: Number(expectedAmount * seatsChosen.length),
-            currency: String(event.pricing?.currency || 'USD').toUpperCase(),
+            currency: payCurrency,
             quantity: seatsChosen.length,
+            ...paymentAmountMatchOrLegacy(totalMinor, legacyTotal),
           });
           if (useSession) paymentQuery.session(session);
           verifiedPayment = await paymentQuery.exec();

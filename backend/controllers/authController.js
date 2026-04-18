@@ -512,7 +512,10 @@ exports.getRoleUpgradeRequests = async (req, res) => {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const skip = (page - 1) * limit;
-    const query = { 'roleUpgradeRequest.status': 'pending' };
+    const query = {
+      'roleUpgradeRequest.status': 'pending',
+      'roleUpgradeRequest.requestedAt': { $exists: true, $ne: null },
+    };
 
     const [users, total] = await Promise.all([
       User.find(query)
@@ -548,25 +551,79 @@ exports.updateRoleUpgradeRequest = async (req, res) => {
     if (!['approve', 'deny'].includes(action)) {
       return res.status(400).json({ success: false, message: 'Action must be "approve" or "deny"' });
     }
-    const user = await User.findById(req.params.userId);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const userId = req.params.userId;
+
+    // Atomic guard: only users with role `user` and a *pending* request can transition.
+    // Prevents privilege escalation if an admin targets the wrong id, replays an old id,
+    // or approves after state has already changed (TOCTOU / double-submit).
     if (action === 'approve') {
-      const previousRole = user.role;
-      user.role = 'organizer';
-      user.roleUpgradeRequest.status = 'approved';
+      const updated = await User.findOneAndUpdate(
+        {
+          _id: userId,
+          role: 'user',
+          'roleUpgradeRequest.status': 'pending',
+          'roleUpgradeRequest.requestedAt': { $exists: true, $ne: null },
+        },
+        {
+          $set: {
+            role: 'organizer',
+            'roleUpgradeRequest.status': 'approved',
+          },
+        },
+        { new: true },
+      );
+
+      if (!updated) {
+        return res.status(409).json({
+          success: false,
+          message: 'No pending role upgrade request for this user, or the user is not eligible.',
+        });
+      }
+
       await auditService.log({
         req,
         actor: req.user,
         action: 'auth.role_upgrade_approve',
         resource: 'User',
-        resourceId: user._id,
-        details: { previousRole, newRole: 'organizer' },
+        resourceId: updated._id,
+        details: { previousRole: 'user', newRole: 'organizer' },
       });
-    } else {
-      user.roleUpgradeRequest.status = 'denied';
+
+      return res.json({ success: true, message: 'Request approved successfully' });
     }
-    await user.save();
-    res.json({ success: true, message: `Request ${action}d successfully` });
+
+    const updated = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        role: 'user',
+        'roleUpgradeRequest.status': 'pending',
+        'roleUpgradeRequest.requestedAt': { $exists: true, $ne: null },
+      },
+      {
+        $set: {
+          'roleUpgradeRequest.status': 'denied',
+        },
+      },
+      { new: true },
+    );
+
+    if (!updated) {
+      return res.status(409).json({
+        success: false,
+        message: 'No pending role upgrade request for this user, or the user is not eligible.',
+      });
+    }
+
+    await auditService.log({
+      req,
+      actor: req.user,
+      action: 'auth.role_upgrade_deny',
+      resource: 'User',
+      resourceId: updated._id,
+      details: { status: 'denied' },
+    });
+
+    return res.json({ success: true, message: 'Request denied successfully' });
   } catch (error) {
     logger.error('Update role upgrade request error: ' + error.message);
     res.status(500).json({ success: false, message: 'Server error' });

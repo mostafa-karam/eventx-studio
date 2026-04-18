@@ -126,6 +126,21 @@ describe('Review Soft-Delete & Unique Index', () => {
         expect(resList.body.data.reviews.length).toBe(0);
     });
 
+    it('should reject a review when the user has no ticket for the event', async () => {
+        await Ticket.deleteMany({ event: testEventId, user: testUserId });
+
+        const res = await client.csrfRequest(
+            'post',
+            `/api/events/${testEventId}/reviews`,
+            { rating: 5, title: 'No ticket', body: 'Should fail' },
+            { Authorization: `Bearer ${authToken}` },
+        );
+
+        expect(res.statusCode).toBe(403);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/only attendees with a ticket/i);
+    });
+
     it('should NOT allow multiple active reviews for same event/user', async () => {
         // Submit first review
         await client.csrfRequest('post', `/api/events/${testEventId}/reviews`, { rating: 5, title: 'First', body: '...' }, {

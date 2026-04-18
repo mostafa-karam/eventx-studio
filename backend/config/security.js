@@ -23,6 +23,8 @@ module.exports = {
     refreshMax: toInt(process.env.AUTH_REFRESH_RATE_LIMIT_MAX, 10),
     paymentMax: toInt(process.env.PAYMENT_RATE_LIMIT_MAX, 10),
     bookingMax: toInt(process.env.BOOKING_RATE_LIMIT_MAX, 40),
+    qrLookupWindowMs: toInt(process.env.QR_LOOKUP_RATE_LIMIT_WINDOW_MS, 60 * 1000),
+    qrLookupMax: toInt(process.env.QR_LOOKUP_RATE_LIMIT_MAX, 30),
     redisUrl: process.env.REDIS_URL || '',
     redisPrefix: process.env.REDIS_RATE_LIMIT_PREFIX || 'eventx:ratelimit:',
     // If true, production refuses to start without Redis configured for rate limiting.

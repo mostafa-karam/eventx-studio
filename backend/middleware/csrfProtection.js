@@ -41,10 +41,8 @@ const resolveSessionId = (req, res) => {
 };
 
 const shouldSkipCsrfProtection = (req) => {
-  // Enforce CSRF on all state-mutating routes to prevent bypasses via Bearer tokens
-  // or unauthenticated submissions. Machine-to-machine endpoints should be explicitly
-  // excluded if needed, rather than blindly trusting the Bearer header.
-  return false;
+  // Explicitly allow signed machine-to-machine payment webhooks.
+  return req.method === 'POST' && req.path === '/payments/webhook/verify';
 };
 
 const {

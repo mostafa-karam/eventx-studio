@@ -211,7 +211,9 @@ describe('Booking Endpoints', () => {
             amount: 50,
             currency: 'USD',
         };
-        const signatureSecret = process.env.PAYMENT_PROVIDER_WEBHOOK_SECRET || process.env.PAYMENT_HMAC_SECRET;
+        const signatureSecret = String(
+            process.env.PAYMENT_PROVIDER_WEBHOOK_SECRET || process.env.PAYMENT_HMAC_SECRET || ''
+        ).trim();
         const signature = crypto
             .createHmac('sha256', signatureSecret)
             .update(JSON.stringify({

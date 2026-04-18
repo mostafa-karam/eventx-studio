@@ -6,6 +6,7 @@ const PaymentWebhookEvent = require('../models/PaymentWebhookEvent');
 const Event = require('../models/Event');
 const logger = require('../utils/logger');
 const { logSecurityEvent } = require('../utils/securityLog');
+const { toMinor, paymentAmountMinor, normalizeCurrency: moneyNormalizeCurrency } = require('../utils/money');
 
 const getWebhookSecret = () => {
   const dedicatedSecret = String(process.env.PAYMENT_PROVIDER_WEBHOOK_SECRET || '').trim();
@@ -22,7 +23,7 @@ const WEBHOOK_IP_ALLOWLIST = String(process.env.PAYMENT_WEBHOOK_IP_ALLOWLIST || 
   .map((value) => value.trim())
   .filter(Boolean);
 
-const normalizeCurrency = (currency) => String(currency || 'USD').trim().toUpperCase();
+const normalizeCurrency = (currency) => moneyNormalizeCurrency(currency);
 const normalizeIp = (ip) => String(ip || '').replace('::ffff:', '').trim();
 const getIpVersionLabel = (ip) => (net.isIP(ip) === 6 ? 'ipv6' : 'ipv4');
 
@@ -125,11 +126,13 @@ class PaymentsService {
     if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
       throw Object.assign(new Error('Valid amount is required'), { status: 400 });
     }
-    if (Number(amount) !== Number(expectedAmount)) {
-      throw Object.assign(new Error('Payment amount mismatch'), { status: 400 });
-    }
 
     const expectedCurrency = normalizeCurrency(event.pricing?.currency || 'USD');
+    const expectedMinor = toMinor(expectedAmount, expectedCurrency);
+    const requestedMinor = toMinor(Number(amount), expectedCurrency);
+    if (requestedMinor !== expectedMinor) {
+      throw Object.assign(new Error('Payment amount mismatch'), { status: 400 });
+    }
     const requestedCurrency = normalizeCurrency(currency);
     if (requestedCurrency !== expectedCurrency) {
       throw Object.assign(new Error('Payment currency mismatch'), { status: 400 });
@@ -141,6 +144,7 @@ class PaymentsService {
       user: userId,
       event: eventId,
       amount: Number(amount),
+      amountMinor: expectedMinor,
       currency: expectedCurrency,
       quantity: qty,
       method: paymentMethod,
@@ -174,16 +178,10 @@ class PaymentsService {
       return;
     }
     const incomingIp = normalizeIp(req?.ip);
-    const forwardedIp = normalizeIp(String(req?.headers?.['x-forwarded-for'] || '').split(',')[0]);
-    const candidateIps = [incomingIp, forwardedIp].filter(Boolean);
-    const allowed = candidateIps.some((ip) => {
-      if (!net.isIP(ip)) return false;
-      return WEBHOOK_IP_BLOCKLIST.check(ip, getIpVersionLabel(ip));
-    });
+    const allowed = net.isIP(incomingIp) && WEBHOOK_IP_BLOCKLIST.check(incomingIp, getIpVersionLabel(incomingIp));
     if (!allowed) {
       logSecurityEvent(req, 'payment.webhook.ip_not_allowed', {
         incomingIp,
-        forwardedIp,
       });
       throw Object.assign(new Error('Webhook source IP not allowed'), { status: 403 });
     }
@@ -292,7 +290,9 @@ class PaymentsService {
       throw Object.assign(new Error('Payment already consumed; transition rejected'), { status: 409 });
     }
 
-    if (Number(existing.amount) !== Number(payload.amount) || normalizeCurrency(existing.currency) !== payload.currency) {
+    const payloadMinor = toMinor(payload.amount, payload.currency);
+    const existingMinor = paymentAmountMinor(existing);
+    if (existingMinor !== payloadMinor || normalizeCurrency(existing.currency) !== payload.currency) {
       logSecurityEvent(req, 'payment.webhook.verification_mismatch', {
         paymentId: payload.paymentId,
         provider: payload.provider,
@@ -418,7 +418,9 @@ class PaymentsService {
       throw Object.assign(new Error('Payment not verified'), { status: 400 });
     }
 
-    if (Number(payment.amount) !== Number(expectedAmount)) {
+    const cur = normalizeCurrency(expectedCurrency || payment.currency);
+    const expectedMinor = toMinor(Number(expectedAmount), cur);
+    if (paymentAmountMinor(payment) !== expectedMinor) {
       logger.warn(`Payment amount mismatch paymentId=${paymentId}`);
       throw Object.assign(new Error('Payment amount mismatch'), { status: 400 });
     }

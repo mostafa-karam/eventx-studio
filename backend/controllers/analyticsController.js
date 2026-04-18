@@ -264,11 +264,91 @@ exports.getEventAnalytics = async (req, res) => {
 exports.exportAnalytics = async (req, res) => {
   try {
     const { type = 'events', format = 'json' } = req.query;
-    // FIX M-01 — Make export limit dynamic but capped
-    const limit = Math.min(parseInt(req.query.limit) || 1000, 10000);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 1000, 10000);
+    const batchSize = Number.parseInt(process.env.ANALYTICS_CSV_BATCH_SIZE, 10) || 500;
 
-    let data = {};
+    if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${type}-export-${Date.now()}.csv"`);
 
+      if (type === 'events') {
+        const filter = req.user.role === 'admin' ? {} : { organizer: req.user._id };
+        let skip = 0;
+        let headersWritten = false;
+        let headers = [];
+        while (skip < limit) {
+          const batch = await Event.find(filter)
+            .select('title date venue category pricing seating analytics status createdAt')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(Math.min(batchSize, limit - skip));
+          if (batch.length === 0) break;
+          if (!headersWritten) {
+            const first = batch[0].toObject ? batch[0].toObject() : batch[0];
+            headers = Object.keys(first);
+            res.write(`${headers.join(',')}\n`);
+            headersWritten = true;
+          }
+          for (const item of batch) {
+            const obj = item.toObject ? item.toObject() : item;
+            const row = headers.map((header) => {
+              const value = obj[header];
+              const str = typeof value === 'object' && value !== null
+                ? JSON.stringify(value)
+                : String(value ?? '');
+              return escapeCSV(str);
+            }).join(',');
+            res.write(`${row}\n`);
+          }
+          skip += batch.length;
+        }
+        return res.end();
+      }
+
+      if (type === 'tickets') {
+        const filter = req.user.role === 'admin' ? {} : { organizer: req.user._id };
+        const userEvents = await Event.find(filter).select('_id');
+        const eventIds = userEvents.map((e) => e._id);
+        const ticketFilter = req.user.role === 'admin' ? {} : { event: { $in: eventIds } };
+
+        let skip = 0;
+        let headersWritten = false;
+        let headers = [];
+        while (skip < limit) {
+          const batch = await Ticket.find(ticketFilter)
+            .populate({ path: 'event', select: 'title date venue' })
+            .populate('user', 'name email')
+            .select('ticketId seatNumber bookingDate status payment')
+            .sort({ bookingDate: -1 })
+            .skip(skip)
+            .limit(Math.min(batchSize, limit - skip));
+          if (batch.length === 0) break;
+          if (!headersWritten) {
+            const first = batch[0].toObject ? batch[0].toObject() : batch[0];
+            headers = Object.keys(first);
+            res.write(`${headers.join(',')}\n`);
+            headersWritten = true;
+          }
+          for (const item of batch) {
+            const obj = item.toObject ? item.toObject() : item;
+            const row = headers.map((header) => {
+              const value = obj[header];
+              const str = typeof value === 'object' && value !== null
+                ? JSON.stringify(value)
+                : String(value ?? '');
+              return escapeCSV(str);
+            }).join(',');
+            res.write(`${row}\n`);
+          }
+          skip += batch.length;
+        }
+        return res.end();
+      }
+
+      return res.status(400).json({ success: false, message: 'Unsupported export type' });
+    }
+
+    let data = [];
     if (type === 'events') {
       const filter = req.user.role === 'admin' ? {} : { organizer: req.user._id };
       data = await Event.find(filter)
@@ -276,12 +356,9 @@ exports.exportAnalytics = async (req, res) => {
         .sort({ createdAt: -1 })
         .limit(limit);
     } else if (type === 'tickets') {
-      // FIX H-06 — Query user's event IDs first, then filter Tickets at DB level 
-      // Prevents massive memory spike and data leak from fetching all tickets
       const filter = req.user.role === 'admin' ? {} : { organizer: req.user._id };
       const userEvents = await Event.find(filter).select('_id');
-      const eventIds = userEvents.map(e => e._id);
-
+      const eventIds = userEvents.map((e) => e._id);
       const ticketFilter = req.user.role === 'admin' ? {} : { event: { $in: eventIds } };
       data = await Ticket.find(ticketFilter)
         .populate({ path: 'event', select: 'title date venue' })
@@ -289,13 +366,6 @@ exports.exportAnalytics = async (req, res) => {
         .select('ticketId seatNumber bookingDate status payment')
         .sort({ bookingDate: -1 })
         .limit(limit);
-    }
-
-    if (format === 'csv') {
-      const csv = convertToCSV(data);
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="${type}-export-${Date.now()}.csv"`);
-      return res.send(csv);
     }
 
     res.json({ success: true, data, exportedAt: new Date(), type, count: data.length });
@@ -316,27 +386,6 @@ function escapeCSV(str) {
     return `"${strVal.replace(/"/g, '""')}"`;
   }
   return strVal;
-}
-
-// Helper function to convert data to CSV
-function convertToCSV(data) {
-  if (!data || data.length === 0) return '';
-
-  const headers = Object.keys(data[0].toObject ? data[0].toObject() : data[0]);
-  const csvHeaders = headers.join(',');
-
-  const csvRows = data.map((item) => {
-    const obj = item.toObject ? item.toObject() : item;
-    return headers.map((header) => {
-      const value = obj[header];
-      const str = typeof value === 'object' && value !== null
-        ? JSON.stringify(value)
-        : String(value ?? '');
-      return escapeCSV(str);
-    }).join(',');
-  });
-
-  return [csvHeaders, ...csvRows].join('\n');
 }
 
 // @route   GET /api/analytics/attendee-insights

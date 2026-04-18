@@ -116,6 +116,65 @@ describe('Security Hardening Tests', () => {
       expect(lastResponse.statusCode).toBe(429);
       expect(lastResponse.body.message).toMatch(/too many failed login attempts/i);
     });
+
+    it('returns 429 after too many POST /api/tickets/lookup-qr attempts (per user/IP)', async () => {
+      const max = Number(process.env.QR_LOOKUP_RATE_LIMIT_MAX || 5);
+      const client = createTestClient(app, { rateLimitKey: 'security-qr-lookup-rate-limit' });
+
+      const organizer = await User.create({
+        name: 'QR RL Organizer',
+        email: `qr_rl_org_${Date.now()}@example.com`,
+        password: 'UniqueTestPass!2026',
+        role: 'organizer',
+        emailVerified: true,
+        isActive: true,
+      });
+
+      const loginRes = await client.csrfRequest('post', '/api/auth/login', {
+        email: organizer.email,
+        password: 'UniqueTestPass!2026',
+      });
+      expect(loginRes.statusCode).toBe(200);
+
+      const event = await Event.create({
+        title: 'QR Lookup RL Event',
+        description: 'Rate limit test.',
+        category: 'conference',
+        date: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        venue: { name: 'V', address: 'A', city: 'C', country: 'UAE', capacity: 10 },
+        organizer: organizer._id,
+        seating: { totalSeats: 10, availableSeats: 10 },
+        status: 'published',
+      });
+
+      const ticketOwner = await User.create({
+        name: 'QR RL Owner',
+        email: `qr_rl_owner_${Date.now()}@example.com`,
+        password: 'UniqueTestPass!2026',
+        role: 'user',
+        emailVerified: true,
+        isActive: true,
+      });
+
+      const ticket = await Ticket.create({
+        event: event._id,
+        user: ticketOwner._id,
+        seatNumber: 'S001',
+        payment: { status: 'completed', amount: 0, paymentMethod: 'free' },
+      });
+
+      const unsignedQrPayload = JSON.stringify({ ticketId: ticket.ticketId });
+      let lastResponse;
+      for (let i = 0; i < max + 1; i += 1) {
+        lastResponse = await client.csrfRequest('post', '/api/tickets/lookup-qr', {
+          qrCode: unsignedQrPayload,
+          eventId: event._id,
+        });
+      }
+
+      expect(lastResponse.statusCode).toBe(429);
+      expect(String(lastResponse.body.message || '')).toMatch(/too many qr lookup attempts/i);
+    });
   });
 
   describe('5. CSRF Enforcement', () => {

@@ -18,15 +18,15 @@ router.use(bookingLimiter);
 
 // POST /api/booking/initiate
 // Creates a lightweight booking session (for simplicity, echo details)
-router.post('/initiate', requireHealthyTransactions, authenticate, idempotency({ ttlSeconds: 30 * 60, awaitPersist: true }), initiateBookingValidator, asyncHandler(initiateBooking));
+router.post('/initiate', requireHealthyTransactions, authenticate, initiateBookingValidator, idempotency({ ttlSeconds: 30 * 60, awaitPersist: true }), asyncHandler(initiateBooking));
 
 // POST /api/booking/confirm
 // Confirms a booking by creating a ticket; expects a valid paymentId and token header
 router.post('/confirm',
     requireHealthyTransactions,
     authenticate,
-    idempotency({ ttlSeconds: 60 * 60, awaitPersist: true }),
     confirmBookingValidator,
+    idempotency({ ttlSeconds: 60 * 60, awaitPersist: true }),
     asyncHandler(confirmBooking)
 );
 

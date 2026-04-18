@@ -231,6 +231,8 @@ exports.loginUser = async (email, password, twoFactorCode, deviceInfo) => {
       ? verifyTotpCode(twoFactorCode, plainTwoFactorSecret)
       : false;
     if (!isValid) {
+      // Same lockout surface as failed passwords: wrong TOTP must not be a free brute-force channel.
+      await user.incLoginAttempts();
       logger.warn('Failed login attempt due to invalid 2FA code', { userId: user._id, email: user.email });
       const error = new Error('Invalid 2FA code');
       error.status = 401;

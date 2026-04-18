@@ -20,15 +20,7 @@ const notificationService = require('./notificationService');
 const logger = require('../utils/logger');
 const ticketsService = require('./ticketsService');
 const { withTransactionRetry } = require('../utils/transaction');
-
-const calculateCouponDiscount = (coupon, baseAmount) => {
-  if (!coupon) return 0;
-  const amount = Number(baseAmount) || 0;
-  if (coupon.discountType === 'percentage') {
-    return Math.min(amount, (amount * (coupon.discountValue / 100)) || 0);
-  }
-  return Math.min(amount, coupon.discountValue || 0);
-};
+const { toMinor, normalizeCurrency, paymentAmountMatchOrLegacy } = require('../utils/money');
 
 const getCouponForEvent = async (couponCode, eventId, sessionOptions) => {
   if (!couponCode) return null;
@@ -177,11 +169,17 @@ exports.bookSeat = async ({
     let appliedCoupon = null;
     if (couponCode) {
       appliedCoupon = await getCouponForEvent(couponCode, eventId, sessionOptions);
-      const baseAmount = event.pricing?.amount || 0;
-      const discount = calculateCouponDiscount(appliedCoupon, baseAmount);
-      const expectedAmount = Math.max(0, baseAmount - discount);
+      const payCurrency = normalizeCurrency(event.pricing?.currency || 'USD');
+      const baseMinor = toMinor(Number(event.pricing?.amount || 0), payCurrency);
+      let discountMinor = 0;
+      if (appliedCoupon.discountType === 'percentage') {
+        discountMinor = Math.min(baseMinor, Math.round((baseMinor * appliedCoupon.discountValue) / 100));
+      } else {
+        discountMinor = Math.min(baseMinor, toMinor(appliedCoupon.discountValue || 0, payCurrency));
+      }
+      const expectedMinor = Math.max(0, baseMinor - discountMinor);
 
-      if (payment?.amount === undefined || Number(payment.amount) !== expectedAmount) {
+      if (payment?.amount === undefined || toMinor(payment.amount, payCurrency) !== expectedMinor) {
         const err = new Error('Payment amount does not match expected amount for the coupon');
         err.status = 400;
         throw err;
@@ -208,7 +206,8 @@ exports.bookSeat = async ({
     }
 
     const finalAmount = payment?.amount ?? (event.pricing?.amount || 0);
-    const requiredCurrency = event.pricing?.currency || 'USD';
+    const requiredCurrency = normalizeCurrency(event.pricing?.currency || 'USD');
+    const finalMinor = toMinor(Number(finalAmount), requiredCurrency);
 
     const requiresTxnForIntegrity = event.pricing?.type === 'paid' || Boolean(couponCode);
     if (requiresTxnForIntegrity && !useSession && process.env.NODE_ENV !== 'test') {
@@ -229,9 +228,9 @@ exports.bookSeat = async ({
         user: userId,
         event: eventId,
         status: 'verified',
-        amount: Number(finalAmount),
-        currency: String(requiredCurrency).toUpperCase(),
+        currency: requiredCurrency,
         quantity: 1,
+        ...paymentAmountMatchOrLegacy(finalMinor, finalAmount),
       });
       if (useSession) paymentQuery.session(session);
       paymentVerifiedRecord = await paymentQuery.exec();

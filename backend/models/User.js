@@ -145,7 +145,8 @@ const userSchema = new mongoose.Schema({
     status: {
       type: String,
       enum: ['pending', 'approved', 'denied'],
-      default: 'pending'
+      // No default: a user must explicitly submit a request (requestedAt set)
+      // so admins cannot match "phantom pending" state on new accounts.
     }
   }
 }, {

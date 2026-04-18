@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { toMinor, normalizeCurrency } = require('../utils/money');
 
 const paymentSchema = new mongoose.Schema({
   paymentId: {
@@ -23,6 +24,12 @@ const paymentSchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 0,
+  },
+  /** Integer minor units (e.g. cents) — authoritative for equality checks */
+  amountMinor: {
+    type: Number,
+    min: 0,
+    index: true,
   },
   currency: {
     type: String,
@@ -67,6 +74,23 @@ const paymentSchema = new mongoose.Schema({
   },
 }, {
   timestamps: true,
+});
+
+paymentSchema.pre('save', function syncAmountMinor(next) {
+  try {
+    const cur = normalizeCurrency(this.currency);
+    if (this.amountMinor == null && this.amount != null) {
+      this.amountMinor = toMinor(this.amount, cur);
+    }
+    if (this.isModified('amount') || this.isModified('currency')) {
+      if (this.amount != null) {
+        this.amountMinor = toMinor(this.amount, cur);
+      }
+    }
+  } catch (e) {
+    return next(e);
+  }
+  next();
 });
 
 paymentSchema.index({ user: 1, event: 1, status: 1, createdAt: -1 });

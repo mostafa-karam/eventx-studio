@@ -38,6 +38,10 @@ jobs:
           MONGO_URI: mongodb://localhost:27017/eventx-ci
           FRONTEND_URL: http://localhost:3000
           CSRF_SECRET: ci-test-csrf-secret
+          COOKIE_SIGNING_SECRET: ci-test-cookie-signing-secret-for-jest
+          PAYMENT_HMAC_SECRET: ci-test-payment-hmac-secret
+          QR_HMAC_SECRET: ci-test-qr-hmac-secret-for-jest
+          SESSION_ENCRYPTION_KEY: ci-test-session-encryption-key-for-jest
 
   frontend-lint:
     runs-on: ubuntu-latest

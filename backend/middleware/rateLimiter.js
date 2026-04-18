@@ -301,6 +301,15 @@ const bookingLimiter = createLimiter({
   strictRedis: true,
 });
 
+/** POST /api/tickets/lookup-qr — authenticated brute-force / noisy trials */
+const qrLookupLimiter = createLimiter({
+  scope: 'tickets-qr-lookup',
+  windowMs: config.security.rateLimit.qrLookupWindowMs,
+  max: config.security.rateLimit.qrLookupMax,
+  message: 'Too many QR lookup attempts. Please try again later.',
+  strictRedis: true,
+});
+
 module.exports = {
   globalLimiter,
   loginLimiter,
@@ -309,5 +318,6 @@ module.exports = {
   refreshTokenLimiter,
   paymentLimiter,
   bookingLimiter,
+  qrLookupLimiter,
   createLimiter,
 };

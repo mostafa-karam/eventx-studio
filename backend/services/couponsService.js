@@ -7,7 +7,9 @@
  */
 
 const Coupon = require('../models/Coupon');
+const Event = require('../models/Event');
 const auditService = require('./auditService');
+const { toMinor, fromMinor, normalizeCurrency } = require('../utils/money');
 const { ACTIONS, RESOURCES } = require('../utils/auditConstants');
 
 class CouponsService {
@@ -53,22 +55,28 @@ class CouponsService {
       }
     }
 
-    // Calculate discount
-    let discountAmount = 0;
-    const purchaseAmount = Number(amount) || 0;
-    if (coupon.discountType === 'percentage') {
-      discountAmount = Math.min((purchaseAmount * coupon.discountValue) / 100, purchaseAmount);
-    } else {
-      discountAmount = Math.min(coupon.discountValue, purchaseAmount);
+    let cur = 'USD';
+    if (eventId) {
+      const ev = await Event.findById(eventId).select('pricing.currency');
+      if (ev?.pricing?.currency) cur = normalizeCurrency(ev.pricing.currency);
     }
+
+    const purchaseMinor = toMinor(Number(amount) || 0, cur);
+    let discountMinor = 0;
+    if (coupon.discountType === 'percentage') {
+      discountMinor = Math.min(purchaseMinor, Math.round((purchaseMinor * coupon.discountValue) / 100));
+    } else {
+      discountMinor = Math.min(purchaseMinor, toMinor(coupon.discountValue, cur));
+    }
+    const finalMinor = Math.max(0, purchaseMinor - discountMinor);
 
     return {
       couponId: coupon._id,
       code: coupon.code,
       discountType: coupon.discountType,
       discountValue: coupon.discountValue,
-      discountAmount: Math.round(discountAmount * 100) / 100,
-      finalAmount: Math.round((purchaseAmount - discountAmount) * 100) / 100,
+      discountAmount: fromMinor(discountMinor, cur),
+      finalAmount: fromMinor(finalMinor, cur),
     };
   }
 

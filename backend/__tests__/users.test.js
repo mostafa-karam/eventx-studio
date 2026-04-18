@@ -123,6 +123,68 @@ describe('User Management Endpoints', () => {
         expect(res.body.data.requests.some(req => req._id.toString() === user._id.toString())).toBe(true);
     });
 
+    it('should reject admin approving role upgrade when user has no pending request', async () => {
+        const noRequest = await User.create({
+            name: 'No Request',
+            email: `no_req_${Date.now()}@example.com`,
+            password: 'UniqueTestPass!2026',
+            role: 'user',
+            isActive: true,
+            emailVerified: true,
+        });
+
+        const res = await client.csrfRequest(
+            'put',
+            `/api/auth/role-upgrade-requests/${noRequest._id}`,
+            { action: 'approve' },
+            { Authorization: `Bearer ${adminToken}` },
+        );
+
+        expect(res.statusCode).toBe(409);
+        expect(res.body.success).toBe(false);
+
+        const still = await User.findById(noRequest._id);
+        expect(still.role).toBe('user');
+    });
+
+    it('should reject duplicate approve of the same role upgrade request', async () => {
+        const candidate = await User.create({
+            name: 'Dup Approve',
+            email: `dup_app_${Date.now()}@example.com`,
+            password: 'UniqueTestPass!2026',
+            role: 'user',
+            isActive: true,
+            emailVerified: true,
+        });
+        const candSid = crypto.randomUUID();
+        candidate.addSession(candSid, { device: 'Jest', ipAddress: '127.0.0.1' });
+        await candidate.save();
+        const candToken = generateAccessToken(candidate._id, candSid);
+
+        await client.csrfRequest(
+            'post',
+            '/api/auth/role-upgrade',
+            { reason: 'Need organizer', organizationName: 'Org' },
+            { Authorization: `Bearer ${candToken}` },
+        );
+
+        const first = await client.csrfRequest(
+            'put',
+            `/api/auth/role-upgrade-requests/${candidate._id}`,
+            { action: 'approve' },
+            { Authorization: `Bearer ${adminToken}` },
+        );
+        expect(first.statusCode).toBe(200);
+
+        const second = await client.csrfRequest(
+            'put',
+            `/api/auth/role-upgrade-requests/${candidate._id}`,
+            { action: 'approve' },
+            { Authorization: `Bearer ${adminToken}` },
+        );
+        expect(second.statusCode).toBe(409);
+    });
+
     it('should allow admin to approve a role upgrade', async () => {
         const res = await client.csrfRequest('put', `/api/auth/role-upgrade-requests/${user._id}`, {
             action: 'approve'

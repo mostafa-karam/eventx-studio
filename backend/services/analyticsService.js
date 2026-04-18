@@ -12,6 +12,8 @@ const Ticket = require('../models/Ticket');
 const User = require('../models/User');
 const logger = require('../utils/logger');
 
+const maxAttendeeInsightsRows = () => Number.parseInt(process.env.MAX_ATTENDEE_INSIGHTS_ROWS, 10) || 10000;
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 /**
@@ -274,37 +276,35 @@ exports.getAttendeeDemographics = async (user, eventId) => {
     matchCondition['eventData._id'] = new mongoose.Types.ObjectId(eventId);
   }
 
+  /** One document per attendee — avoid $group/$push (single huge array in RAM server-side). */
   const attendeeData = await Ticket.aggregate([
     { $lookup: { from: 'events', localField: 'event', foreignField: '_id', as: 'eventData' } },
     { $unwind: '$eventData' },
     { $match: matchCondition },
     { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'userData' } },
     { $unwind: '$userData' },
+    { $limit: maxAttendeeInsightsRows() },
     {
-      $group: {
-        _id: null,
-        attendees: {
-          $push: {
-            userId: '$userData._id',
-            name: '$userData.name',
-            age: '$userData.age',
-            gender: '$userData.gender',
-            city: '$userData.location.city',
-            country: '$userData.location.country',
-            interests: '$userData.interests',
-            eventTitle: '$eventData.title',
-            eventDate: '$eventData.date',
-            eventCategory: '$eventData.category',
-            bookingDate: '$bookingDate',
-            ticketStatus: '$status',
-            checkedIn: '$checkIn.isCheckedIn',
-          },
-        },
+      $project: {
+        _id: 0,
+        userId: '$userData._id',
+        name: '$userData.name',
+        age: '$userData.age',
+        gender: '$userData.gender',
+        city: '$userData.location.city',
+        country: '$userData.location.country',
+        interests: '$userData.interests',
+        eventTitle: '$eventData.title',
+        eventDate: '$eventData.date',
+        eventCategory: '$eventData.category',
+        bookingDate: '$bookingDate',
+        ticketStatus: '$status',
+        checkedIn: '$checkIn.isCheckedIn',
       },
     },
   ]);
 
-  return attendeeData[0]?.attendees || [];
+  return attendeeData;
 };
 
 /**

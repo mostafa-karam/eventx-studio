@@ -52,6 +52,13 @@ const validateEnv = () => {
       process.exit(1);
     }
   }
+
+  if (isProduction && String(process.env.ALLOW_NON_TXN_BOOKING || '').toLowerCase() === 'true') {
+    logger.error(
+      'ALLOW_NON_TXN_BOOKING must not be enabled in production (non-transactional booking fallback weakens integrity).',
+    );
+    process.exit(1);
+  }
 };
 
 module.exports = validateEnv;

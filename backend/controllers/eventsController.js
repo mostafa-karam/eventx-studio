@@ -219,26 +219,32 @@ function escapeCSV(str) {
 // @access  Private (Admin/Organizer)
 exports.exportAttendees = async (req, res) => {
     try {
-        const { event, tickets } = await eventsService.exportAttendees(req.params.id, req.user);
+        const { event, total } = await eventsService.exportAttendees(req.params.id, req.user);
 
-        let csvData = 'Ticket ID,Name,Email,Phone,Seat Number,Booking Date,Status,Payment Amount\n';
-
-        tickets.forEach(ticket => {
-            const tId = escapeCSV(ticket.ticketId);
-            const name = ticket.user ? escapeCSV(ticket.user.name) : 'Unknown';
-            const email = ticket.user ? escapeCSV(ticket.user.email) : 'Unknown';
-            const phone = ticket.user?.phone ? escapeCSV(ticket.user.phone) : 'N/A';
-            const seat = escapeCSV(ticket.seatNumber);
-            const date = escapeCSV(new Date(ticket.bookingDate).toLocaleDateString());
-            const status = escapeCSV(ticket.status);
-            const amount = ticket.payment?.amount ? escapeCSV('$' + ticket.payment.amount) : 'Free';
-
-            csvData += `${tId},${name},${email},${phone},${seat},${date},${status},${amount}\n`;
-        });
-
-        res.setHeader('Content-Type', 'text/csv');
+        const batchSize = Number.parseInt(process.env.CSV_EXPORT_BATCH_SIZE, 10) || 500;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename=Attendees_${event.title.replace(/\s+/g, '_')}.csv`);
-        res.send(csvData);
+
+        res.write('Ticket ID,Name,Email,Phone,Seat Number,Booking Date,Status,Payment Amount\n');
+
+        let skip = 0;
+        while (skip < total) {
+            const tickets = await eventsService.getAttendeesExportBatch(event._id, skip, batchSize);
+            for (const ticket of tickets) {
+                const tId = escapeCSV(ticket.ticketId);
+                const name = ticket.user ? escapeCSV(ticket.user.name) : 'Unknown';
+                const email = ticket.user ? escapeCSV(ticket.user.email) : 'Unknown';
+                const phone = ticket.user?.phone ? escapeCSV(ticket.user.phone) : 'N/A';
+                const seat = escapeCSV(ticket.seatNumber);
+                const date = escapeCSV(new Date(ticket.bookingDate).toLocaleDateString());
+                const status = escapeCSV(ticket.status);
+                const amount = ticket.payment?.amount ? escapeCSV(`$${ticket.payment.amount}`) : 'Free';
+                res.write(`${tId},${name},${email},${phone},${seat},${date},${status},${amount}\n`);
+            }
+            skip += tickets.length;
+        }
+
+        res.end();
     } catch (error) {
         logger.error('Export attendees error:', error);
         if (error.status) return res.status(error.status).json({ success: false, message: error.message });

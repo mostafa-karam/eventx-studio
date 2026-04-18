@@ -79,6 +79,13 @@ class ReviewsService {
       status: { $in: ['booked', 'used'] },
     });
 
+    if (!ticket) {
+      throw Object.assign(
+        new Error('Only attendees with a ticket for this event may submit a review'),
+        { status: 403 },
+      );
+    }
+
     // Enforce 24-hour cooldown after deletion to prevent delete/repost abuse.
     const previousReview = await Review.findOne({ event: eventId, user: userId })
       .sort({ createdAt: -1 })
@@ -96,7 +103,7 @@ class ReviewsService {
       rating: Number(rating),
       title: title || '',
       body: body || '',
-      attendedVerified: !!ticket,
+      attendedVerified: true,
     });
 
     await review.save();

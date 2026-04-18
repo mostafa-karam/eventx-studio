@@ -453,7 +453,7 @@ const createBookingValidator = [
 
 const confirmBookingValidator = [
   mongoIdField('eventId', 'Event ID'),
-  stringField('paymentId', 'Payment ID', { max: 120 }),
+  stringField('paymentId', 'Payment ID', { optional: true, max: 120 }),
   stringField('bookingId', 'Booking ID', { optional: true, max: 120 }),
   stringField('paymentMethod', 'Payment method', { optional: true, max: 50 }),
   stringField('couponCode', 'Coupon code', { optional: true, max: 40 }),
@@ -773,6 +773,36 @@ const verifyEmailValidator = [
   validate,
 ];
 
+const resendVerificationValidator = [
+  body('email')
+    .exists({ values: 'falsy' })
+    .withMessage('Email is required')
+    .bail()
+    .isString()
+    .withMessage('Email must be a string')
+    .bail()
+    .trim()
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+  validate,
+];
+
+const forgotPasswordValidator = [
+  body('email')
+    .exists({ values: 'falsy' })
+    .withMessage('Email is required')
+    .bail()
+    .isString()
+    .withMessage('Email must be a string')
+    .bail()
+    .trim()
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+  validate,
+];
+
 const resetPasswordValidator = [
   body('token')
     .exists({ values: 'falsy' })
@@ -1012,6 +1042,8 @@ module.exports = {
   createCategoryValidator,
   updateCategoryValidator,
   verifyEmailValidator,
+  resendVerificationValidator,
+  forgotPasswordValidator,
   resetPasswordValidator,
   twoFactorEnableValidator,
   twoFactorDisableValidator,

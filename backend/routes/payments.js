@@ -21,10 +21,10 @@ router.use(paymentLimiter);
 
 // POST /api/payments/process
 // Creates a payment intent (processing state)
-router.post('/process', requireHealthyTransactions, authenticate, idempotency({ ttlSeconds: 60 * 60, awaitPersist: true }), createPaymentValidator, asyncHandler(createPayment));
+router.post('/process', requireHealthyTransactions, authenticate, createPaymentValidator, idempotency({ ttlSeconds: 60 * 60, awaitPersist: true }), asyncHandler(createPayment));
 
 // POST /api/payments/webhook/verify
 // Mock PSP callback that marks payment as verified/failed using signed payload
-router.post('/webhook/verify', requireHealthyTransactions, idempotency({ ttlSeconds: 24 * 60 * 60, awaitPersist: true }), paymentWebhookValidator, asyncHandler(verifyPaymentWebhook));
+router.post('/webhook/verify', requireHealthyTransactions, paymentWebhookValidator, asyncHandler(verifyPaymentWebhook));
 
 module.exports = router;

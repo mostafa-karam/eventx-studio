@@ -17,6 +17,8 @@ const {
   roleUpgradeDecisionValidator,
   deleteAccountValidator,
   verifyEmailValidator,
+  resendVerificationValidator,
+  forgotPasswordValidator,
   resetPasswordValidator,
   twoFactorEnableValidator,
   twoFactorDisableValidator,
@@ -91,8 +93,8 @@ router.post('/logout', authenticate, authController.logout);
 router.put('/profile', authenticate, updateProfileValidator, authController.updateProfile);
 router.put('/change-password', authenticate, changePasswordValidator, authController.changePassword);
 router.post('/verify-email', registerLimiter, verifyEmailValidator, authController.verifyEmail);
-router.post('/resend-verification', registerLimiter, authController.resendVerification);
-router.post('/forgot-password', passwordResetLimiter, authController.forgotPassword);
+router.post('/resend-verification', registerLimiter, resendVerificationValidator, authController.resendVerification);
+router.post('/forgot-password', passwordResetLimiter, forgotPasswordValidator, authController.forgotPassword);
 router.post('/reset-password', passwordResetLimiter, resetPasswordValidator, authController.resetPassword);
 router.post('/2fa/setup', authenticate, authController.setup2FA);
 router.post('/2fa/enable', authenticate, loginLimiter, twoFactorEnableValidator, authController.enable2FA);

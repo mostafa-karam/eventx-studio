@@ -1,6 +1,8 @@
 const Event = require('../models/Event');
 const Waitlist = require('../models/Waitlist');
 const Ticket = require('../models/Ticket');
+
+const maxCsvExportRows = () => Number.parseInt(process.env.MAX_CSV_EXPORT_ROWS, 10) || 50000;
 const { sanitizeSearchInput, createSafeRegex } = require('../utils/helpers');
 const { enforceOwnership } = require('../utils/authorization');
 const { withTransactionRetry } = require('../utils/transaction');
@@ -312,18 +314,38 @@ class EventsService {
         return waitlistEntry;
     }
 
+    /**
+     * Validates export permission and row cap; returns counts for streaming CSV in the controller.
+     */
     async exportAttendees(eventId, user) {
         const event = await Event.findById(eventId);
         if (!event) throw Object.assign(new Error('Event not found'), { status: 404 });
         enforceOwnership(event, user, 'organizer', 'export attendees');
 
-        const Ticket = require('../models/Ticket');
-        const tickets = await Ticket.find({
+        const total = await Ticket.countDocuments({
             event: event._id,
-            status: { $in: ['booked', 'used'] }
-        }).populate('user', 'name email phone').sort({ bookingDate: 1 });
+            status: { $in: ['booked', 'used'] },
+        });
+        const maxRows = maxCsvExportRows();
+        if (total > maxRows) {
+            throw Object.assign(
+                new Error(`Export exceeds maximum of ${maxRows} rows`),
+                { status: 413 },
+            );
+        }
+        return { event, total };
+    }
 
-        return { event, tickets };
+    /** Batched ticket fetch for CSV streaming (bounded memory). */
+    async getAttendeesExportBatch(eventId, skip, limit) {
+        return Ticket.find({
+            event: eventId,
+            status: { $in: ['booked', 'used'] },
+        })
+            .populate('user', 'name email phone')
+            .sort({ bookingDate: 1 })
+            .skip(skip)
+            .limit(limit);
     }
 
     async publishEvent(eventId, user) {
