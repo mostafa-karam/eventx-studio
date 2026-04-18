@@ -131,6 +131,33 @@ describe('Analytics Endpoints', () => {
         expect(res.body.data.overview.totalUsers).toBeGreaterThanOrEqual(1);
     });
 
+    it('should include events with zero tickets in allEvents (admin dashboard)', async () => {
+        const noTicketEvent = await Event.create({
+            title: 'Zero Bookings Event',
+            description: 'Newly created; no tickets yet.',
+            category: 'conference',
+            date: new Date(Date.now() + 86400000 * 2),
+            venue: { name: 'Hall X', address: '1 St', city: 'C', country: 'UAE', capacity: 50 },
+            organizer: organizer._id,
+            seating: { totalSeats: 50, availableSeats: 50, seatMap: [] },
+            pricing: { type: 'free', amount: 0, currency: 'USD' },
+            status: 'published',
+            analytics: { views: 0, bookings: 0, revenue: 0 },
+        });
+
+        const res = await request(app)
+            .get('/api/analytics/dashboard')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.success).toBe(true);
+        const allEvents = res.body.data.allEvents || [];
+        const row = allEvents.find((e) => String(e._id) === String(noTicketEvent._id));
+        expect(row).toBeDefined();
+        expect(row.analytics.ticketsSold).toBe(0);
+        expect(row.analytics.totalRevenue).toBe(0);
+    });
+
     it('should prevent non-admin from fetching global dashboard metrics', async () => {
         const res = await request(app)
             .get('/api/analytics/dashboard')

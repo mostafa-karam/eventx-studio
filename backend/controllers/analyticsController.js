@@ -28,53 +28,69 @@ exports.getDashboard = async (req, res) => {
       analyticsService.getTopPerformingEvents(),
     ]);
 
-    // Top events with enhanced data
-    // Top events with enhanced data — single aggregate instead of N+1 queries (P-01)
-    const enrichedTopEvents = await Ticket.aggregate([
-      { $match: { status: { $in: ['booked', 'used'] } } },
-      {
-        $group: {
-          _id: '$event',
-          totalTicketsSold: { $sum: 1 },
-          totalRevenue: { $sum: { $ifNull: ['$payment.amount', 0] } },
-          averageTicketPrice: { $avg: { $ifNull: ['$payment.amount', 0] } },
-        },
-      },
-      { $lookup: { from: 'events', localField: '_id', foreignField: '_id', as: 'eventData' } },
-      { $unwind: '$eventData' },
-      { $sort: { 'eventData.createdAt': -1 } },
+    // Latest 10 events (by createdAt) with ticket stats — must start from Event so zero-booking events still appear in AdminDashboard `allEvents`.
+    const enrichedTopEvents = await Event.aggregate([
+      { $sort: { createdAt: -1 } },
       { $limit: 10 },
       {
+        $lookup: {
+          from: 'tickets',
+          let: { eventId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$event', '$$eventId'] },
+                status: { $in: ['booked', 'used'] },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalTicketsSold: { $sum: 1 },
+                totalRevenue: { $sum: { $ifNull: ['$payment.amount', 0] } },
+                averageTicketPrice: { $avg: { $ifNull: ['$payment.amount', 0] } },
+              },
+            },
+          ],
+          as: 'ticketAgg',
+        },
+      },
+      {
+        $set: {
+          ticketAgg: { $ifNull: [{ $arrayElemAt: ['$ticketAgg', 0] }, null] },
+        },
+      },
+      {
         $project: {
-          _id: '$eventData._id',
-          title: '$eventData.title',
-          date: '$eventData.date',
-          venue: '$eventData.venue',
-          seating: '$eventData.seating',
-          category: '$eventData.category',
-          status: '$eventData.status',
-          createdAt: '$eventData.createdAt',
-          pricing: '$eventData.pricing',
+          _id: 1,
+          title: 1,
+          date: 1,
+          venue: 1,
+          seating: 1,
+          category: 1,
+          status: 1,
+          createdAt: 1,
+          pricing: 1,
           analytics: {
-            ticketsSold: '$totalTicketsSold',
-            totalRevenue: '$totalRevenue',
-            averageTicketPrice: '$averageTicketPrice',
-            views: { $ifNull: ['$eventData.analytics.views', 0] },
+            ticketsSold: { $ifNull: ['$ticketAgg.totalTicketsSold', 0] },
+            totalRevenue: { $ifNull: ['$ticketAgg.totalRevenue', 0] },
+            averageTicketPrice: { $ifNull: ['$ticketAgg.averageTicketPrice', 0] },
+            views: { $ifNull: ['$analytics.views', 0] },
             occupancyRate: {
               $cond: {
-                if: { $gt: [{ $ifNull: ['$eventData.seating.totalSeats', 0] }, 0] },
+                if: { $gt: [{ $ifNull: ['$seating.totalSeats', 0] }, 0] },
                 then: {
                   $round: [{
                     $multiply: [{
                       $divide: [
-                        { $subtract: ['$eventData.seating.totalSeats', { $ifNull: ['$eventData.seating.availableSeats', 0] }] },
-                        '$eventData.seating.totalSeats'
-                      ]
-                    }, 100]
-                  }]
+                        { $subtract: ['$seating.totalSeats', { $ifNull: ['$seating.availableSeats', 0] }] },
+                        '$seating.totalSeats',
+                      ],
+                    }, 100],
+                  }],
                 },
-                else: 0
-              }
+                else: 0,
+              },
             },
           },
         },
