@@ -867,8 +867,8 @@ const createPaymentValidator = [
     .withMessage('Currency must be a 3-letter code'),
   body('quantity')
     .optional()
-    .isInt({ min: 1, max: 10 })
-    .withMessage('Quantity must be between 1 and 10')
+    .isInt({ min: 1, max: 1 })
+    .withMessage('Quantity must be 1 (single ticket per payment)')
     .toInt(),
   body('paymentMethod')
     .optional()
@@ -877,6 +877,17 @@ const createPaymentValidator = [
     .bail()
     .isIn(['credit_card', 'debit_card', 'paypal', 'bank_transfer'])
     .withMessage('Unsupported payment method'),
+  body('couponCode')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 64 })
+    .withMessage('Coupon code must be a string up to 64 characters'),
+  validate,
+];
+
+const assignOrphanTicketValidator = [
+  mongoIdField('eventId', 'Event ID'),
   validate,
 ];
 
@@ -980,8 +991,8 @@ const bookMultiTicketsValidator = [
   mongoIdField('eventId', 'Event ID'),
   body('quantity')
     .optional()
-    .isInt({ min: 1, max: 10 })
-    .withMessage('quantity must be between 1 and 10')
+    .isInt({ min: 1, max: 1 })
+    .withMessage('quantity must be 1 (only one seat per user per event)')
     .toInt(),
   body('seatNumbers')
     .optional()
@@ -1052,4 +1063,5 @@ module.exports = {
   paymentWebhookValidator,
   bookTicketValidator,
   bookMultiTicketsValidator,
+  assignOrphanTicketValidator,
 };

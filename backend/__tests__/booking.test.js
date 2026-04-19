@@ -40,19 +40,20 @@ afterEach(async () => {
 describe('Booking Endpoints', () => {
     beforeEach(async () => {
         client = createTestClient(app);
-        // Register and verify email
+        // Unique email per test avoids register rate-limit collisions when the full suite runs in one worker.
+        const testEmail = `book_${Date.now()}_${Math.random().toString(36).slice(2, 10)}@example.com`;
         await client.csrfRequest('post', '/api/auth/register', {
             name: 'Test User',
-            email: 'test@example.com',
+            email: testEmail,
             password: 'UniqueTestPass!2026',
             role: 'organizer'
         });
 
         // Manually verify email for test
-        await User.updateOne({ email: 'test@example.com' }, { emailVerified: true, role: 'organizer' });
+        await User.updateOne({ email: testEmail }, { emailVerified: true, role: 'organizer' });
 
         const loginRes = await client.csrfRequest('post', '/api/auth/login', {
-            email: 'test@example.com',
+            email: testEmail,
             password: 'UniqueTestPass!2026'
         });
 
@@ -277,9 +278,9 @@ describe('Booking Endpoints', () => {
         await client.csrfRequest('post', `/api/events/${paidEventId}/publish`, undefined, { Authorization: `Bearer ${authToken}` });
 
         const paymentRes = await client.csrfRequest('post', '/api/payments/process', {
-            amount: 100,
+            amount: 50,
             currency: 'USD',
-            quantity: 2,
+            quantity: 1,
             paymentMethod: 'credit_card',
             eventId: paidEventId
         }, { Authorization: `Bearer ${authToken}` });
@@ -291,7 +292,7 @@ describe('Booking Endpoints', () => {
             providerPaymentId: `pp_${Date.now()}`,
             status: 'verified',
             provider: 'mock_psp',
-            amount: 100,
+            amount: 50,
             currency: 'USD',
         };
 
@@ -301,6 +302,47 @@ describe('Booking Endpoints', () => {
 
         expect(verifyRes.statusCode).toBe(401);
         expect(verifyRes.body.success).toBe(false);
+    });
+
+    it('should reject payment process when quantity is not 1', async () => {
+        const paidEventRes = await client.csrfRequest('post', '/api/events', {
+            title: 'Qty Gate Event',
+            description: 'Paid event for quantity validation.',
+            date: new Date(Date.now() + 86400000).toISOString(),
+            venue: {
+                name: 'Paid Venue',
+                address: '789 Qty St',
+                city: 'Test City',
+                country: 'USA',
+                capacity: 50
+            },
+            pricing: {
+                type: 'paid',
+                amount: 40,
+                currency: 'USD'
+            },
+            seating: {
+                totalSeats: 5,
+                availableSeats: 5,
+                seatMap: []
+            },
+            category: 'conference',
+            tags: ['qty']
+        }, { Authorization: `Bearer ${authToken}` });
+
+        const paidEventId = paidEventRes.body.data.event._id;
+        await client.csrfRequest('post', `/api/events/${paidEventId}/publish`, undefined, { Authorization: `Bearer ${authToken}` });
+
+        const paymentRes = await client.csrfRequest('post', '/api/payments/process', {
+            amount: 80,
+            currency: 'USD',
+            quantity: 2,
+            paymentMethod: 'credit_card',
+            eventId: paidEventId
+        }, { Authorization: `Bearer ${authToken}` });
+
+        expect(paymentRes.statusCode).toBe(400);
+        expect(paymentRes.body.success).toBe(false);
     });
 
 });

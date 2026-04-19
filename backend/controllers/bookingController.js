@@ -72,33 +72,10 @@ exports.confirmBooking = async (req, res) => {
 
         const event = await ticketsService.findBookableEvent(eventId);
 
-        // Calculate expected payment amount considering coupon
-        let expectedAmount = event.pricing?.amount || 0;
-        if (couponCode && event.pricing?.type === 'paid') {
-            const Coupon = require('../models/Coupon');
-            const coupon = await Coupon.findOne({
-                code: couponCode.toUpperCase(),
-                isActive: true,
-                expiresAt: { $gt: new Date() },
-            });
-            if (!coupon) {
-                return res.status(400).json({ success: false, message: 'Coupon is invalid or expired' });
-            }
-            if (!coupon.isValid) {
-                return res.status(400).json({ success: false, message: 'Coupon is not valid or has expired' });
-            }
-            if (coupon.applicableEvents && coupon.applicableEvents.length > 0) {
-                const matchesEvent = coupon.applicableEvents.some((id) => id.toString() === event._id.toString());
-                if (!matchesEvent) {
-                    return res.status(400).json({ success: false, message: 'Coupon is not applicable to this event' });
-                }
-            }
-            if (coupon.discountType === 'percentage') {
-                expectedAmount = expectedAmount - (expectedAmount * (coupon.discountValue / 100));
-            } else {
-                expectedAmount = Math.max(0, expectedAmount - coupon.discountValue);
-            }
-        }
+        // Single source of truth for post-coupon price (minor-safe, maxUses-aware read path).
+        const expectedAmount = couponCode
+            ? await ticketsService.calculateExpectedAmount(event, couponCode)
+            : (event.pricing?.amount || 0);
 
         // Require server-verified payment for paid events.
         if (event.pricing?.type === 'paid') {

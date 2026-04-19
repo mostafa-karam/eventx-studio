@@ -2,6 +2,8 @@ const logger = require('../utils/logger');
 const ticketsService = require('../services/ticketsService');
 const bookingService = require('../services/bookingService');
 const notificationService = require('../services/notificationService');
+const auditService = require('../services/auditService');
+const { ACTIONS, RESOURCES } = require('../utils/auditConstants');
 const Ticket = require('../models/Ticket');
 
 // @route   POST /api/tickets/book
@@ -191,6 +193,14 @@ exports.getOrphanTickets = async (req, res) => {
 exports.assignOrphanTicket = async (req, res) => {
   try {
     const ticket = await ticketsService.assignOrphanTicket(req.params.id, req.body?.eventId);
+    await auditService.log({
+      req,
+      actor: req.user,
+      action: ACTIONS.TICKET_ORPHAN_ASSIGN,
+      resource: RESOURCES.TICKET,
+      resourceId: ticket._id,
+      details: { eventId: req.body.eventId },
+    });
     res.json({ success: true, data: { ticket } });
   } catch (error) {
     logger.error('Assign orphan error:', error);
@@ -203,6 +213,14 @@ exports.assignOrphanTicket = async (req, res) => {
 exports.cancelOrphanTicket = async (req, res) => {
   try {
     const ticket = await ticketsService.cancelOrphanTicket(req.params.id);
+    await auditService.log({
+      req,
+      actor: req.user,
+      action: ACTIONS.TICKET_ORPHAN_CANCEL,
+      resource: RESOURCES.TICKET,
+      resourceId: ticket._id,
+      details: {},
+    });
     res.json({ success: true, message: 'Ticket cancelled', data: { ticket } });
   } catch (error) {
     logger.error('Cancel orphan error:', error);

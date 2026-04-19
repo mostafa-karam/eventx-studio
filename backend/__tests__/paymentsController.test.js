@@ -20,7 +20,7 @@ describe('paymentsController', () => {
 
     it('creates a payment intent', async () => {
         const req = {
-            validatedBody: { amount: 100, quantity: 2, currency: 'USD', eventId: '507f1f77bcf86cd799439011' },
+            validatedBody: { amount: 100, quantity: 1, currency: 'USD', eventId: '507f1f77bcf86cd799439011' },
             user: { _id: 'user-1' },
         };
         const res = createMockRes();
@@ -30,7 +30,7 @@ describe('paymentsController', () => {
             status: 'processing',
             amount: 100,
             currency: 'USD',
-            quantity: 2,
+            quantity: 1,
             method: 'credit_card',
             event: req.validatedBody.eventId,
             provider: 'mock_psp',

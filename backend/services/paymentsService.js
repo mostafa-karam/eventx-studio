@@ -97,14 +97,27 @@ const computeWebhookSignature = (payload) => {
 };
 
 class PaymentsService {
-  async createPaymentIntent({ userId, eventId, amount, currency = 'USD', quantity = 1, paymentMethod = 'credit_card' }) {
+  async createPaymentIntent({
+    userId,
+    eventId,
+    amount,
+    currency = 'USD',
+    quantity = 1,
+    paymentMethod = 'credit_card',
+    couponCode,
+  }) {
     if (!eventId) {
       throw Object.assign(new Error('eventId is required'), { status: 400 });
     }
 
     const qty = Number(quantity);
-    if (!Number.isInteger(qty) || qty < 1 || qty > 10) {
-      throw Object.assign(new Error('quantity must be an integer between 1 and 10'), { status: 400 });
+    if (!Number.isInteger(qty) || qty !== 1) {
+      throw Object.assign(
+        new Error(
+          'Payment quantity must be 1. Each checkout covers one ticket; multi-seat purchases require separate attendee accounts or future group checkout support.',
+        ),
+        { status: 400 },
+      );
     }
 
     const event = await Event.findById(eventId).select('status date pricing');
@@ -122,13 +135,27 @@ class PaymentsService {
       throw Object.assign(new Error('No payment is required for this event'), { status: 400 });
     }
 
-    const expectedAmount = Number(event.pricing?.amount || 0) * qty;
+    const expectedCurrency = normalizeCurrency(event.pricing?.currency || 'USD');
+    const trimmedCoupon = String(couponCode || '').trim();
+    let expectedDecimalTotal;
+    if (trimmedCoupon) {
+      try {
+        const ticketsService = require('./ticketsService');
+        const perSeat = await ticketsService.calculateExpectedAmount(event, trimmedCoupon);
+        expectedDecimalTotal = Number(perSeat) * qty;
+      } catch (e) {
+        const err = Object.assign(new Error(e.message || 'Invalid coupon for this event'), { status: e.status || 400 });
+        throw err;
+      }
+    } else {
+      expectedDecimalTotal = Number(event.pricing?.amount || 0) * qty;
+    }
+
     if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
       throw Object.assign(new Error('Valid amount is required'), { status: 400 });
     }
 
-    const expectedCurrency = normalizeCurrency(event.pricing?.currency || 'USD');
-    const expectedMinor = toMinor(expectedAmount, expectedCurrency);
+    const expectedMinor = toMinor(expectedDecimalTotal, expectedCurrency);
     const requestedMinor = toMinor(Number(amount), expectedCurrency);
     if (requestedMinor !== expectedMinor) {
       throw Object.assign(new Error('Payment amount mismatch'), { status: 400 });
@@ -271,9 +298,10 @@ class PaymentsService {
       });
       throw Object.assign(new Error('Invalid payment webhook signature'), { status: 401 });
     }
-    // Only authenticated webhooks may create persistent replay records.
-    await this.ensureUniqueWebhookEvent(payload, req, signatureHeader);
 
+    // Resolve the payment before recording webhook dedupe rows so invalid / terminal
+    // requests cannot create PaymentWebhookEvent documents (reduces abuse surface if
+    // credentials leak and avoids pointless TTL churn).
     const existing = await Payment.findOne({ paymentId: payload.paymentId });
     if (!existing) {
       throw Object.assign(new Error('Payment not found'), { status: 404 });
@@ -289,6 +317,9 @@ class PaymentsService {
       }, 'info');
       throw Object.assign(new Error('Payment already consumed; transition rejected'), { status: 409 });
     }
+
+    // Only authenticated webhooks for known, non-consumed payments may create replay records.
+    await this.ensureUniqueWebhookEvent(payload, req, signatureHeader);
 
     const payloadMinor = toMinor(payload.amount, payload.currency);
     const existingMinor = paymentAmountMinor(existing);

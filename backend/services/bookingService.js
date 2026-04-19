@@ -389,26 +389,46 @@ exports.bookSeat = async ({
  */
 exports.cancelBooking = async (ticketId, userId) => {
   return withTransactionRetry(async (session) => {
-    const ticket = await Ticket.findById(ticketId).session(session);
+    const sess = session ? { session } : {};
+
+    const ticket = await Ticket.findOneAndUpdate(
+      {
+        _id: ticketId,
+        user: userId,
+        status: 'booked',
+        $or: [{ 'checkIn.isCheckedIn': false }, { 'checkIn.isCheckedIn': { $exists: false } }],
+      },
+      { $set: { status: 'cancelled', 'payment.status': 'refunded' } },
+      { ...sess, new: true },
+    );
+
     if (!ticket) {
-      const err = new Error('Ticket not found');
-      err.status = 404;
-      throw err;
-    }
-
-    if (ticket.user.toString() !== userId.toString()) {
-      const err = new Error('Not authorized to cancel this ticket');
-      err.status = 403;
-      throw err;
-    }
-
-    if (ticket.status !== 'booked') {
-      const err = new Error(`Cannot cancel a ticket with status: ${ticket.status}`);
+      const existingQuery = Ticket.findById(ticketId);
+      if (session) existingQuery.session(session);
+      const existing = await existingQuery;
+      if (!existing) {
+        const err = new Error('Ticket not found');
+        err.status = 404;
+        throw err;
+      }
+      if (existing.user.toString() !== userId.toString()) {
+        const err = new Error('Not authorized to cancel this ticket');
+        err.status = 403;
+        throw err;
+      }
+      if (existing.status === 'booked' && existing.checkIn?.isCheckedIn) {
+        const err = new Error('Cannot cancel a ticket that has already been checked in');
+        err.status = 400;
+        throw err;
+      }
+      const err = new Error(`Cannot cancel a ticket with status: ${existing.status}`);
       err.status = 400;
       throw err;
     }
 
-    const event = await Event.findById(ticket.event).session(session);
+    const eventQuery = Event.findById(ticket.event);
+    if (session) eventQuery.session(session);
+    const event = await eventQuery;
     if (!event) {
       const err = new Error('Associated event not found');
       err.status = 404;
@@ -420,7 +440,7 @@ exports.cancelBooking = async (ticketId, userId) => {
     const revenueDec = event.pricing?.type === 'paid' ? (ticket.payment?.amount || 0) : 0;
 
     if (isGA) {
-      await Event.updateOne(
+      const gaRes = await Event.updateOne(
         { _id: ticket.event },
         {
           $inc: {
@@ -429,10 +449,15 @@ exports.cancelBooking = async (ticketId, userId) => {
             'analytics.revenue': -revenueDec,
           },
         },
-        { session }
+        sess
       );
+      if (gaRes.matchedCount === 0) {
+        const err = new Error('Event not found for seat release');
+        err.status = 500;
+        throw err;
+      }
     } else {
-      await Event.updateOne(
+      const seatRes = await Event.updateOne(
         { _id: ticket.event, 'seating.seatMap.seatNumber': seatNumber },
         {
           $set: { 'seating.seatMap.$.isBooked': false, 'seating.seatMap.$.bookedBy': null },
@@ -442,29 +467,28 @@ exports.cancelBooking = async (ticketId, userId) => {
             'analytics.revenue': -revenueDec,
           },
         },
-        { session }
+        sess
       );
+      if (seatRes.matchedCount === 0) {
+        const err = new Error('Seat map entry not found; cannot release seat');
+        err.status = 500;
+        throw err;
+      }
     }
 
-  // Check waitlist — notify next person
-    const nextWaitlist = await Waitlist.findOne({ event: ticket.event, status: 'pending' })
-      .sort({ createdAt: 1 })
-      .session(session);
+    const waitlistQuery = Waitlist.findOne({ event: ticket.event, status: 'pending' })
+      .sort({ createdAt: 1 });
+    if (session) waitlistQuery.session(session);
+    const nextWaitlist = await waitlistQuery;
     let waitlistUserId = null;
     if (nextWaitlist) {
       nextWaitlist.status = 'notified';
       nextWaitlist.notifiedAt = new Date();
       nextWaitlist.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      await nextWaitlist.save({ session });
+      await nextWaitlist.save(sess);
       waitlistUserId = nextWaitlist.user;
     }
 
-  // Update ticket status
-    ticket.status = 'cancelled';
-    if (ticket.payment) ticket.payment.status = 'refunded';
-    await ticket.save({ session });
-
-    // Notify user and waitlisted user outside transaction.
     setImmediate(() => {
       notificationService.notify(userId, {
         title: 'Booking Cancelled',
@@ -484,5 +508,5 @@ exports.cancelBooking = async (ticketId, userId) => {
       }
     });
     return { ticket, event };
-  });
+  }, { allowFallback: process.env.NODE_ENV === 'test' });
 };

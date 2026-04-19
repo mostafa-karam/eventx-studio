@@ -6,7 +6,14 @@ const { logSecurityEvent } = require('../utils/securityLog');
 // @access  Private
 exports.createPayment = async (req, res) => {
     try {
-        const { amount, currency, quantity = 1, paymentMethod = 'credit_card', eventId } = req.validatedBody || req.body || {};
+        const {
+            amount,
+            currency,
+            quantity = 1,
+            paymentMethod = 'credit_card',
+            eventId,
+            couponCode,
+        } = req.validatedBody || req.body || {};
         const payment = await paymentsService.createPaymentIntent({
             userId: req.user._id,
             eventId,
@@ -14,6 +21,7 @@ exports.createPayment = async (req, res) => {
             currency,
             quantity: Number(quantity),
             paymentMethod,
+            couponCode,
         });
 
         return res.status(200).json({

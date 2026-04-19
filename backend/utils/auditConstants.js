@@ -34,6 +34,8 @@ module.exports = {
     TICKET_PURCHASE: 'ticket.purchase',
     TICKET_CANCEL: 'ticket.cancel',
     TICKET_REFUND: 'ticket.refund',
+    TICKET_ORPHAN_ASSIGN: 'ticket.orphan.assign',
+    TICKET_ORPHAN_CANCEL: 'ticket.orphan.cancel',
     BOOKING_INITIATE: 'booking.initiate',
     BOOKING_CONFIRM: 'booking.confirm',
     

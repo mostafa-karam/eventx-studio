@@ -234,4 +234,103 @@ describe('Coupon Endpoints', () => {
         expect(res.body.message).toBe('Validation failed');
         expect(res.body.errors.some((err) => /Amount/.test(err))).toBe(true);
     });
+
+    it('book-multi atomically consumes a single-use coupon (second purchaser rejected)', async () => {
+        const multiEvent = await Event.create({
+            title: 'Coupon Multi Event',
+            description: 'Isolated event for book-multi coupon redemption.',
+            category: 'conference',
+            date: new Date(Date.now() + 86400000),
+            venue: { name: 'V', address: 'A', city: 'C', country: 'UAE', capacity: 50 },
+            organizer: admin._id,
+            seating: { totalSeats: 20, availableSeats: 20, seatMap: [] },
+            // Free admission with a nominal list price so percentage coupons have a non-zero base.
+            pricing: { type: 'free', amount: 100, currency: 'USD' },
+            status: 'published',
+        });
+
+        await Coupon.create({
+            code: 'ONCEMULTI',
+            discountType: 'percentage',
+            discountValue: 50,
+            maxUses: 1,
+            usedCount: 0,
+            createdBy: admin._id,
+            isActive: true,
+            applicableEvents: [multiEvent._id],
+        });
+
+        const user2 = await User.create({
+            name: 'User Two',
+            email: `user_two_multi_${Date.now()}@example.com`,
+            password: 'UniqueTestPass!2026',
+            role: 'user',
+            isActive: true,
+            emailVerified: true,
+        });
+        const user2SessionId = crypto.randomUUID();
+        user2.addSession(user2SessionId, { device: 'Jest', ipAddress: '127.0.0.1' });
+        await user2.save();
+        const user2Token = generateAccessToken(user2._id, user2SessionId);
+
+        const bookMultiWithCoupon = async (authToken) => client.csrfRequest(
+            'post',
+            '/api/tickets/book-multi',
+            {
+                eventId: multiEvent._id,
+                quantity: 1,
+                paymentMethod: 'free',
+                couponCode: 'ONCEMULTI',
+            },
+            { Authorization: `Bearer ${authToken}` },
+        );
+
+        const first = await bookMultiWithCoupon(userToken);
+        expect(first.statusCode).toBe(201);
+
+        const afterFirst = await Coupon.findOne({ code: 'ONCEMULTI' });
+        expect(afterFirst.usedCount).toBe(1);
+
+        const second = await bookMultiWithCoupon(user2Token);
+        expect(second.statusCode).toBe(400);
+        expect(String(second.body.message || '')).toMatch(/exhausted|invalid|limit|Coupon/i);
+    });
+
+    it('allows discounted payment intent when couponCode matches post-coupon minor total', async () => {
+        const paidEv = await Event.create({
+            title: 'Paid Coupon Payment Event',
+            description: 'Paid list price with percentage coupon for payment intent.',
+            category: 'conference',
+            date: new Date(Date.now() + 86400000),
+            venue: { name: 'V', address: 'A', city: 'C', country: 'UAE', capacity: 30 },
+            organizer: admin._id,
+            seating: { totalSeats: 10, availableSeats: 10, seatMap: [] },
+            pricing: { type: 'paid', amount: 100, currency: 'USD' },
+            status: 'published',
+        });
+
+        await Coupon.create({
+            code: 'PAYHALF',
+            discountType: 'percentage',
+            discountValue: 50,
+            maxUses: 10,
+            usedCount: 0,
+            createdBy: admin._id,
+            isActive: true,
+            applicableEvents: [paidEv._id],
+        });
+
+        const paymentRes = await client.csrfRequest('post', '/api/payments/process', {
+            amount: 50,
+            currency: 'USD',
+            quantity: 1,
+            paymentMethod: 'credit_card',
+            eventId: paidEv._id,
+            couponCode: 'PAYHALF',
+        }, { Authorization: `Bearer ${userToken}` });
+
+        expect(paymentRes.statusCode).toBe(200);
+        expect(paymentRes.body.success).toBe(true);
+        expect(paymentRes.body.data.payment.amount).toBe(50);
+    });
 });

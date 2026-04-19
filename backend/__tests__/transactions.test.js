@@ -77,7 +77,7 @@ describe('Transaction enforcement', () => {
       ticketsService.bookMultiSeats({
         eventId: '507f1f77bcf86cd799439011',
         event: { pricing: { type: 'free', currency: 'USD' } },
-        seatsChosen: ['S001', 'S002'],
+        seatsChosen: ['S001'],
         userId: '507f1f77bcf86cd799439012',
         expectedAmount: 10,
         paymentMethod: 'credit_card',

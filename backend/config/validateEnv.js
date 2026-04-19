@@ -59,6 +59,12 @@ const validateEnv = () => {
     );
     process.exit(1);
   }
+
+  if (isProduction && !process.env.REDIS_URL) {
+    logger.warn(
+      'REDIS_URL is not set: rate limiting uses in-memory counters per app instance (not shared across replicas). Set REDIS_URL for consistent distributed limits.',
+    );
+  }
 };
 
 module.exports = validateEnv;

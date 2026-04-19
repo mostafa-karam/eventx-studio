@@ -7,6 +7,7 @@ const { requireHealthyTransactions } = require('../middleware/transactionGuard')
 const {
   bookTicketValidator,
   bookMultiTicketsValidator,
+  assignOrphanTicketValidator,
 } = require('../middleware/validators');
 const ticketsController = require('../controllers/ticketsController');
 
@@ -34,7 +35,7 @@ router.get('/my-tickets', authenticate, ticketsController.getMyTickets);
 router.get('/organizer', authenticate, requireOrganizer, ticketsController.getOrganizerTickets);
 router.get('/admin', authenticate, requireAdmin, ticketsController.getTicketsAdmin);
 router.get('/admin/orphans', authenticate, requireAdmin, ticketsController.getOrphanTickets);
-router.post('/admin/orphans/:id/assign', authenticate, requireAdmin, ticketsController.assignOrphanTicket);
+router.post('/admin/orphans/:id/assign', authenticate, requireAdmin, assignOrphanTicketValidator, ticketsController.assignOrphanTicket);
 router.post('/admin/orphans/:id/cancel', authenticate, requireAdmin, ticketsController.cancelOrphanTicket);
 router.get('/:id', authenticate, ticketsController.getTicketById);
 router.put('/:id/cancel', authenticate, ticketsController.cancelTicket);
