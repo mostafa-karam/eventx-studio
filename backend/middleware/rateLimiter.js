@@ -56,7 +56,6 @@ const compositeRateIdentity = (req) => {
 };
 
 let redisClient = null;
-let redisStore = null;
 let redisUnavailableLogged = false;
 let redisReady = false;
 
@@ -93,14 +92,11 @@ const buildStore = () => {
     });
   }
 
-  if (!redisStore) {
-    redisStore = new RedisStore({
-      sendCommand: (...args) => redisClient.call(...args),
-      prefix: config.security.rateLimit.redisPrefix,
-    });
-  }
-
-  return redisStore;
+  // Create a NEW RedisStore instance for each limiter to avoid store reuse error
+  return new RedisStore({
+    sendCommand: (...args) => redisClient.call(...args),
+    prefix: config.security.rateLimit.redisPrefix,
+  });
 };
 
 const trackSuspiciousPattern = (req, scope) => {
@@ -220,6 +216,9 @@ const createLimiter = ({
   skipFailedRequests = false,
   strictRedis = false,
 }) => {
+  // Build store fresh for each limiter to avoid store reuse error
+  const store = buildStore();
+
   const limiter = rateLimit({
     windowMs,
     max,
@@ -227,7 +226,7 @@ const createLimiter = ({
     legacyHeaders: false,
     skipSuccessfulRequests,
     skipFailedRequests,
-    store: buildStore(),
+    store,
     passOnStoreError: !strictRedis,
     keyGenerator: (req) => {
       const identity = compositeRateIdentity(req);
