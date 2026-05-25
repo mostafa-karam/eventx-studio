@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/analytics:
+ *   get:
+ *     summary: Retrieve analytics overview
+ *     tags: [Analytics]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

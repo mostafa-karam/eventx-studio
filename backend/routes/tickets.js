@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/tickets:
+ *   get:
+ *     summary: Retrieve tickets
+ *     tags: [Tickets]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 
 const { authenticate, requireAdmin, requireOrganizer, requireRole } = require('../middleware/auth');

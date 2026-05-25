@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/payments:
+ *   get:
+ *     summary: Retrieve payments information
+ *     tags: [Payments]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

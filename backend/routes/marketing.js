@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/marketing:
+ *   get:
+ *     summary: Retrieve marketing campaigns
+ *     tags: [Marketing]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

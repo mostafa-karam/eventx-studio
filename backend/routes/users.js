@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Retrieve users
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 
 const { authenticate, requireAdmin } = require('../middleware/auth');

@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/coupons:
+ *   get:
+ *     summary: Retrieve coupons
+ *     tags: [Coupons]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

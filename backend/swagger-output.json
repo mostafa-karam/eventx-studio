@@ -1,0 +1,1659 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EventX Studio API (auto-generated)",
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/analytics/dashboard": {
+      "get": {
+        "summary": "Auto-generated GET /analytics/dashboard",
+        "tags": [
+          "Analytics"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/analytics/attendees": {
+      "get": {
+        "summary": "Auto-generated GET /analytics/attendees",
+        "tags": [
+          "Analytics"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/analytics/events/{eventId}": {
+      "get": {
+        "summary": "Auto-generated GET /analytics/events/{eventId}",
+        "tags": [
+          "Analytics"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/analytics/export": {
+      "get": {
+        "summary": "Auto-generated GET /analytics/export",
+        "tags": [
+          "Analytics"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/analytics/attendee-insights": {
+      "get": {
+        "summary": "Auto-generated GET /analytics/attendee-insights",
+        "tags": [
+          "Analytics"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/analytics/all-attendee-insights": {
+      "get": {
+        "summary": "Auto-generated GET /analytics/all-attendee-insights",
+        "tags": [
+          "Analytics"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/analytics/reports": {
+      "get": {
+        "summary": "Auto-generated GET /analytics/reports",
+        "tags": [
+          "Analytics"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/analytics/reports/generate": {
+      "post": {
+        "summary": "Auto-generated POST /analytics/reports/generate",
+        "tags": [
+          "Analytics"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/analytics/reports/{id}/download": {
+      "get": {
+        "summary": "Auto-generated GET /analytics/reports/{id}/download",
+        "tags": [
+          "Analytics"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/audit-log": {
+      "get": {
+        "summary": "Auto-generated GET /audit-log",
+        "tags": [
+          "Audit Log"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Auto-generated POST /auth/register",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Auto-generated POST /auth/login",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Auto-generated POST /auth/refresh",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Auto-generated GET /auth/me",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Auto-generated POST /auth/logout",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/profile": {
+      "put": {
+        "summary": "Auto-generated PUT /auth/profile",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "put": {
+        "summary": "Auto-generated PUT /auth/change-password",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "summary": "Auto-generated POST /auth/verify-email",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/resend-verification": {
+      "post": {
+        "summary": "Auto-generated POST /auth/resend-verification",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "summary": "Auto-generated POST /auth/forgot-password",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "summary": "Auto-generated POST /auth/reset-password",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/2fa/setup": {
+      "post": {
+        "summary": "Auto-generated POST /auth/2fa/setup",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/2fa/enable": {
+      "post": {
+        "summary": "Auto-generated POST /auth/2fa/enable",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/2fa": {
+      "delete": {
+        "summary": "Auto-generated DELETE /auth/2fa",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/sessions": {
+      "get": {
+        "summary": "Auto-generated GET /auth/sessions",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Auto-generated DELETE /auth/sessions",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/sessions/{sessionId}": {
+      "delete": {
+        "summary": "Auto-generated DELETE /auth/sessions/{sessionId}",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/users": {
+      "get": {
+        "summary": "Auto-generated GET /auth/users",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/role-upgrade": {
+      "post": {
+        "summary": "Auto-generated POST /auth/role-upgrade",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/role-upgrade-requests": {
+      "get": {
+        "summary": "Auto-generated GET /auth/role-upgrade-requests",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/role-upgrade-requests/{userId}": {
+      "put": {
+        "summary": "Auto-generated PUT /auth/role-upgrade-requests/{userId}",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/account": {
+      "delete": {
+        "summary": "Auto-generated DELETE /auth/account",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/booking/initiate": {
+      "post": {
+        "summary": "Auto-generated POST /booking/initiate",
+        "tags": [
+          "Booking"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/booking/confirm": {
+      "post": {
+        "summary": "Auto-generated POST /booking/confirm",
+        "tags": [
+          "Booking"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "summary": "Auto-generated GET /categories",
+        "tags": [
+          "Categories"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Auto-generated POST /categories",
+        "tags": [
+          "Categories"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/categories/stats/overview": {
+      "get": {
+        "summary": "Auto-generated GET /categories/stats/overview",
+        "tags": [
+          "Categories"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/categories/{id}": {
+      "get": {
+        "summary": "Auto-generated GET /categories/{id}",
+        "tags": [
+          "Categories"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "summary": "Auto-generated PUT /categories/{id}",
+        "tags": [
+          "Categories"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Auto-generated DELETE /categories/{id}",
+        "tags": [
+          "Categories"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/coupons/validate": {
+      "post": {
+        "summary": "Auto-generated POST /coupons/validate",
+        "tags": [
+          "Coupons"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/coupons": {
+      "get": {
+        "summary": "Auto-generated GET /coupons",
+        "tags": [
+          "Coupons"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Auto-generated POST /coupons",
+        "tags": [
+          "Coupons"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/coupons/{id}": {
+      "put": {
+        "summary": "Auto-generated PUT /coupons/{id}",
+        "tags": [
+          "Coupons"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Auto-generated DELETE /coupons/{id}",
+        "tags": [
+          "Coupons"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events": {
+      "get": {
+        "summary": "Auto-generated GET /events",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Auto-generated POST /events",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/admin/my-events": {
+      "get": {
+        "summary": "Auto-generated GET /events/admin/my-events",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/{id}": {
+      "get": {
+        "summary": "Auto-generated GET /events/{id}",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "summary": "Auto-generated PUT /events/{id}",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Auto-generated DELETE /events/{id}",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/{id}/clone": {
+      "post": {
+        "summary": "Auto-generated POST /events/{id}/clone",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/{id}/seats": {
+      "get": {
+        "summary": "Auto-generated GET /events/{id}/seats",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/waitlists/my": {
+      "get": {
+        "summary": "Auto-generated GET /events/waitlists/my",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/{id}/waitlist": {
+      "post": {
+        "summary": "Auto-generated POST /events/{id}/waitlist",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "summary": "Auto-generated GET /events/{id}/waitlist",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/{id}/waitlist/{waitlistId}/approve": {
+      "post": {
+        "summary": "Auto-generated POST /events/{id}/waitlist/{waitlistId}/approve",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/{id}/attendees/export": {
+      "get": {
+        "summary": "Auto-generated GET /events/{id}/attendees/export",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/{id}/publish": {
+      "post": {
+        "summary": "Auto-generated POST /events/{id}/publish",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/{id}/cancel": {
+      "post": {
+        "summary": "Auto-generated POST /events/{id}/cancel",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/hall-bookings": {
+      "get": {
+        "summary": "Auto-generated GET /hall-bookings",
+        "tags": [
+          "Hall Bookings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Auto-generated POST /hall-bookings",
+        "tags": [
+          "Hall Bookings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/hall-bookings/my": {
+      "get": {
+        "summary": "Auto-generated GET /hall-bookings/my",
+        "tags": [
+          "Hall Bookings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/hall-bookings/maintenance": {
+      "post": {
+        "summary": "Auto-generated POST /hall-bookings/maintenance",
+        "tags": [
+          "Hall Bookings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/hall-bookings/{id}/approve": {
+      "put": {
+        "summary": "Auto-generated PUT /hall-bookings/{id}/approve",
+        "tags": [
+          "Hall Bookings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/hall-bookings/{id}/reject": {
+      "put": {
+        "summary": "Auto-generated PUT /hall-bookings/{id}/reject",
+        "tags": [
+          "Hall Bookings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/hall-bookings/{id}": {
+      "delete": {
+        "summary": "Auto-generated DELETE /hall-bookings/{id}",
+        "tags": [
+          "Hall Bookings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/halls": {
+      "get": {
+        "summary": "Auto-generated GET /halls",
+        "tags": [
+          "Halls"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Auto-generated POST /halls",
+        "tags": [
+          "Halls"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/halls/{id}": {
+      "get": {
+        "summary": "Auto-generated GET /halls/{id}",
+        "tags": [
+          "Halls"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "summary": "Auto-generated PUT /halls/{id}",
+        "tags": [
+          "Halls"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Auto-generated DELETE /halls/{id}",
+        "tags": [
+          "Halls"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/halls/{id}/availability": {
+      "get": {
+        "summary": "Auto-generated GET /halls/{id}/availability",
+        "tags": [
+          "Halls"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/marketing/campaigns": {
+      "get": {
+        "summary": "Auto-generated GET /marketing/campaigns",
+        "tags": [
+          "Marketing"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Auto-generated POST /marketing/campaigns",
+        "tags": [
+          "Marketing"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/marketing/campaigns/{id}": {
+      "get": {
+        "summary": "Auto-generated GET /marketing/campaigns/{id}",
+        "tags": [
+          "Marketing"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "summary": "Auto-generated PUT /marketing/campaigns/{id}",
+        "tags": [
+          "Marketing"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Auto-generated DELETE /marketing/campaigns/{id}",
+        "tags": [
+          "Marketing"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/marketing/campaigns/{id}/launch": {
+      "post": {
+        "summary": "Auto-generated POST /marketing/campaigns/{id}/launch",
+        "tags": [
+          "Marketing"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "summary": "Auto-generated GET /notifications",
+        "tags": [
+          "Notifications"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Auto-generated POST /notifications",
+        "tags": [
+          "Notifications"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "summary": "Auto-generated PATCH /notifications/{id}/read",
+        "tags": [
+          "Notifications"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/notifications/mark-all-read": {
+      "patch": {
+        "summary": "Auto-generated PATCH /notifications/mark-all-read",
+        "tags": [
+          "Notifications"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/notifications/{id}": {
+      "delete": {
+        "summary": "Auto-generated DELETE /notifications/{id}",
+        "tags": [
+          "Notifications"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/notifications/send-booking-confirmation": {
+      "post": {
+        "summary": "Auto-generated POST /notifications/send-booking-confirmation",
+        "tags": [
+          "Notifications"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/payments/process": {
+      "post": {
+        "summary": "Auto-generated POST /payments/process",
+        "tags": [
+          "Payments"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/payments/webhook/verify": {
+      "post": {
+        "summary": "Auto-generated POST /payments/webhook/verify",
+        "tags": [
+          "Payments"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/public/events": {
+      "get": {
+        "summary": "Auto-generated GET /public/events",
+        "tags": [
+          "Public"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/public/events/{id}": {
+      "get": {
+        "summary": "Auto-generated GET /public/events/{id}",
+        "tags": [
+          "Public"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/public/halls": {
+      "get": {
+        "summary": "Auto-generated GET /public/halls",
+        "tags": [
+          "Public"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/public/halls/{id}": {
+      "get": {
+        "summary": "Auto-generated GET /public/halls/{id}",
+        "tags": [
+          "Public"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/{eventId}/reviews": {
+      "get": {
+        "summary": "Auto-generated GET /events/{eventId}/reviews",
+        "tags": [
+          "Reviews"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Auto-generated POST /events/{eventId}/reviews",
+        "tags": [
+          "Reviews"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/{eventId}/reviews/{reviewId}": {
+      "put": {
+        "summary": "Auto-generated PUT /events/{eventId}/reviews/{reviewId}",
+        "tags": [
+          "Reviews"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Auto-generated DELETE /events/{eventId}/reviews/{reviewId}",
+        "tags": [
+          "Reviews"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/events/{eventId}/reviews/{reviewId}/reply": {
+      "patch": {
+        "summary": "Auto-generated PATCH /events/{eventId}/reviews/{reviewId}/reply",
+        "tags": [
+          "Reviews"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "summary": "Auto-generated GET /search",
+        "tags": [
+          "Search"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/support/tickets": {
+      "get": {
+        "summary": "Auto-generated GET /support/tickets",
+        "tags": [
+          "Support"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Auto-generated POST /support/tickets",
+        "tags": [
+          "Support"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/support/tickets/{id}": {
+      "get": {
+        "summary": "Auto-generated GET /support/tickets/{id}",
+        "tags": [
+          "Support"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/support/tickets/{id}/responses": {
+      "post": {
+        "summary": "Auto-generated POST /support/tickets/{id}/responses",
+        "tags": [
+          "Support"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/support/tickets/{id}/status": {
+      "patch": {
+        "summary": "Auto-generated PATCH /support/tickets/{id}/status",
+        "tags": [
+          "Support"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/book": {
+      "post": {
+        "summary": "Auto-generated POST /tickets/book",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/book-multi": {
+      "post": {
+        "summary": "Auto-generated POST /tickets/book-multi",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/my-tickets": {
+      "get": {
+        "summary": "Auto-generated GET /tickets/my-tickets",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/organizer": {
+      "get": {
+        "summary": "Auto-generated GET /tickets/organizer",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/admin": {
+      "get": {
+        "summary": "Auto-generated GET /tickets/admin",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/admin/orphans": {
+      "get": {
+        "summary": "Auto-generated GET /tickets/admin/orphans",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/admin/orphans/{id}/assign": {
+      "post": {
+        "summary": "Auto-generated POST /tickets/admin/orphans/{id}/assign",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/admin/orphans/{id}/cancel": {
+      "post": {
+        "summary": "Auto-generated POST /tickets/admin/orphans/{id}/cancel",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/{id}": {
+      "get": {
+        "summary": "Auto-generated GET /tickets/{id}",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/{id}/cancel": {
+      "put": {
+        "summary": "Auto-generated PUT /tickets/{id}/cancel",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/{id}/checkin": {
+      "post": {
+        "summary": "Auto-generated POST /tickets/{id}/checkin",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/event/{eventId}": {
+      "get": {
+        "summary": "Auto-generated GET /tickets/event/{eventId}",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/lookup-qr": {
+      "post": {
+        "summary": "Auto-generated POST /tickets/lookup-qr",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/tickets/{id}/refund": {
+      "put": {
+        "summary": "Auto-generated PUT /tickets/{id}/refund",
+        "tags": [
+          "Tickets"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/upload": {
+      "post": {
+        "summary": "Auto-generated POST /upload",
+        "tags": [
+          "Upload"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/upload/files/{filename}": {
+      "get": {
+        "summary": "Auto-generated GET /upload/files/{filename}",
+        "tags": [
+          "Upload"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/users/profile/me": {
+      "get": {
+        "summary": "Auto-generated GET /users/profile/me",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "summary": "Auto-generated PUT /users/profile/me",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/users/organizer/{id}": {
+      "get": {
+        "summary": "Auto-generated GET /users/organizer/{id}",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "summary": "Auto-generated GET /users",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "summary": "Auto-generated GET /users/{id}",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "summary": "Auto-generated PUT /users/{id}",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Auto-generated DELETE /users/{id}",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/users/{id}/status": {
+      "put": {
+        "summary": "Auto-generated PUT /users/{id}/status",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {},
+  "tags": [
+    {
+      "name": "Analytics"
+    },
+    {
+      "name": "Audit Log"
+    },
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Booking"
+    },
+    {
+      "name": "Categories"
+    },
+    {
+      "name": "Coupons"
+    },
+    {
+      "name": "Events"
+    },
+    {
+      "name": "Hall Bookings"
+    },
+    {
+      "name": "Halls"
+    },
+    {
+      "name": "Marketing"
+    },
+    {
+      "name": "Notifications"
+    },
+    {
+      "name": "Payments"
+    },
+    {
+      "name": "Public"
+    },
+    {
+      "name": "Reviews"
+    },
+    {
+      "name": "Search"
+    },
+    {
+      "name": "Support"
+    },
+    {
+      "name": "Tickets"
+    },
+    {
+      "name": "Upload"
+    },
+    {
+      "name": "Users"
+    }
+  ]
+}

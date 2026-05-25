@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/search:
+ *   get:
+ *     summary: Search across events and tickets
+ *     tags: [Search]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

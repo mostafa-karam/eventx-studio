@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/notifications:
+ *   get:
+ *     summary: Retrieve notifications
+ *     tags: [Notifications]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

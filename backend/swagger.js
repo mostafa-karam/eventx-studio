@@ -59,7 +59,21 @@ const options = {
             { name: 'Auth', description: 'Authentication & Session Management' },
             { name: 'Events', description: 'Event creation and discovery' },
             { name: 'Booking', description: 'Ticket booking life-cycle' },
-            { name: 'Analytics', description: 'Business intelligence and reporting' }
+            { name: 'Analytics', description: 'Business intelligence and reporting' },
+            { name: 'Users', description: 'User management and profiles' },
+            { name: 'Tickets', description: 'Ticket operations and lifecycle' },
+            { name: 'Payments', description: 'Payment processing and webhooks' },
+            { name: 'Notifications', description: 'Push and email notifications' },
+            { name: 'Marketing', description: 'Promotions and marketing tools' },
+            { name: 'Categories', description: 'Event categories and taxonomy' },
+            { name: 'Halls', description: 'Venue and hall management' },
+            { name: 'HallBookings', description: 'Hall booking lifecycle' },
+            { name: 'Search', description: 'Search endpoints' },
+            { name: 'Support', description: 'Support ticketing and helpdesk' },
+            { name: 'Upload', description: 'File upload endpoints' },
+            { name: 'Coupons', description: 'Coupon management' },
+            { name: 'AuditLog', description: 'Audit and logging endpoints' },
+            { name: 'Reviews', description: 'Event reviews and ratings' }
         ]
     },
     apis: ['./routes/*.js'], // Path to the file with API annotations

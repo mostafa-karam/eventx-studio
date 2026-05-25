@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/booking:
+ *   get:
+ *     summary: Retrieve bookings list
+ *     tags: [Booking]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

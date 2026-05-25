@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/hall-bookings:
+ *   get:
+ *     summary: Retrieve hall bookings
+ *     tags: [HallBookings]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

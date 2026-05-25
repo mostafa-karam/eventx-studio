@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/public:
+ *   get:
+ *     summary: Public endpoints (no auth)
+ *     tags: [Public]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

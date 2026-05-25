@@ -1,3 +1,19 @@
+/**
+ * @swagger
+ * /api/events/{eventId}/reviews:
+ *   get:
+ *     summary: Retrieve reviews for an event
+ *     tags: [Reviews]
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

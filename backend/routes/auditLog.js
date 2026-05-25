@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/audit-log:
+ *   get:
+ *     summary: Retrieve audit log entries
+ *     tags: [AuditLog]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

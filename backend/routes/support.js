@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/support:
+ *   get:
+ *     summary: Support ticket endpoints
+ *     tags: [Support]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 

@@ -1,3 +1,13 @@
+/**
+ * @swagger
+ * /api/halls:
+ *   get:
+ *     summary: Retrieve halls and venues
+ *     tags: [Halls]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 
