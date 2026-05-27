@@ -66,9 +66,13 @@ const AdvancedAnalytics = () => {
   const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
 
   const GlassCard = ({ children, className = '' }) => (
-    <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
+    <div className={`bg-white dark:bg-card border border-gray-200 dark:border-border shadow-sm rounded-2xl overflow-hidden ${className}`}>
         {children}
     </div>
+  );
+
+  const LoadingBlock = ({ className = '', ...props }) => (
+    <div className={`animate-pulse rounded-lg bg-slate-200/90 dark:bg-slate-700/80 ${className}`} {...props} />
   );
 
   // eslint-disable-next-line no-unused-vars
@@ -119,12 +123,12 @@ const AdvancedAnalytics = () => {
   const CustomTooltip = ({ active, payload, label, prefix = '' }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white/90 backdrop-blur-md border border-gray-100 p-4 rounded-xl shadow-xl">
-          <p className="text-sm font-bold text-gray-800 mb-2">{label}</p>
+        <div className="bg-white/90 dark:bg-popover backdrop-blur-md border border-gray-100 dark:border-border p-4 rounded-xl shadow-xl">
+          <p className="text-sm font-bold text-gray-800 dark:text-foreground mb-2">{label}</p>
           {payload.map((entry, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm font-semibold text-gray-600">
+            <div key={index} className="flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-muted-foreground">
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color || entry.fill }} />
-              {entry.name}: <span className="text-gray-900 ml-1">{prefix}{entry.value}</span>
+              {entry.name}: <span className="text-gray-900 dark:text-foreground ml-1">{prefix}{entry.value}</span>
             </div>
           ))}
         </div>
@@ -135,21 +139,62 @@ const AdvancedAnalytics = () => {
 
   if (loading && !analytics) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
-        <div className="animate-pulse space-y-6">
-          <div className="flex justify-between items-end">
-            <div>
-              <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded w-48"></div>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full" aria-busy="true" aria-label="Loading analytics">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="space-y-3">
+            <LoadingBlock className="h-8 w-64" />
+            <LoadingBlock className="h-4 w-80 max-w-full" />
+          </div>
+          <div className="flex items-center gap-3">
+            <LoadingBlock className="h-10 w-36 rounded-xl" />
+            <LoadingBlock className="h-10 w-28 rounded-xl" />
+            <LoadingBlock className="h-10 w-28 rounded-xl" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-card p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-3 flex-1">
+                  <LoadingBlock className="h-3 w-28" />
+                  <LoadingBlock className="h-8 w-32" />
+                </div>
+                <LoadingBlock className="h-11 w-11 rounded-xl" />
+              </div>
+              <div className="mt-6 flex items-center gap-2">
+                <LoadingBlock className="h-6 w-16 rounded-md" />
+                <LoadingBlock className="h-3 w-24" />
+              </div>
             </div>
-            <div className="h-10 bg-gray-200 rounded w-48"></div>
+          ))}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-card shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-700">
+            <div className="flex gap-2 overflow-hidden">
+              {[160, 120, 150, 170].map((width, i) => (
+                <LoadingBlock key={i} className="h-10 rounded-xl shrink-0" style={{ width }} />
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded-2xl blur-sm opacity-50"></div>
-            ))}
+          <div className="p-5 sm:p-6 bg-slate-50/60 dark:bg-slate-900/30">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-card p-6 shadow-sm">
+                  <div className="mb-6 flex items-center gap-3">
+                    <LoadingBlock className="h-9 w-9 rounded-lg" />
+                    <LoadingBlock className="h-5 w-44" />
+                  </div>
+                  <div className="h-[300px] flex items-end gap-3">
+                    {[54, 72, 46, 82, 62, 88, 58].map((height, index) => (
+                      <LoadingBlock key={index} className="flex-1 rounded-t-lg" style={{ height: `${height}%` }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="h-96 bg-gray-200 rounded-2xl blur-sm opacity-50"></div>
         </div>
       </div>
     );
@@ -285,9 +330,9 @@ const AdvancedAnalytics = () => {
                             <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dx={-10} tickFormatter={(val) => `$${val}`} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dx={-10} tickFormatter={(val) => `$${val}`} />
                         <Tooltip content={<CustomTooltip prefix="$" />} />
                         <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
                       </AreaChart>
@@ -307,9 +352,9 @@ const AdvancedAnalytics = () => {
                   <div className="flex-1 min-h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={safeRevenueData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dx={-10} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dx={-10} />
                         <Tooltip content={<CustomTooltip />} />
                         <Line type="monotone" dataKey="tickets" name="Tickets Sold" stroke="#10B981" strokeWidth={4} dot={{ fill: '#10B981', strokeWidth: 2, r: 4, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
                       </LineChart>
@@ -411,10 +456,10 @@ const AdvancedAnalytics = () => {
                             <stop offset="100%" stopColor="#3B82F6" stopOpacity={0.9}/>
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                        <XAxis dataKey="age" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} dx={-10} />
-                        <Tooltip content={<CustomTooltip />} cursor={{fill: '#f3f4f6'}} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                        <XAxis dataKey="age" axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dx={-10} />
+                        <Tooltip content={<CustomTooltip />} cursor={{fill: 'var(--muted)'}} />
                         <Bar dataKey="count" name="Users" fill="url(#colorBar)" radius={[6, 6, 0, 0]} barSize={40} />
                       </BarChart>
                     </ResponsiveContainer>

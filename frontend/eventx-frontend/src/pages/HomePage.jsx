@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, BarChart3, Megaphone, Ticket, ShieldCheck, Sparkles, Star, ArrowRight, Users, Globe, Zap, TrendingUp, Menu, X } from 'lucide-react';
+import { CalendarDays, BarChart3, Megaphone, Ticket, ShieldCheck, Sparkles, Star, ArrowRight, Users, Globe, Zap, TrendingUp, Menu, X, Moon, Sun } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const HomePage = () => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [animatedStats, setAnimatedStats] = useState({ tickets: 0, rating: 0, uplift: 0 });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const testimonials = [
     {
@@ -75,41 +77,49 @@ const HomePage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="public-home min-h-screen bg-gray-50 dark:bg-background text-gray-900 dark:text-foreground">
       {/* Top Nav */}
-      <header className="sticky top-0 z-30 bg-white border-b">
+      <header className="sticky top-0 z-30 bg-white/90 dark:bg-background/90 border-b border-gray-200 dark:border-border backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-blue-600 text-white grid place-items-center font-bold shadow-sm">EX</div>
             <span className="text-lg sm:text-xl font-semibold text-gray-900">EventX Studio</span>
           </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm text-gray-700">
-            <Link to="/events" className="hover:text-gray-900">Events</Link>
-            <Link to="/halls" className="hover:text-gray-900">Halls</Link>
-            <Link to="/calendar" className="hover:text-gray-900">Calendar</Link>
-            <a href="#features" className="hover:text-gray-900">Features</a>
-            <Link to="/about" className="hover:text-gray-900">About</Link>
-            <Link to="/contact" className="hover:text-gray-900">Contact</Link>
+          <nav className="hidden md:flex items-center gap-6 text-sm text-gray-700 dark:text-muted-foreground">
+            <Link to="/events" className="hover:text-gray-900 dark:hover:text-foreground">Events</Link>
+            <Link to="/halls" className="hover:text-gray-900 dark:hover:text-foreground">Halls</Link>
+            <Link to="/calendar" className="hover:text-gray-900 dark:hover:text-foreground">Calendar</Link>
+            <a href="#features" className="hover:text-gray-900 dark:hover:text-foreground">Features</a>
+            <Link to="/about" className="hover:text-gray-900 dark:hover:text-foreground">About</Link>
+            <Link to="/contact" className="hover:text-gray-900 dark:hover:text-foreground">Contact</Link>
           </nav>
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg border border-gray-200 dark:border-border text-gray-600 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground hover:bg-gray-100 dark:hover:bg-accent transition-colors"
+              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
             <Link to="/auth" className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 shadow flex items-center justify-center">Get started</Link>
             {/* Mobile hamburger */}
-            <button onClick={() => setMobileMenuOpen(v => !v)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Toggle menu">
+            <button onClick={() => setMobileMenuOpen(v => !v)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-accent transition-colors" aria-label="Toggle menu">
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
         {/* Mobile drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t bg-white px-6 py-4 space-y-3 text-sm text-gray-700 shadow-lg">
-            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">Events</Link>
-            <Link to="/halls" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">Halls</Link>
-            <Link to="/calendar" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">Calendar</Link>
-            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">Features</a>
-            <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">About</Link>
-            <Link to="/contact" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">Contact</Link>
-            <Link to="/faq" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600">FAQ</Link>
-            <div className="pt-2 border-t flex gap-3">
+          <div className="md:hidden border-t border-gray-200 dark:border-border bg-white dark:bg-card px-6 py-4 space-y-3 text-sm text-gray-700 dark:text-muted-foreground shadow-lg">
+            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600 dark:hover:text-blue-300">Events</Link>
+            <Link to="/halls" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600 dark:hover:text-blue-300">Halls</Link>
+            <Link to="/calendar" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600 dark:hover:text-blue-300">Calendar</Link>
+            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600 dark:hover:text-blue-300">Features</a>
+            <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600 dark:hover:text-blue-300">About</Link>
+            <Link to="/contact" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600 dark:hover:text-blue-300">Contact</Link>
+            <Link to="/faq" onClick={() => setMobileMenuOpen(false)} className="block py-2 hover:text-blue-600 dark:hover:text-blue-300">FAQ</Link>
+            <div className="pt-2 border-t border-gray-200 dark:border-border flex gap-3">
               <Link to="/auth" className="flex-1 text-center py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">Get started</Link>
             </div>
           </div>
@@ -135,7 +145,7 @@ const HomePage = () => {
                 Create your account
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <a href="#features" className="px-6 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">Learn more</a>
+              <a href="#features" className="px-6 py-3 rounded-lg border border-gray-300 dark:border-border text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-accent hover:border-gray-400 dark:hover:border-ring transition-all duration-200">Learn more</a>
             </div>
             <div className="mt-8 grid grid-cols-3 gap-4 text-sm text-gray-600">
               <div className="flex items-center gap-2 hover:text-emerald-600 transition-colors"><ShieldCheck className="h-4 w-4 text-emerald-600" /> Secure auth</div>

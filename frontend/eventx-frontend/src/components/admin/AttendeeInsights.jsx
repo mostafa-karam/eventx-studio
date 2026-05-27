@@ -96,7 +96,7 @@ const AttendeeInsights = () => {
   };
 
   const GlassCard = ({ children, className = '' }) => (
-    <div className={`bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-0.5 relative ${className}`}>
+    <div className={`bg-white/80 dark:bg-card backdrop-blur-xl border border-white/40 dark:border-border shadow-xl shadow-gray-200/50 dark:shadow-black/30 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-0.5 relative ${className}`}>
       {children}
     </div>
   );
@@ -181,12 +181,12 @@ const AttendeeInsights = () => {
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white/90 backdrop-blur-md border border-gray-100 p-3 rounded-xl shadow-xl">
-          <p className="font-semibold text-gray-800 mb-1">{label}</p>
+        <div className="bg-white/90 dark:bg-popover backdrop-blur-md border border-gray-100 dark:border-border p-3 rounded-xl shadow-xl">
+          <p className="font-semibold text-gray-800 dark:text-foreground mb-1">{label}</p>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].fill || payload[0].stroke || '#6366f1' }}></div>
-            <p className="text-gray-600">
-              <span className="font-bold text-gray-900">{payload[0].value.toLocaleString()}</span> attendees
+            <p className="text-gray-600 dark:text-muted-foreground">
+              <span className="font-bold text-gray-900 dark:text-foreground">{payload[0].value.toLocaleString()}</span> attendees
             </p>
           </div>
         </div>
@@ -382,10 +382,10 @@ const AttendeeInsights = () => {
                 computedLocations && computedLocations.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart layout="vertical" data={computedLocations.slice(0, 7).map(l => ({ city: l.city || l.country || l.location, count: l.count }))} margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-                      <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} />
-                      <YAxis type="category" dataKey="city" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 12, fontWeight: 700 }} width={110} />
-                      <RechartsTooltip cursor={{ fill: '#f8fafc' }} content={<CustomTooltip />} />
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
+                      <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12, fontWeight: 500 }} />
+                      <YAxis type="category" dataKey="city" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12, fontWeight: 700 }} width={110} />
+                      <RechartsTooltip cursor={{ fill: 'var(--muted)' }} content={<CustomTooltip />} />
                       <Bar dataKey="count" fill="#4f46e5" radius={[0, 8, 8, 0]} barSize={24}>
                         {computedLocations.slice(0, 7).map((_, idx) => (
                           <Cell key={`cell-${idx}`} fill={idx === 0 ? '#4f46e5' : '#818cf8'} />
@@ -410,9 +410,9 @@ const AttendeeInsights = () => {
                           <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} dx={-10} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12, fontWeight: 500 }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12, fontWeight: 500 }} dx={-10} />
                       <RechartsTooltip content={<CustomTooltip />} />
                       <Area type="monotone" dataKey="registrations" stroke="#3B82F6" fillOpacity={1} fill="url(#colorReg)" strokeWidth={3} />
                     </AreaChart>

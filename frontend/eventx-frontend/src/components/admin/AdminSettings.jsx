@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { Alert, AlertDescription } from '../ui/alert';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Settings, User, Lock, Shield, CheckCircle2, AlertCircle, Phone, Mail, KeyRound, Smartphone, Bell, Eye } from 'lucide-react';
 
 const AdminSettings = () => {
     const { user, setUser } = useAuth();
+    const { isDarkMode, toggleTheme } = useTheme();
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    const [activeSection, setActiveSection] = useState('profile');
 
     // Profile state
     const [name, setName] = useState(user?.name || '');
@@ -19,6 +23,36 @@ const AdminSettings = () => {
     const [newPassword, setNewPassword] = useState('');
     const [changingPwd, setChangingPwd] = useState(false);
     const [pwdMsg, setPwdMsg] = useState('');
+
+    const settingsSections = [
+        { id: 'profile', label: 'Profile Settings', icon: User },
+        { id: 'security', label: 'Security & Password', icon: Shield },
+        { id: 'notifications', label: 'Notifications', icon: Bell },
+        { id: 'appearance', label: 'Appearance', icon: Eye },
+    ];
+
+    const handleSectionClick = (sectionId) => {
+        setActiveSection(sectionId);
+        const section = document.getElementById(`settings-${sectionId}`);
+        const scrollContainer = section?.closest('main');
+
+        if (!section || !scrollContainer) return;
+
+        const sectionTop = section.getBoundingClientRect().top;
+        const containerTop = scrollContainer.getBoundingClientRect().top;
+        scrollContainer.scrollTo({
+            top: scrollContainer.scrollTop + sectionTop - containerTop - 24,
+            behavior: 'smooth',
+        });
+    };
+
+    const getSectionButtonClass = (sectionId) => (
+        `flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${
+            activeSection === sectionId
+                ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200 font-bold'
+                : 'text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-accent hover:text-gray-900 dark:hover:text-foreground font-semibold'
+        }`
+    );
 
     const handleSaveProfile = async (e) => {
         e.preventDefault();
@@ -69,8 +103,8 @@ const AdminSettings = () => {
         }
     };
 
-    const GlassCard = ({ children, className = '' }) => (
-        <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
+    const GlassCard = ({ children, className = '', id }) => (
+        <div id={id} className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
             {children}
         </div>
     );
@@ -104,21 +138,20 @@ const AdminSettings = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Sidebar Menu (Visual Only for now, but provides structure) */}
+                {/* Left Sidebar Menu */}
                 <div className="hidden lg:flex flex-col gap-2">
                     <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-1 sticky top-8">
-                        <button className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 text-blue-700 font-bold text-left transition-colors">
-                            <User className="w-5 h-5" /> Profile Settings
-                        </button>
-                        <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 font-semibold text-left transition-colors">
-                            <Shield className="w-5 h-5" /> Security & Password
-                        </button>
-                        <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 font-semibold text-left transition-colors">
-                            <Bell className="w-5 h-5" /> Notifications
-                        </button>
-                        <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 font-semibold text-left transition-colors">
-                            <Eye className="w-5 h-5" /> Appearance
-                        </button>
+                        {settingsSections.map(({ id, label, icon: Icon }) => (
+                            <button
+                                key={id}
+                                type="button"
+                                className={getSectionButtonClass(id)}
+                                onClick={() => handleSectionClick(id)}
+                                aria-current={activeSection === id ? 'true' : undefined}
+                            >
+                                {React.createElement(Icon, { className: 'w-5 h-5' })} {label}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
@@ -126,7 +159,7 @@ const AdminSettings = () => {
                 <div className="lg:col-span-2 space-y-8">
                     
                     {/* Profile Section */}
-                    <GlassCard className="flex flex-col">
+                    <GlassCard id="settings-profile" className="flex flex-col scroll-mt-24">
                         <div className="px-6 py-5 border-b border-gray-100 bg-white/50">
                             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                 <User className="w-5 h-5 text-blue-600" /> Personal Information
@@ -216,7 +249,7 @@ const AdminSettings = () => {
                     </GlassCard>
 
                     {/* Security Section */}
-                    <GlassCard className="flex flex-col">
+                    <GlassCard id="settings-security" className="flex flex-col scroll-mt-24">
                         <div className="px-6 py-5 border-b border-gray-100 bg-white/50">
                             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                 <Shield className="w-5 h-5 text-indigo-600" /> Security & Passwords
@@ -281,7 +314,7 @@ const AdminSettings = () => {
                     </GlassCard>
 
                     {/* Email/Push Notification Settings (UI mockup to look more premium) */}
-                    <GlassCard className="flex flex-col">
+                    <GlassCard id="settings-notifications" className="flex flex-col scroll-mt-24">
                         <div className="px-6 py-5 border-b border-gray-100 bg-white/50">
                             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                 <Smartphone className="w-5 h-5 text-emerald-600" /> Communication Preferences
@@ -305,6 +338,56 @@ const AdminSettings = () => {
                                     description="A summary of ticket sales, revenue, and active events sent every Monday."
                                     defaultChecked={false}
                                 />
+                            </div>
+                        </div>
+                    </GlassCard>
+
+                    {/* Appearance Section */}
+                    <GlassCard id="settings-appearance" className="flex flex-col scroll-mt-24">
+                        <div className="px-6 py-5 border-b border-gray-100 bg-white/50">
+                            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <Eye className="w-5 h-5 text-violet-600" /> Appearance
+                            </h2>
+                            <p className="text-sm text-gray-500 mt-1">Choose how the admin workspace looks on this device.</p>
+                        </div>
+                        <div className="p-6 space-y-5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border border-gray-100 rounded-xl">
+                                <div>
+                                    <p className="font-bold text-gray-900">Theme</p>
+                                    <p className="text-sm text-gray-500 mt-0.5">Switch between light and dark interface modes.</p>
+                                </div>
+                                <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => isDarkMode && toggleTheme()}
+                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${!isDarkMode ? 'bg-white dark:bg-blue-500/15 text-blue-700 dark:text-blue-200 shadow-sm' : 'text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'}`}
+                                    >
+                                        Light
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => !isDarkMode && toggleTheme()}
+                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${isDarkMode ? 'bg-white dark:bg-blue-500/15 text-blue-700 dark:text-blue-200 shadow-sm' : 'text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'}`}
+                                    >
+                                        Dark
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/60">
+                                    <p className="font-bold text-gray-900">Layout Density</p>
+                                    <p className="text-sm text-gray-500 mt-1">Comfortable spacing is active for admin forms and lists.</p>
+                                    <Badge variant="outline" className="mt-3 bg-white text-gray-700 border-gray-200">Comfortable</Badge>
+                                </div>
+                                <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/60">
+                                    <p className="font-bold text-gray-900">Accent Color</p>
+                                    <p className="text-sm text-gray-500 mt-1">EventX blue is used for navigation, buttons, and focus states.</p>
+                                    <div className="mt-3 flex items-center gap-2">
+                                        <span className="h-6 w-6 rounded-full bg-blue-600 ring-4 ring-blue-100" />
+                                        <span className="text-sm font-semibold text-gray-700">Blue</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </GlassCard>

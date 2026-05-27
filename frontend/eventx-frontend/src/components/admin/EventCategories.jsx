@@ -140,15 +140,78 @@ const EventCategories = () => {
   const totalEvents = categories.reduce((sum, cat) => sum + cat.eventCount, 0);
   const activeCategories = categories.filter(cat => cat.isActive).length;
 
+  const LoadingBlock = ({ className = '', ...props }) => (
+    <div className={`animate-pulse rounded-lg bg-slate-200/90 dark:bg-slate-700/80 ${className}`} {...props} />
+  );
+
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full animate-pulse">
-         <div className="h-12 bg-gray-200 rounded-xl w-64"></div>
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="h-28 bg-gray-200 rounded-2xl"></div>
-            <div className="h-28 bg-gray-200 rounded-2xl"></div>
-            <div className="h-28 bg-gray-200 rounded-2xl"></div>
-         </div>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full" aria-busy="true" aria-label="Loading categories">
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-card p-6 sm:p-8 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-4 max-w-xl w-full">
+              <LoadingBlock className="h-8 w-56 sm:w-72" />
+              <LoadingBlock className="h-4 w-full max-w-lg" />
+              <LoadingBlock className="h-4 w-2/3" />
+            </div>
+            <LoadingBlock className="h-11 w-40 rounded-xl" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-card p-5 shadow-sm h-[120px]">
+              <div className="flex items-center justify-between gap-4 h-full">
+                <div className="space-y-3 flex-1">
+                  <LoadingBlock className="h-3 w-32" />
+                  <LoadingBlock className="h-8 w-20" />
+                </div>
+                <LoadingBlock className="h-11 w-11 rounded-xl" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-card p-4 lg:p-5 shadow-sm">
+          <LoadingBlock className="h-10 w-full max-w-md rounded-xl" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-card shadow-sm overflow-hidden">
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <LoadingBlock className="h-14 w-14 rounded-2xl" />
+                    <div className="space-y-3">
+                      <LoadingBlock className="h-5 w-36" />
+                      <LoadingBlock className="h-5 w-16 rounded-md" />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3 mb-8">
+                  <LoadingBlock className="h-3 w-full" />
+                  <LoadingBlock className="h-3 w-3/4" />
+                </div>
+                <div className="flex items-end justify-between">
+                  <div className="space-y-2">
+                    <LoadingBlock className="h-9 w-16" />
+                    <LoadingBlock className="h-3 w-20" />
+                  </div>
+                  <div className="space-y-2">
+                    <LoadingBlock className="h-3 w-16" />
+                    <LoadingBlock className="h-4 w-24" />
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 p-3 flex gap-2">
+                <LoadingBlock className="h-9 flex-1 rounded-xl" />
+                <LoadingBlock className="h-9 flex-1 rounded-xl" />
+                <LoadingBlock className="h-9 w-12 rounded-xl" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

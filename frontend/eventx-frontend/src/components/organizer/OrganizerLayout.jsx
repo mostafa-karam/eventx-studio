@@ -15,7 +15,7 @@ const OrganizerLayout = () => {
     const navigate = useNavigate();
 
     const navCls = (isActive) =>
-        `w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-indigo-700/60 text-white' : 'text-indigo-200 hover:bg-indigo-800/50 hover:text-white'
+        `w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-indigo-700/60 text-white ring-1 ring-white/10' : 'text-indigo-200 hover:bg-indigo-800/50 hover:text-white'
         }`;
 
     const navItems = [
@@ -54,10 +54,10 @@ const OrganizerLayout = () => {
             <div className="flex-1 px-4 overflow-y-auto">
                 <h3 className="text-sm font-medium text-indigo-300 mb-3">Navigation</h3>
                 <nav className="space-y-1">
-                    {navItems.map(({ to, icon: label }) => (
+                    {navItems.map(({ to, icon: Icon, label }) => (
                         <NavLink key={to} to={to} onClick={() => setSidebarOpen(false)}
                             className={({ isActive }) => navCls(isActive)}>
-                            <Icon className="w-4 h-4" />
+                            {React.createElement(Icon, { className: 'w-4 h-4' })}
                             <span>{label}</span>
                         </NavLink>
                     ))}
@@ -84,7 +84,7 @@ const OrganizerLayout = () => {
     );
 
     return (
-        <div className="flex min-h-screen bg-gray-50">
+        <div className="flex min-h-screen bg-background">
             <div className="hidden md:flex md:w-64 sticky top-0 self-start h-screen">{sidebar}</div>
 
             {sidebarOpen && (
@@ -95,26 +95,26 @@ const OrganizerLayout = () => {
             )}
 
             <div className="flex-1 min-h-0 flex flex-col">
-                <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 sticky top-0 z-30">
+                <header className="bg-white dark:bg-background border-b border-gray-200 dark:border-border px-4 sm:px-6 py-4 sticky top-0 z-30">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                            <button className="md:hidden p-1.5 rounded-lg text-gray-500 hover:bg-gray-100"
+                            <button className="md:hidden p-1.5 rounded-lg text-gray-500 dark:text-muted-foreground hover:bg-gray-100 dark:hover:bg-accent"
                                 onClick={() => setSidebarOpen(true)}>
                                 <Menu className="w-5 h-5" />
                             </button>
-                            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">Organizer</h2>
+                            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-foreground">Organizer</h2>
                         </div>
                         <div className="flex items-center space-x-2 sm:space-x-4">
-                            <button onClick={toggleTheme} className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors">
+                            <button onClick={toggleTheme} className="p-2 text-gray-500 dark:text-muted-foreground hover:text-indigo-600 dark:hover:text-foreground hover:bg-indigo-50 dark:hover:bg-accent rounded-full transition-colors">
                                 {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                             </button>
-                            <div className="hidden sm:flex items-center space-x-2 border-l pl-4">
+                            <div className="hidden sm:flex items-center space-x-2 border-l border-gray-200 dark:border-border pl-4">
                                 <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
                                     <UserIcon className="w-4 h-4 text-indigo-600" />
                                 </div>
                                 <div className="text-sm">
-                                    <p className="font-medium">{user?.name || 'Organizer'}</p>
-                                    <p className="text-gray-500 text-xs">Event Organizer</p>
+                                    <p className="font-medium text-foreground">{user?.name || 'Organizer'}</p>
+                                    <p className="text-gray-500 dark:text-muted-foreground text-xs">Event Organizer</p>
                                 </div>
                             </div>
                         </div>

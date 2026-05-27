@@ -53,22 +53,74 @@ const AdminDashboard = () => {
     </div>
   );
 
+  const LoadingBlock = ({ className = '', ...props }) => (
+    <div className={`animate-pulse rounded-lg bg-slate-200/90 dark:bg-slate-700/80 ${className}`} {...props} />
+  );
+
   const SkeletonLoader = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 w-full" aria-busy="true" aria-label="Loading dashboard">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-card p-6 sm:p-8 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-4 max-w-xl w-full">
+            <LoadingBlock className="h-8 w-56 sm:w-72" />
+            <LoadingBlock className="h-4 w-full max-w-lg" />
+            <LoadingBlock className="h-4 w-2/3" />
+          </div>
+          <LoadingBlock className="h-11 w-40 rounded-xl" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {[...Array(4)].map((_, i) => (
-          <GlassCard key={i}>
-            <div className="p-6">
-              <div className="animate-pulse flex space-x-4">
-                <div className="flex-1 space-y-4 py-1">
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-                </div>
-                <div className="rounded-xl bg-gray-200 h-12 w-12"></div>
+          <div key={i} className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-card p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-3 flex-1">
+                <LoadingBlock className="h-3 w-24" />
+                <LoadingBlock className="h-8 w-28" />
               </div>
+              <LoadingBlock className="h-11 w-11 rounded-xl" />
             </div>
-          </GlassCard>
+            <div className="mt-6 flex items-center gap-2">
+              <LoadingBlock className="h-6 w-16 rounded-md" />
+              <LoadingBlock className="h-3 w-20" />
+            </div>
+          </div>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-card p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-4 mb-8">
+            <div className="space-y-3">
+              <LoadingBlock className="h-5 w-44" />
+              <LoadingBlock className="h-3 w-56" />
+            </div>
+            <LoadingBlock className="h-9 w-28 rounded-xl" />
+          </div>
+          <div className="h-[300px] rounded-xl border border-slate-100 dark:border-slate-700/70 bg-slate-50 dark:bg-slate-900/40 p-5">
+            <div className="flex h-full items-end gap-3">
+              {[42, 58, 38, 72, 66, 84, 54, 78].map((height, i) => (
+                <LoadingBlock key={i} className="flex-1 rounded-t-lg" style={{ height: `${height}%` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-card p-6 shadow-sm">
+          <div className="space-y-3 mb-8">
+            <LoadingBlock className="h-5 w-40" />
+            <LoadingBlock className="h-3 w-32" />
+          </div>
+          <div className="mx-auto h-44 w-44 rounded-full border-[28px] border-slate-200 dark:border-slate-700 animate-pulse" />
+          <div className="mt-8 space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between gap-4">
+                <LoadingBlock className="h-3 w-28" />
+                <LoadingBlock className="h-3 w-8" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -206,7 +258,7 @@ const AdminDashboard = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button className="bg-white hover:bg-gray-50 text-indigo-900 font-bold rounded-xl px-6 transition-all shadow-lg text-sm h-11" onClick={() => navigate('/admin/events')}>
+            <Button className="bg-slate-50 hover:bg-white text-indigo-950 dark:bg-slate-50 dark:hover:bg-white dark:text-indigo-950 font-bold rounded-xl px-6 transition-all shadow-lg text-sm h-11" onClick={() => navigate('/admin/events')}>
               <Calendar className="w-4 h-4 mr-2" />
               Manage Events
             </Button>
@@ -416,7 +468,7 @@ const AdminDashboard = () => {
                       </span>
                     </div>
                   </div>
-                  <Button variant="outline" className="rounded-xl border-gray-200 shadow-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 flex-shrink-0" onClick={() => navigate(`/admin/events/${selectedEvent._id}`)}>
+                  <Button variant="outline" className="rounded-xl border-gray-200 dark:border-blue-400/30 shadow-sm text-blue-600 dark:text-blue-200 hover:text-blue-700 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-blue-500/20 flex-shrink-0" onClick={() => navigate(`/admin/events/${selectedEvent._id}`)}>
                     Manage Event
                   </Button>
                 </div>
@@ -484,17 +536,17 @@ const AdminDashboard = () => {
                      <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider flex items-center gap-2">
                        <DollarSign className="w-4 h-4 text-emerald-500" /> Revenue Flow
                      </h4>
-                     <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 flex items-center justify-between">
+                     <div className="bg-emerald-50/50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-400/25 rounded-xl p-4 flex items-center justify-between">
                        <div>
-                         <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Average Ticket Value</p>
-                         <p className="text-2xl font-black text-emerald-900">
+                         <p className="text-xs font-bold text-emerald-600 dark:text-emerald-200 uppercase tracking-wider mb-1">Average Ticket Value</p>
+                         <p className="text-2xl font-black text-emerald-900 dark:text-emerald-50">
                            {selectedEvent.analytics?.totalRevenue > 0 && selectedEvent.analytics?.ticketsSold > 0
                              ? `$${Math.round(selectedEvent.analytics.totalRevenue / selectedEvent.analytics.ticketsSold)}` 
                              : 'Free'
                            }
                          </p>
                        </div>
-                       <Button variant="outline" className="border-emerald-200 text-emerald-700 hover:bg-emerald-100 bg-white"  onClick={() => navigate('/admin/analytics')}>
+                       <Button variant="outline" className="border-emerald-200 dark:border-emerald-400/30 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 bg-slate-50 dark:bg-transparent"  onClick={() => navigate('/admin/analytics')}>
                           Full Report
                        </Button>
                      </div>
@@ -590,7 +642,7 @@ const AdminDashboard = () => {
           
           {notifications.length > 5 && (
             <div className="p-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
-              <Button variant="ghost" className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-sm font-semibold rounded-xl" onClick={() => navigate('/admin/notifications')}>
+              <Button variant="ghost" className="w-full text-blue-600 dark:text-blue-200 hover:text-blue-700 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-blue-500/20 text-sm font-semibold rounded-xl" onClick={() => navigate('/admin/notifications')}>
                 View All Activity <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </div>
