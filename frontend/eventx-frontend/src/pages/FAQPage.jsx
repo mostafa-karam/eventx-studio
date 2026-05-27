@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Search, ChevronDown, HelpCircle, Ticket, Building2, CreditCard, Shield, Users } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import { ArrowLeft, ArrowRight, Building2, ChevronDown, CreditCard, HelpCircle, Search, Shield, Ticket, Users } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const faqCategories = [
     { id: 'all', label: 'All', icon: HelpCircle },
@@ -14,7 +14,7 @@ const faqCategories = [
 
 const faqData = [
     { q: 'How do I browse upcoming events?', a: 'Visit the Events page from the navigation or homepage. You can filter events by category, city, date range, and price. You can also use the search bar to find specific events.', category: 'events' },
-    { q: 'Can I attend free events without creating an account?', a: 'You can browse events without an account, but you need to register and verify your email to book tickets for any event — whether free or paid.', category: 'events' },
+    { q: 'Can I attend free events without creating an account?', a: 'You can browse events without an account, but you need to register and verify your email to book tickets for any event - whether free or paid.', category: 'events' },
     { q: 'What happens if an event is sold out?', a: 'You can join the waitlist for sold-out events. When a seat becomes available, you will be notified and given 24 hours to complete your purchase.', category: 'events' },
     { q: 'How do I book a ticket for an event?', a: 'Navigate to the event details page, select your seat (or let the system auto-assign one), choose your payment method, and confirm the booking. You will receive a QR code ticket immediately.', category: 'payments' },
     { q: 'Can I cancel a ticket after booking?', a: 'Yes, you can cancel tickets from the "My Tickets" section in your dashboard. Cancellation policies vary by event. Refund eligibility depends on the event organizer\'s policy.', category: 'payments' },
@@ -33,15 +33,15 @@ const faqData = [
 
 function FAQItem({ item, isOpen, onClick }) {
     return (
-        <div className="border border-border rounded-lg overflow-hidden">
-            <button onClick={onClick} className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/50 transition-colors">
-                <span className="font-medium text-foreground pr-4">{item.q}</span>
-                <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-border dark:bg-card">
+            <button onClick={onClick} className="flex w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-secondary/70">
+                <span className="font-semibold text-slate-950 dark:text-foreground">{item.q}</span>
+                <ChevronDown className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             <AnimatePresence>
                 {isOpen && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
-                        <div className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed border-t border-border pt-3">
+                        <div className="border-t border-slate-100 px-5 pb-5 pt-4 text-sm leading-7 text-slate-600 dark:border-border dark:text-muted-foreground">
                             {item.a}
                         </div>
                     </motion.div>
@@ -63,66 +63,101 @@ export default function FAQPage() {
     });
 
     return (
-        <div className="min-h-screen bg-background">
-            {/* Hero */}
-            <section className="relative bg-gradient-to-br from-emerald-600 via-teal-700 to-cyan-800 text-white overflow-hidden">
-                <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full mix-blend-overlay filter blur-3xl translate-x-1/3 -translate-y-1/3" />
-                </div>
-                <div className="max-w-5xl mx-auto px-4 py-16 sm:py-24 relative z-10">
-                    <Link to="/" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-colors">
-                        <ArrowLeft className="w-4 h-4" /> Back to Home
+        <div className="min-h-screen bg-[#f4f7fb] dark:bg-background">
+            <header className="border-b border-slate-200/80 bg-white/85 backdrop-blur dark:border-border dark:bg-background/85">
+                <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
+                    <Link to="/" className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-950 dark:text-muted-foreground dark:hover:text-foreground">
+                        <ArrowLeft className="h-4 w-4" />
+                        Home
                     </Link>
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                        <h1 className="text-4xl sm:text-5xl font-bold mb-4">Frequently Asked Questions</h1>
-                        <p className="text-lg text-white/80 max-w-2xl">Find quick answers to the most common questions about EventX Studio.</p>
-                    </motion.div>
+                    <Link to="/contact" className="hidden items-center gap-2 text-sm font-medium text-blue-700 transition-colors hover:text-blue-900 dark:text-blue-300 sm:inline-flex">
+                        Contact support
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
+            </header>
 
-                    {/* Search */}
-                    <div className="mt-8 relative max-w-lg">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
-                        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search questions…"
-                            className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30" />
+            <main>
+                <section className="border-b border-slate-200/80 bg-white dark:border-border dark:bg-card">
+                    <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-end lg:py-16">
+                        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+                            <div className="mb-5 inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-200">
+                                <HelpCircle className="h-4 w-4" />
+                                Help center
+                            </div>
+                            <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-950 dark:text-foreground sm:text-5xl">
+                                Answers before you need a ticket.
+                            </h1>
+                            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 dark:text-muted-foreground sm:text-lg">
+                                Search common questions about events, halls, payments, accounts, and organizer workflows.
+                            </p>
+                        </motion.div>
+
+                        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }} className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-border dark:bg-secondary">
+                            <label className="relative block">
+                                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Search questions..."
+                                    className="min-h-12 w-full rounded-md border-slate-200 bg-white pl-12 text-base dark:bg-input"
+                                />
+                            </label>
+                        </motion.div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <div className="max-w-5xl mx-auto px-4 py-12">
-                {/* Category tabs */}
-                <div className="flex flex-wrap gap-2 mb-8">
-                    {faqCategories.map((cat) => (
-                        <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setOpenId(null); }}
-                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${activeCategory === cat.id ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary text-foreground hover:bg-secondary/80'}`}>
-                            <cat.icon className="w-4 h-4" />
-                            {cat.label}
-                        </button>
-                    ))}
-                </div>
+                <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
+                    <div className="grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
+                        <aside className="space-y-3">
+                            <p className="text-xs font-semibold uppercase text-slate-500 dark:text-muted-foreground">Browse by topic</p>
+                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                                {faqCategories.map((cat) => {
+                                    const isActive = activeCategory === cat.id;
+                                    return (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => {
+                                                setActiveCategory(cat.id);
+                                                setOpenId(null);
+                                            }}
+                                            className={`flex min-h-12 items-center gap-3 rounded-lg border px-4 text-left text-sm font-semibold transition-colors ${isActive ? 'border-blue-500 bg-blue-50 text-blue-900 dark:border-blue-400 dark:bg-blue-400/10 dark:text-blue-200' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-secondary'}`}
+                                        >
+                                            <cat.icon className="h-4 w-4 shrink-0" />
+                                            {cat.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </aside>
 
-                {/* FAQ items */}
-                <div className="space-y-3">
-                    {filtered.length > 0 ? (
-                        filtered.map((item, idx) => (
-                            <FAQItem key={idx} item={item} isOpen={openId === idx} onClick={() => setOpenId(openId === idx ? null : idx)} />
-                        ))
-                    ) : (
-                        <div className="text-center py-16">
-                            <HelpCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                            <p className="text-lg font-medium text-foreground">No questions found</p>
-                            <p className="text-sm text-muted-foreground">Try adjusting your search or category filter.</p>
+                        <div>
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                                <p className="text-sm text-slate-500 dark:text-muted-foreground">{filtered.length} matching questions</p>
+                                <Link to="/contact" className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-300">
+                                    Still need help
+                                    <ArrowRight className="h-4 w-4" />
+                                </Link>
+                            </div>
+
+                            <div className="space-y-3">
+                                {filtered.length > 0 ? (
+                                    filtered.map((item, idx) => (
+                                        <FAQItem key={idx} item={item} isOpen={openId === idx} onClick={() => setOpenId(openId === idx ? null : idx)} />
+                                    ))
+                                ) : (
+                                    <div className="rounded-lg border border-slate-200 bg-white px-6 py-16 text-center shadow-sm dark:border-border dark:bg-card">
+                                        <HelpCircle className="mx-auto mb-3 h-12 w-12 text-slate-400" />
+                                        <p className="text-lg font-semibold text-slate-950 dark:text-foreground">No questions found</p>
+                                        <p className="mt-2 text-sm text-slate-500 dark:text-muted-foreground">Try adjusting your search or category filter.</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    )}
-                </div>
-
-                {/* CTA */}
-                <div className="mt-16 text-center card p-8">
-                    <h2 className="text-2xl font-bold text-foreground mb-2">Still have questions?</h2>
-                    <p className="text-muted-foreground mb-6">We're here to help. Reach out and we'll respond within 24 hours.</p>
-                    <Link to="/contact" className="btn-primary inline-flex items-center gap-2">
-                        Contact Support <ArrowLeft className="w-4 h-4 rotate-180" />
-                    </Link>
-                </div>
-            </div>
+                    </div>
+                </section>
+            </main>
         </div>
     );
 }
