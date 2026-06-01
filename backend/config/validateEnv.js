@@ -31,11 +31,11 @@ const validateEnv = () => {
     'QR_HMAC_SECRET',
     'SESSION_ENCRYPTION_KEY'
   ];
-  
+
   if (missing.length > 0) {
     if (!isTest) { // Tests often mock these or use dotenvx inject
-        logger.error(`Missing required environment variables: ${missing.join(', ')}`);
-        process.exit(1);
+      logger.error(`Missing required environment variables: ${missing.join(', ')}`);
+      process.exit(1);
     }
   }
 

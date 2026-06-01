@@ -37,7 +37,7 @@ const ReportsCenter = () => {
 
   useEffect(() => {
     fetchReports();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchReports = async () => {
@@ -113,7 +113,7 @@ const ReportsCenter = () => {
   };
 
   // eslint-disable-next-line no-unused-vars
-   const getReportTypeName = (type) => {
+  const getReportTypeName = (type) => {
     const types = {
       revenue: 'Revenue Report',
       demographics: 'Demographics Analysis',
@@ -176,7 +176,7 @@ const ReportsCenter = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-             <span className="text-gray-900">Reports Center</span>
+            <span className="text-gray-900">Reports Center</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">
             Generate, manage, and download comprehensive reports about your events.
@@ -293,29 +293,29 @@ const ReportsCenter = () => {
                     className="group border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-md transition-all duration-300 bg-white hover:bg-blue-50/10 cursor-pointer flex flex-col h-full relative overflow-hidden"
                   >
                     <div className="flex items-start gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                            <Icon className="h-6 w-6" />
-                        </div>
-                        <div className="flex-1">
-                            <h4 className="font-extrabold text-gray-900 group-hover:text-blue-700 transition-colors">
-                            {reportType.label}
-                            </h4>
-                            <p className="text-sm font-medium text-gray-500 mt-1 line-clamp-2">
-                            {reportType.description}
-                            </p>
-                        </div>
+                      <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-extrabold text-gray-900 group-hover:text-blue-700 transition-colors">
+                          {reportType.label}
+                        </h4>
+                        <p className="text-sm font-medium text-gray-500 mt-1 line-clamp-2">
+                          {reportType.description}
+                        </p>
+                      </div>
                     </div>
-                    
+
                     <div className="mt-auto pt-4 border-t border-gray-100">
-                        <Button
-                            className={`w-full font-bold shadow-sm rounded-xl transition-all ${isGenerating ? 'bg-blue-100 text-blue-700' : 'bg-gray-900 hover:bg-black text-white group-hover:bg-blue-600'}`}
-                            onClick={() => generateReport(reportType.value)}
-                            disabled={isGenerating}
-                        >
-                            {isGenerating ? (
-                                <span className="flex items-center gap-2"><Clock className="w-4 h-4 animate-spin" /> Generating...</span>
-                            ) : 'Generate Report'}
-                        </Button>
+                      <Button
+                        className={`w-full font-bold shadow-sm rounded-xl transition-all ${isGenerating ? 'bg-blue-100 text-blue-700' : 'bg-gray-900 hover:bg-black text-white group-hover:bg-blue-600'}`}
+                        onClick={() => generateReport(reportType.value)}
+                        disabled={isGenerating}
+                      >
+                        {isGenerating ? (
+                          <span className="flex items-center gap-2"><Clock className="w-4 h-4 animate-spin" /> Generating...</span>
+                        ) : 'Generate Report'}
+                      </Button>
                     </div>
                   </div>
                 );

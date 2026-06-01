@@ -8,7 +8,7 @@ const Notifications = ({ onOpenAction }) => {
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     fetchNotifications();
   }, []);
@@ -138,7 +138,7 @@ const Notifications = ({ onOpenAction }) => {
 
   const GlassCard = ({ children, className = '' }) => (
     <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
-        {children}
+      {children}
     </div>
   );
 
@@ -161,7 +161,7 @@ const Notifications = ({ onOpenAction }) => {
             <p className="text-gray-500 font-medium mt-1">
               {unreadCount > 0 ? (
                 <span className="text-blue-600 font-bold">{unreadCount} unread message{unreadCount !== 1 && 's'}</span>
-              ) : 'You\'re all caught up! '} 
+              ) : 'You\'re all caught up! '}
               — Updates across your event platform
             </p>
           </div>
@@ -190,17 +190,15 @@ const Notifications = ({ onOpenAction }) => {
               <button
                 key={key}
                 onClick={() => setFilter(key)}
-                className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                  filter === key 
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
+                className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter === key
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
                     : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-gray-900 shadow-sm'
-                }`}
+                  }`}
               >
                 <span>{label}</span>
                 {count > 0 && (
-                  <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
-                    filter === key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                  }`}>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${filter === key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                    }`}>
                     {count}
                   </span>
                 )}
@@ -212,10 +210,10 @@ const Notifications = ({ onOpenAction }) => {
         {/* Notifications Timeline List */}
         <div className="flex-1 p-4 sm:p-6 lg:p-8 bg-gray-50/20">
           {loading ? (
-             <div className="flex flex-col items-center justify-center h-64 opacity-50 space-y-4">
-               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-               <p className="text-gray-500 font-medium animate-pulse">Syncing notifications...</p>
-             </div>
+            <div className="flex flex-col items-center justify-center h-64 opacity-50 space-y-4">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+              <p className="text-gray-500 font-medium animate-pulse">Syncing notifications...</p>
+            </div>
           ) : filteredNotifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 text-center h-64 animate-in fade-in duration-500">
               <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100 shadow-sm">
@@ -223,13 +221,13 @@ const Notifications = ({ onOpenAction }) => {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">No notifications found</h3>
               <p className="text-sm font-medium text-gray-500 max-w-sm">
-                {filter === 'unread' 
-                  ? 'Great job, you are completely caught up on everything!' 
+                {filter === 'unread'
+                  ? 'Great job, you are completely caught up on everything!'
                   : 'Nothing to see here right now. We\'ll let you know when something happens.'}
               </p>
               {filter !== 'all' && (
                 <Button variant="outline" className="mt-6 border-gray-200 rounded-xl" onClick={() => setFilter('all')}>
-                    View All Activity
+                  View All Activity
                 </Button>
               )}
             </div>
@@ -238,47 +236,46 @@ const Notifications = ({ onOpenAction }) => {
               {filteredNotifications.map((notification, index) => {
                 const info = getNotificationIconInfo(notification.type, notification.priority);
                 const NotificationIcon = info.icon;
-                
+
                 return (
                   <div key={notification._id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active animate-in fade-in slide-in-from-bottom-4 duration-300" style={{ animationFillMode: 'both', animationDelay: `${index * 50}ms` }}>
                     {/* Timeline Dot/Icon */}
                     <div className={`flex items-center justify-center w-14 h-14 rounded-full border-4 border-white shadow-xl shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 ${info.bg} z-10 transition-transform duration-300 group-hover:scale-110`}>
                       <NotificationIcon className="w-5 h-5" />
                     </div>
-                    
+
                     {/* Card Content */}
-                    <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] bg-white rounded-2xl shadow-sm border p-4 sm:p-5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-                      !notification.read ? 'border-l-4 border-l-blue-500 border-gray-200' : 'border-gray-100 opacity-80 hover:opacity-100'
-                    }`}>
+                    <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] bg-white rounded-2xl shadow-sm border p-4 sm:p-5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${!notification.read ? 'border-l-4 border-l-blue-500 border-gray-200' : 'border-gray-100 opacity-80 hover:opacity-100'
+                      }`}>
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
-                           <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest rounded border ${getPriorityBadge(notification.priority)}`}>
-                             {notification.priority}
-                           </span>
-                           {!notification.read && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>}
+                          <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest rounded border ${getPriorityBadge(notification.priority)}`}>
+                            {notification.priority}
+                          </span>
+                          {!notification.read && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>}
                         </div>
                         <div className="flex items-center text-xs font-bold text-gray-400 gap-1.5 flex-shrink-0">
                           <Clock className="w-3.5 h-3.5" />
                           {formatTimestamp(notification.createdAt)}
                         </div>
                       </div>
-                      
+
                       <h4 className={`text-base font-bold mb-1 ${!notification.read ? 'text-gray-900' : 'text-gray-700'}`}>
                         {notification.title}
                       </h4>
-                      
+
                       <p className={`text-sm leading-relaxed mb-4 ${!notification.read ? 'text-gray-600 font-medium' : 'text-gray-500'}`}>
                         {notification.message}
                       </p>
-                      
+
                       <div className="flex items-center gap-2 mt-auto pt-4 border-t border-gray-50 flex-wrap">
                         {notification.actionUrl && (
-                          <Button 
-                            className="bg-gray-900 hover:bg-gray-800 text-white rounded-xl shadow-sm h-8" 
-                            size="sm" 
+                          <Button
+                            className="bg-gray-900 hover:bg-gray-800 text-white rounded-xl shadow-sm h-8"
+                            size="sm"
                             onClick={() => onOpenAction && onOpenAction(notification.actionUrl)}
                           >
-                             View Details
+                            View Details
                           </Button>
                         )}
                         <div className="flex ml-auto gap-2">

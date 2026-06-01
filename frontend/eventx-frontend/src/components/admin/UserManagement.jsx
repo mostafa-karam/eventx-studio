@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 const UserManagement = () => {
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
     const [users, setUsers] = useState([]);
     const [page, setPage] = useState(1);
@@ -17,7 +17,7 @@ const UserManagement = () => {
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    
+
     // UI state
     const [searchTerm, setSearchTerm] = useState("");
     const [filterRole, setFilterRole] = useState("all");
@@ -59,12 +59,12 @@ const UserManagement = () => {
     // Local filter and sort for the current page
     const processedUsers = useMemo(() => {
         let result = [...users];
-        
+
         // Apply local search
         if (searchTerm) {
             const lowerSearch = searchTerm.toLowerCase();
-            result = result.filter(u => 
-                u.name?.toLowerCase().includes(lowerSearch) || 
+            result = result.filter(u =>
+                u.name?.toLowerCase().includes(lowerSearch) ||
                 u.email?.toLowerCase().includes(lowerSearch)
             );
         }
@@ -79,7 +79,7 @@ const UserManagement = () => {
             result.sort((a, b) => {
                 let aVal = a[sortConfig.key];
                 let bVal = b[sortConfig.key];
-                
+
                 if (sortConfig.key === 'createdAt') {
                     aVal = new Date(a.createdAt || 0).getTime();
                     bVal = new Date(b.createdAt || 0).getTime();
@@ -158,7 +158,7 @@ const UserManagement = () => {
                 ].map((stat, i) => (
                     <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
                         <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
-                        
+
                         <div className="relative z-10 flex justify-between items-center">
                             <div className="flex-1 pr-3">
                                 <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1.5">{stat.label}</p>
@@ -168,7 +168,7 @@ const UserManagement = () => {
                                 <stat.icon className="w-5 h-5" />
                             </div>
                         </div>
-                        
+
                         <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
                     </div>
                 ))}
@@ -263,7 +263,7 @@ const UserManagement = () => {
                                 {processedUsers.map((u) => {
                                     const roleStyle = getRoleStyles(u.role);
                                     const RoleIcon = roleStyle.icon;
-                                    
+
                                     return (
                                         <tr key={u._id} className="bg-white hover:bg-blue-50/30 transition-all duration-200 group border-b border-gray-50 last:border-0 relative">
                                             <td className="px-6 py-4 whitespace-nowrap">
@@ -293,13 +293,13 @@ const UserManagement = () => {
                                             </td>
                                             <td className="px-6 py-4 text-right whitespace-nowrap">
                                                 <div className="relative inline-block text-left action-dropdown-container">
-                                                    <button 
+                                                    <button
                                                         onClick={() => setActiveDropdown(activeDropdown === u._id ? null : u._id)}
                                                         className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-100"
                                                     >
                                                         <MoreHorizontal className="w-5 h-5" />
                                                     </button>
-                                                    
+
                                                     {activeDropdown === u._id && (
                                                         <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                                                             <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center font-medium">
@@ -338,23 +338,22 @@ const UserManagement = () => {
                             >
                                 <ChevronLeft className="w-4 h-4 mr-1" /> Prev
                             </button>
-                            
+
                             {Array.from({ length: Math.min(5, pages) }, (_, i) => {
                                 let pageNum = i + 1;
                                 if (pages > 5 && page > 3) {
                                     pageNum = page - 2 + i;
                                     if (pageNum > pages) pageNum = pages - (4 - i);
                                 }
-                                
+
                                 return (
                                     <button
                                         key={pageNum}
                                         onClick={() => fetchUsers(pageNum)}
-                                        className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-semibold transition-colors ${
-                                            page === pageNum 
-                                                ? 'bg-blue-600 text-white shadow-sm' 
+                                        className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-semibold transition-colors ${page === pageNum
+                                                ? 'bg-blue-600 text-white shadow-sm'
                                                 : 'text-gray-600 hover:bg-gray-100'
-                                        }`}
+                                            }`}
                                     >
                                         {pageNum}
                                     </button>

@@ -202,7 +202,7 @@ const HallsManagement = () => {
                         <div className="p-5 flex-1 flex flex-col">
                             <h3 className="text-xl font-extrabold text-gray-900 group-hover:text-blue-600 transition-colors">{hall.name}</h3>
                             <p className="text-sm font-medium text-gray-500 mt-1 line-clamp-2 leading-relaxed flex-1">{hall.description || 'No description provided.'}</p>
-                            
+
                             <div className="grid grid-cols-2 gap-4 text-sm mt-5 pt-5 border-t border-gray-100">
                                 <div className="flex items-center text-gray-700 font-semibold bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
                                     <Users className="w-4 h-4 mr-2 text-indigo-500" />
@@ -305,11 +305,10 @@ const HallsManagement = () => {
                                                         : [...prev.equipment, item]
                                                 }));
                                             }}
-                                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${
-                                                formData.equipment.includes(item)
+                                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${formData.equipment.includes(item)
                                                     ? 'bg-blue-100 text-blue-700 border-blue-200'
                                                     : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                            }`}
+                                                }`}
                                         >
                                             {item.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                         </button>

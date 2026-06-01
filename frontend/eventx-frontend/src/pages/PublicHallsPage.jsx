@@ -249,8 +249,8 @@ const PublicHallsPage = () => {
                         <Link
                             to={`/halls/compare?ids=${selectedHalls.join(',')}`}
                             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 ${selectedHalls.length > 1
-                                    ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md shadow-teal-500/20'
-                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md shadow-teal-500/20'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 }`}
                             onClick={(e) => selectedHalls.length < 2 && e.preventDefault()}
                         >

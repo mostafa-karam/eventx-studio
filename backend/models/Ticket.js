@@ -92,7 +92,7 @@ const ticketSchema = new mongoose.Schema({
 });
 
 // Ensure qrCode exists before validation (required field)
-ticketSchema.pre('validate', function(next) {
+ticketSchema.pre('validate', function (next) {
   if (this.isNew) {
     // QR code will contain signed ticket verification data
     const qrData = {
@@ -114,42 +114,42 @@ ticketSchema.pre('validate', function(next) {
 });
 
 // Method to check in ticket
-ticketSchema.methods.performCheckIn = function(checkedInBy) {
+ticketSchema.methods.performCheckIn = function (checkedInBy) {
   if (this.checkIn.isCheckedIn) {
     throw new Error('Ticket is already checked in');
   }
   if (this.status !== 'booked') {
     throw new Error('Ticket is not in valid status for check-in');
   }
-  
+
   this.checkIn.isCheckedIn = true;
   this.checkIn.checkInTime = new Date();
   this.checkIn.checkInBy = checkedInBy;
   this.status = 'used';
-  
+
   return this;
 };
 
 // Method to cancel ticket
-ticketSchema.methods.cancel = function() {
+ticketSchema.methods.cancel = function () {
   if (this.status === 'used') {
     throw new Error('Cannot cancel a used ticket');
   }
   if (this.checkIn.isCheckedIn) {
     throw new Error('Cannot cancel a checked-in ticket');
   }
-  
+
   this.status = 'cancelled';
   return this;
 };
 
 // Virtual for formatted ticket ID (Alias for ticketId as ticketNumber)
-ticketSchema.virtual('ticketNumber').get(function() {
+ticketSchema.virtual('ticketNumber').get(function () {
   return this.ticketId;
 });
 
 // Virtual for formatted ticket ID
-ticketSchema.virtual('formattedTicketId').get(function() {
+ticketSchema.virtual('formattedTicketId').get(function () {
   return this.ticketId;
 });
 

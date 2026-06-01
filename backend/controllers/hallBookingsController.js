@@ -48,7 +48,7 @@ exports.getPlatformBookings = async (req, res) => {
         if (req.user && req.user.role === 'venue_admin') {
             const ownedHalls = await Hall.find({ createdBy: req.user._id }).select('_id');
             const ownedHallIds = ownedHalls.map(h => h._id.toString());
-            
+
             if (req.query.hall && mongoose.Types.ObjectId.isValid(req.query.hall)) {
                 if (!ownedHallIds.includes(req.query.hall.toString())) {
                     return res.status(403).json({ success: false, message: 'Not authorized to view bookings for this hall' });
@@ -361,7 +361,7 @@ exports.approveBooking = async (req, res) => {
         booking.reviewedAt = new Date();
 
         await booking.save(useSession ? { session } : undefined);
-        
+
         if (useSession) {
             await session.commitTransaction();
         }
@@ -386,9 +386,9 @@ exports.approveBooking = async (req, res) => {
         });
     } catch (error) {
         if (useSession && session) {
-            await session.abortTransaction().catch(() => {});
+            await session.abortTransaction().catch(() => { });
         }
-        
+
         logger.error('Approve booking error:', error);
 
         if (error.name === 'ConflictError') {

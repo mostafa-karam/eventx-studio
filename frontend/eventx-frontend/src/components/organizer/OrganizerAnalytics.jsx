@@ -170,9 +170,9 @@ const OrganizerAnalytics = () => {
                                             </td>
                                             <td className="px-5 py-4">
                                                 <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${event.status === 'published' ? 'bg-green-100 text-green-700' :
-                                                        event.status === 'draft' ? 'bg-gray-100 text-gray-700' :
-                                                            event.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                                                'bg-blue-100 text-blue-700'
+                                                    event.status === 'draft' ? 'bg-gray-100 text-gray-700' :
+                                                        event.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                                            'bg-blue-100 text-blue-700'
                                                     }`}>
                                                     {event.status}
                                                 </span>

@@ -10,7 +10,7 @@ const ContactSupport = () => {
   const [tickets, setTickets] = useState([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
-  
+
   // Admin Ticket Management State
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [replyText, setReplyText] = useState('');
@@ -78,13 +78,13 @@ const ContactSupport = () => {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
       // MOCK: In a real scenario, this hits the backend /support/tickets/:id/reply
       // Since backend routes might be missing or limited for support, we mock the UI state update
-      const updatedTicket = { 
-        ...selectedTicket, 
-        status: 'in_progress', 
+      const updatedTicket = {
+        ...selectedTicket,
+        status: 'in_progress',
         responses: selectedTicket.responses + 1,
         replies: [...(selectedTicket.replies || []), { text: replyText, date: new Date(), author: 'Admin' }]
       };
-      
+
       setTickets(tickets.map(t => t.id === selectedTicket.id ? updatedTicket : t));
       setSelectedTicket(updatedTicket);
       setReplyText('');
@@ -179,12 +179,12 @@ const ContactSupport = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-             <span className="text-gray-900">Contact Support</span>
+            <span className="text-gray-900">Contact Support</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">Get help with your EventX Studio account</p>
         </div>
-        
-        <Button 
+
+        <Button
           onClick={() => setShowCreateForm(!showCreateForm)}
           className="bg-gray-900 hover:bg-black text-white font-bold rounded-xl shadow-sm px-5 h-12 w-full md:w-auto mt-4 md:mt-0"
         >
@@ -196,30 +196,30 @@ const ContactSupport = () => {
       {/* Quick Contact Options */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <WhiteCard className="group hover:border-blue-300 hover:shadow-md transition-all duration-300 bg-white hover:bg-blue-50/10 cursor-pointer flex flex-col items-center justify-center p-8">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <MessageCircle className="w-7 h-7" />
-            </div>
-            <h3 className="text-lg font-extrabold text-gray-900 mb-2 group-hover:text-blue-700 transition-colors">Live Chat</h3>
-            <p className="text-sm font-medium text-gray-500 mb-5 text-center">Chat with our support team in real-time</p>
-            <Badge className="bg-green-100 text-green-800 border-0 px-3 py-1 font-bold tracking-wide">Online</Badge>
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            <MessageCircle className="w-7 h-7" />
+          </div>
+          <h3 className="text-lg font-extrabold text-gray-900 mb-2 group-hover:text-blue-700 transition-colors">Live Chat</h3>
+          <p className="text-sm font-medium text-gray-500 mb-5 text-center">Chat with our support team in real-time</p>
+          <Badge className="bg-green-100 text-green-800 border-0 px-3 py-1 font-bold tracking-wide">Online</Badge>
         </WhiteCard>
 
         <WhiteCard className="group hover:border-green-300 hover:shadow-md transition-all duration-300 bg-white hover:bg-green-50/10 cursor-pointer flex flex-col items-center justify-center p-8">
-            <div className="w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <Phone className="w-7 h-7" />
-            </div>
-            <h3 className="text-lg font-extrabold text-gray-900 mb-2 group-hover:text-green-700 transition-colors">Phone Support</h3>
-            <p className="text-sm font-medium text-gray-500 mb-5 text-center">Call us at +1 (555) 123-4567</p>
-            <Badge className="bg-yellow-100 text-yellow-800 border-0 px-3 py-1 font-bold tracking-wide">9 AM - 6 PM EST</Badge>
+          <div className="w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            <Phone className="w-7 h-7" />
+          </div>
+          <h3 className="text-lg font-extrabold text-gray-900 mb-2 group-hover:text-green-700 transition-colors">Phone Support</h3>
+          <p className="text-sm font-medium text-gray-500 mb-5 text-center">Call us at +1 (555) 123-4567</p>
+          <Badge className="bg-yellow-100 text-yellow-800 border-0 px-3 py-1 font-bold tracking-wide">9 AM - 6 PM EST</Badge>
         </WhiteCard>
 
         <WhiteCard className="group hover:border-purple-300 hover:shadow-md transition-all duration-300 bg-white hover:bg-purple-50/10 cursor-pointer flex flex-col items-center justify-center p-8">
-            <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <Mail className="w-7 h-7" />
-            </div>
-            <h3 className="text-lg font-extrabold text-gray-900 mb-2 group-hover:text-purple-700 transition-colors">Email Support</h3>
-            <p className="text-sm font-medium text-gray-500 mb-5 text-center">support@eventxstudio.com</p>
-            <Badge className="bg-blue-100 text-blue-800 border-0 px-3 py-1 font-bold tracking-wide">24/7 Response</Badge>
+          <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            <Mail className="w-7 h-7" />
+          </div>
+          <h3 className="text-lg font-extrabold text-gray-900 mb-2 group-hover:text-purple-700 transition-colors">Email Support</h3>
+          <p className="text-sm font-medium text-gray-500 mb-5 text-center">support@eventxstudio.com</p>
+          <Badge className="bg-blue-100 text-blue-800 border-0 px-3 py-1 font-bold tracking-wide">24/7 Response</Badge>
         </WhiteCard>
       </div>
 
@@ -320,9 +320,9 @@ const ContactSupport = () => {
                   <Send className="w-5 h-5 mr-2" />
                   Submit Ticket
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setShowCreateForm(false)}
                   className="font-bold border-gray-200 text-gray-700 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-xl h-12 px-6"
                 >
@@ -389,7 +389,7 @@ const ContactSupport = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center lg:justify-end">
                       <Button onClick={() => setSelectedTicket(ticket)} variant="outline" className="font-bold border-gray-200 text-gray-700 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-200 rounded-xl shadow-sm bg-white w-full lg:w-auto h-11 px-5">
                         View Details
@@ -430,11 +430,11 @@ const ContactSupport = () => {
             ].map((faq, index) => (
               <div key={index} className="flex gap-4 items-start group">
                 <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-black flex-shrink-0 group-hover:scale-110 transition-transform">
-                    {index + 1}
+                  {index + 1}
                 </div>
                 <div>
-                    <h4 className="font-extrabold text-gray-900 mb-2 leading-tight">{faq.question}</h4>
-                    <p className="text-sm font-medium text-gray-500 leading-relaxed">{faq.answer}</p>
+                  <h4 className="font-extrabold text-gray-900 mb-2 leading-tight">{faq.question}</h4>
+                  <p className="text-sm font-medium text-gray-500 leading-relaxed">{faq.answer}</p>
                 </div>
               </div>
             ))}
@@ -460,16 +460,16 @@ const ContactSupport = () => {
                   </DialogDescription>
                 </div>
               </div>
-              
+
               <div className="p-6 max-h-[60vh] overflow-y-auto space-y-6">
                 {/* Original Query */}
                 <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
                   <div className="flex items-center gap-3 mb-3">
-                     <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">U</div>
-                     <div>
-                       <p className="text-sm font-bold text-gray-900">User</p>
-                       <p className="text-xs font-medium text-gray-500">{formatDate(selectedTicket.createdAt)}</p>
-                     </div>
+                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">U</div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">User</p>
+                      <p className="text-xs font-medium text-gray-500">{formatDate(selectedTicket.createdAt)}</p>
+                    </div>
                   </div>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedTicket.description}</p>
                 </div>
@@ -478,11 +478,11 @@ const ContactSupport = () => {
                 {selectedTicket.replies?.map((reply, idx) => (
                   <div key={idx} className="bg-blue-50/50 rounded-2xl p-5 border border-blue-100 ml-8">
                     <div className="flex items-center gap-3 mb-3">
-                       <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">A</div>
-                       <div>
-                         <p className="text-sm font-bold text-gray-900">{reply.author}</p>
-                         <p className="text-xs font-medium text-gray-500">{formatDate(reply.date)}</p>
-                       </div>
+                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">A</div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{reply.author}</p>
+                        <p className="text-xs font-medium text-gray-500">{formatDate(reply.date)}</p>
+                      </div>
                     </div>
                     <p className="text-sm text-gray-800 whitespace-pre-wrap">{reply.text}</p>
                   </div>
@@ -492,7 +492,7 @@ const ContactSupport = () => {
                 {selectedTicket.status !== 'resolved' && selectedTicket.status !== 'closed' && (
                   <div className="pt-4 border-t border-gray-100">
                     <label className="text-sm font-bold text-gray-700 mb-2 block">Your Response</label>
-                    <Textarea 
+                    <Textarea
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
                       placeholder="Type your response to the user here..."
@@ -500,14 +500,14 @@ const ContactSupport = () => {
                     />
                     <div className="mt-3 flex justify-end gap-3">
                       <Button variant="outline" className="font-bold rounded-xl" onClick={() => handleStatusChange('resolved')}>
-                         Mark as Resolved
+                        Mark as Resolved
                       </Button>
-                      <Button 
-                        onClick={handleReply} 
+                      <Button
+                        onClick={handleReply}
                         disabled={isReplying || !replyText.trim()}
                         className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-6"
                       >
-                         Send Reply
+                        Send Reply
                       </Button>
                     </div>
                   </div>

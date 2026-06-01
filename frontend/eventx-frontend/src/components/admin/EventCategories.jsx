@@ -255,7 +255,7 @@ const EventCategories = () => {
         ].map((stat, i) => (
           <div key={i} className="group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden">
             <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
-            
+
             <div className="relative z-10 flex justify-between items-center">
               <div className="flex-1 pr-3">
                 <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1.5">{stat.label}</p>
@@ -265,7 +265,7 @@ const EventCategories = () => {
                 <stat.icon className="w-5 h-5" />
               </div>
             </div>
-            
+
             <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
           </div>
         ))}
@@ -290,7 +290,7 @@ const EventCategories = () => {
         <WhiteCard className="border-blue-100 shadow-md">
           <div className="px-6 py-5 border-b border-gray-100 bg-blue-50/30">
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-               {editingCategory ? 'Edit Category' : 'Create New Category'}
+              {editingCategory ? 'Edit Category' : 'Create New Category'}
             </h2>
           </div>
           <div className="p-6">
@@ -335,18 +335,18 @@ const EventCategories = () => {
                 <div className="space-y-1.5">
                   <label className="block text-sm font-bold text-gray-700">Theme Color</label>
                   <div className="flex gap-2">
-                     <input
-                       type="color"
-                       value={formData.color}
-                       onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                       className="h-10 w-10 p-0 border-0 rounded-lg focus:ring-2 focus:ring-blue-500 overflow-hidden shrink-0 cursor-pointer"
-                     />
-                     <input 
-                       type="text" 
-                       value={formData.color} 
-                       disabled 
-                       className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-gray-500 cursor-not-allowed" 
-                     />
+                    <input
+                      type="color"
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      className="h-10 w-10 p-0 border-0 rounded-lg focus:ring-2 focus:ring-blue-500 overflow-hidden shrink-0 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={formData.color}
+                      disabled
+                      className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-gray-500 cursor-not-allowed"
+                    />
                   </div>
                 </div>
 
@@ -381,7 +381,7 @@ const EventCategories = () => {
         {filteredCategories.map((category) => (
           <WhiteCard key={category.id} className="hover:-translate-y-2 transition-all duration-500 flex flex-col group hover:shadow-2xl">
             {/* Soft background glow from category color */}
-            <div 
+            <div
               className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-700 pointer-events-none z-0"
               style={{ backgroundColor: category.color }}
             ></div>
@@ -391,7 +391,7 @@ const EventCategories = () => {
                 <div className="flex items-center space-x-4">
                   <div
                     className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-lg transform group-hover:-rotate-3 group-hover:scale-110 transition-all duration-500 ease-out z-10"
-                    style={{ 
+                    style={{
                       backgroundColor: category.color,
                       boxShadow: `0 10px 25px -5px ${category.color}60`
                     }}
@@ -401,9 +401,9 @@ const EventCategories = () => {
                   <div className="z-10 relative">
                     <h3 className="font-black text-lg text-gray-900 tracking-tight group-hover:text-blue-600 transition-colors line-clamp-1">{category.name}</h3>
                     <div className="mt-1 flex items-center gap-2">
-                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-black tracking-widest uppercase ${category.isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-gray-50 text-gray-400 border border-gray-200'}`}>
-                          {category.isActive ? 'Active' : 'Hidden'}
-                       </span>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-black tracking-widest uppercase ${category.isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-gray-50 text-gray-400 border border-gray-200'}`}>
+                        {category.isActive ? 'Active' : 'Hidden'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -423,7 +423,7 @@ const EventCategories = () => {
                 <div className="text-right">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Created</p>
                   <p className="text-xs font-semibold text-gray-700 border-b border-dashed border-gray-300 pb-0.5 inline-block">
-                    {category.createdAt ? new Date(category.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A'}
+                    {category.createdAt ? new Date(category.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                   </p>
                 </div>
               </div>
@@ -466,7 +466,7 @@ const EventCategories = () => {
         <WhiteCard>
           <div className="p-12 text-center flex flex-col items-center">
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
-                <Tag className="w-10 h-10 text-gray-300" />
+              <Tag className="w-10 h-10 text-gray-300" />
             </div>
             <h3 className="text-xl font-extrabold text-gray-900 mb-2">No categories found</h3>
             <p className="text-gray-500 font-medium mb-6 max-w-sm">

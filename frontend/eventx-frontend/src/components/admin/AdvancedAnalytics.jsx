@@ -19,7 +19,7 @@ const AdvancedAnalytics = () => {
   const [timeRange, setTimeRange] = useState('30d');
   const [refreshing, setRefreshing] = useState(false);
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchAnalytics();
@@ -67,7 +67,7 @@ const AdvancedAnalytics = () => {
 
   const GlassCard = ({ children, className = '' }) => (
     <div className={`bg-white dark:bg-card border border-gray-200 dark:border-border shadow-sm rounded-2xl overflow-hidden ${className}`}>
-        {children}
+      {children}
     </div>
   );
 
@@ -79,7 +79,7 @@ const AdvancedAnalytics = () => {
   const StatCard = ({ title, value, change = 0, icon: Icon, colorClass }) => {
     const isUp = Number(change) >= 0;
     const pct = Math.abs(Number(change)).toFixed(1);
-    
+
     // Mapping base colors to gradient and icon colors
     const styleMap = {
       blue: { bg: 'bg-blue-50', text: 'text-blue-600', grad: 'from-blue-600 to-indigo-600' },
@@ -93,7 +93,7 @@ const AdvancedAnalytics = () => {
       <div className={`group bg-white rounded-3xl p-6 flex flex-col justify-between h-full border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
         {/* Decorative background glow */}
         <div className={`absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br ${style.grad} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
-        
+
         <div className="relative z-10 flex justify-between items-start mb-6">
           <div className="flex-1 pr-3">
             <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1">{title}</p>
@@ -113,7 +113,7 @@ const AdvancedAnalytics = () => {
             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">vs last period</span>
           </div>
         </div>
-        
+
         {/* Bottom decorative line */}
         <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${style.grad} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
       </div>
@@ -261,7 +261,7 @@ const AdvancedAnalytics = () => {
               </SelectContent>
             </Select>
           </div>
-          
+
           <Button
             variant="outline"
             onClick={fetchAnalytics}
@@ -271,7 +271,7 @@ const AdvancedAnalytics = () => {
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin text-blue-500' : ''}`} />
             Refresh
           </Button>
-          
+
           <Button className="bg-gray-900 hover:bg-gray-800 text-white rounded-xl shadow-lg">
             <Download className="w-4 h-4 mr-2" /> Export
           </Button>
@@ -297,9 +297,9 @@ const AdvancedAnalytics = () => {
                 { id: 'demographics', icon: Users, label: 'Demographics' },
                 { id: 'performance', icon: Activity, label: 'Top Performers' }
               ].map(tab => (
-                <TabsTrigger 
-                  key={tab.id} 
-                  value={tab.id} 
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
                   className="rounded-lg px-4 py-2 font-semibold text-sm transition-all data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm hover:bg-gray-50"
                 >
                   <tab.icon className="w-4 h-4 mr-2" /> {tab.label}
@@ -326,13 +326,13 @@ const AdvancedAnalytics = () => {
                       <AreaChart data={safeRevenueData}>
                         <defs>
                           <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dx={-10} tickFormatter={(val) => `$${val}`} />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} dx={-10} tickFormatter={(val) => `$${val}`} />
                         <Tooltip content={<CustomTooltip prefix="$" />} />
                         <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
                       </AreaChart>
@@ -353,8 +353,8 @@ const AdvancedAnalytics = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={safeRevenueData}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dx={-10} />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} dx={-10} />
                         <Tooltip content={<CustomTooltip />} />
                         <Line type="monotone" dataKey="tickets" name="Tickets Sold" stroke="#10B981" strokeWidth={4} dot={{ fill: '#10B981', strokeWidth: 2, r: 4, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
                       </LineChart>
@@ -392,8 +392,8 @@ const AdvancedAnalytics = () => {
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                       <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total</p>
-                       <p className="text-3xl font-black text-gray-900">{safeOverview.totalEvents}</p>
+                      <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total</p>
+                      <p className="text-3xl font-black text-gray-900">{safeOverview.totalEvents}</p>
                     </div>
                   </div>
                 </div>
@@ -405,7 +405,7 @@ const AdvancedAnalytics = () => {
                   </div>
                   <div className="space-y-5">
                     {safeEventCategories.length === 0 && (
-                        <p className="text-sm text-gray-500 italic">No category data available.</p>
+                      <p className="text-sm text-gray-500 italic">No category data available.</p>
                     )}
                     {safeEventCategories.map((category, index) => {
                       const pct = Math.round(category.value);
@@ -422,10 +422,10 @@ const AdvancedAnalytics = () => {
                             </div>
                           </div>
                           <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full rounded-full transition-all duration-1000 ease-out"
-                                style={{ width: `${pct}%`, backgroundColor: COLORS[index % COLORS.length] }}
-                              />
+                            <div
+                              className="h-full rounded-full transition-all duration-1000 ease-out"
+                              style={{ width: `${pct}%`, backgroundColor: COLORS[index % COLORS.length] }}
+                            />
                           </div>
                         </div>
                       );
@@ -441,7 +441,7 @@ const AdvancedAnalytics = () => {
                 <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
                   <div className="mb-6">
                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                       <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center">
                         <Users className="w-4 h-4 text-pink-600" />
                       </div>
                       Age Demographics
@@ -452,14 +452,14 @@ const AdvancedAnalytics = () => {
                       <BarChart data={safeAgeGroups}>
                         <defs>
                           <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.9}/>
-                            <stop offset="100%" stopColor="#3B82F6" stopOpacity={0.9}/>
+                            <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.9} />
+                            <stop offset="100%" stopColor="#3B82F6" stopOpacity={0.9} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                        <XAxis dataKey="age" axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dx={-10} />
-                        <Tooltip content={<CustomTooltip />} cursor={{fill: 'var(--muted)'}} />
+                        <XAxis dataKey="age" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} dx={-10} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)' }} />
                         <Bar dataKey="count" name="Users" fill="url(#colorBar)" radius={[6, 6, 0, 0]} barSize={40} />
                       </BarChart>
                     </ResponsiveContainer>
@@ -469,7 +469,7 @@ const AdvancedAnalytics = () => {
                 <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
                   <div className="mb-6">
                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                       <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
                         <MapPin className="w-4 h-4 text-blue-600" />
                       </div>
                       Top Locations
@@ -477,31 +477,31 @@ const AdvancedAnalytics = () => {
                   </div>
                   <div className="space-y-4 pt-2">
                     {safeLocations.length === 0 && (
-                        <p className="text-sm text-gray-500 italic">No location data available.</p>
+                      <p className="text-sm text-gray-500 italic">No location data available.</p>
                     )}
                     {safeLocations.map((location, index) => {
-                       const maxCount = Math.max(...safeLocations.map(l => l.count)) || 1;
-                       const pct = (location.count / maxCount) * 100;
-                       
-                       return (
-                         <div key={location.city} className="flex items-center gap-4">
-                           <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 bg-gradient-to-br border border-white">
-                             #{index + 1}
-                           </div>
-                           <div className="flex-1">
-                             <div className="flex justify-between items-end mb-1">
-                               <span className="font-bold text-gray-800">{location.city}</span>
-                               <span className="text-sm font-bold text-gray-500">{location.count} users</span>
-                             </div>
-                             <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500"
-                                  style={{ width: `${pct}%` }}
-                                />
-                             </div>
-                           </div>
-                         </div>
-                       );
+                      const maxCount = Math.max(...safeLocations.map(l => l.count)) || 1;
+                      const pct = (location.count / maxCount) * 100;
+
+                      return (
+                        <div key={location.city} className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 bg-gradient-to-br border border-white">
+                            #{index + 1}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-end mb-1">
+                              <span className="font-bold text-gray-800">{location.city}</span>
+                              <span className="text-sm font-bold text-gray-500">{location.count} users</span>
+                            </div>
+                            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
                     })}
                   </div>
                 </div>
@@ -510,49 +510,49 @@ const AdvancedAnalytics = () => {
 
             {/* Top Events Tab */}
             <TabsContent value="performance" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
-               <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-                  <div className="p-6 border-b border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-900">Leaderboard: Top Performing Events</h3>
-                    <p className="text-sm text-gray-500">Ranked by overall platform revenue and ticket sales</p>
-                  </div>
-                  <div className="divide-y divide-gray-100">
-                    {safeTopEvents.length === 0 && (
-                         <p className="text-sm text-gray-500 italic p-6">No top events data available.</p>
-                    )}
-                    {safeTopEvents.map((event, index) => (
-                      <div key={event.name} className="flex flex-col sm:flex-row items-center justify-between p-6 hover:bg-gray-50/50 transition-colors gap-4">
-                        <div className="flex items-center space-x-4 w-full sm:w-auto">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold border-2 shadow-sm
+              <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-gray-100">
+                  <h3 className="text-lg font-bold text-gray-900">Leaderboard: Top Performing Events</h3>
+                  <p className="text-sm text-gray-500">Ranked by overall platform revenue and ticket sales</p>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {safeTopEvents.length === 0 && (
+                    <p className="text-sm text-gray-500 italic p-6">No top events data available.</p>
+                  )}
+                  {safeTopEvents.map((event, index) => (
+                    <div key={event.name} className="flex flex-col sm:flex-row items-center justify-between p-6 hover:bg-gray-50/50 transition-colors gap-4">
+                      <div className="flex items-center space-x-4 w-full sm:w-auto">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold border-2 shadow-sm
                             ${index === 0 ? 'bg-amber-100 text-amber-600 border-amber-200' :
-                              index === 1 ? 'bg-gray-200 text-gray-600 border-gray-300' :
+                            index === 1 ? 'bg-gray-200 text-gray-600 border-gray-300' :
                               index === 2 ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                              'bg-gray-50 text-gray-400 border-gray-100'
-                            }
+                                'bg-gray-50 text-gray-400 border-gray-100'
+                          }
                           `}>
-                            {index + 1}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">{event.name}</h4>
-                            <p className="text-sm text-gray-500 flex items-center mt-0.5">
-                              <Users className="w-3.5 h-3.5 mr-1" /> {event.attendees} registered attendees
-                            </p>
-                          </div>
+                          {index + 1}
                         </div>
-                        
-                        <div className="flex items-center gap-4 w-full sm:w-auto mt-4 sm:mt-0 justify-end">
-                           <div className="text-right px-4 py-2 border border-gray-100 rounded-xl bg-gray-50/50">
-                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Tickets Sold</p>
-                             <p className="font-black text-gray-900 text-lg leading-none">{event.tickets}</p>
-                           </div>
-                           <div className="text-right px-4 py-2 border border-emerald-100 rounded-xl bg-emerald-50/50">
-                             <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5">Gross Revenue</p>
-                             <p className="font-black text-emerald-800 text-lg leading-none">{formatCurrency(event.revenue)}</p>
-                           </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">{event.name}</h4>
+                          <p className="text-sm text-gray-500 flex items-center mt-0.5">
+                            <Users className="w-3.5 h-3.5 mr-1" /> {event.attendees} registered attendees
+                          </p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-               </div>
+
+                      <div className="flex items-center gap-4 w-full sm:w-auto mt-4 sm:mt-0 justify-end">
+                        <div className="text-right px-4 py-2 border border-gray-100 rounded-xl bg-gray-50/50">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Tickets Sold</p>
+                          <p className="font-black text-gray-900 text-lg leading-none">{event.tickets}</p>
+                        </div>
+                        <div className="text-right px-4 py-2 border border-emerald-100 rounded-xl bg-emerald-50/50">
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5">Gross Revenue</p>
+                          <p className="font-black text-emerald-800 text-lg leading-none">{formatCurrency(event.revenue)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </TabsContent>
 
           </div>

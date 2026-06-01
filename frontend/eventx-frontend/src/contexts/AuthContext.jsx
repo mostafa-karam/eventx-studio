@@ -105,7 +105,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     // Inform server to clear cookies and server-side refresh token
-    api.post('/auth/logout').catch(() => {});
+    api.post('/auth/logout').catch(() => { });
     setUser(null);
     localStorage.removeItem('eventx_remember_email');
     localStorage.removeItem('eventx_remember_opt_in');

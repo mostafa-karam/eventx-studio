@@ -65,4 +65,5 @@ Never reuse one secret for multiple domains.
 - Booking confirmation supports idempotency keys to make retries safe.
 
 Residual operational risk to track:
+
 - Development email sink writes links/tokens to local temp logs when SMTP is not configured (acceptable for local dev only).

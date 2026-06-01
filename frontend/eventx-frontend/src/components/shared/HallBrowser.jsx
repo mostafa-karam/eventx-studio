@@ -54,7 +54,7 @@ const HallBrowser = ({ onSelectHall }) => {
 
     useEffect(() => {
         fetchHalls();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters]);
 
     const fetchHalls = async () => {

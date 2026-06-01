@@ -4,8 +4,8 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
-import { 
-  Loader2, Smartphone, Monitor, Tablet, Globe, Clock, 
+import {
+  Loader2, Smartphone, Monitor, Tablet, Globe, Clock,
   Trash2, Shield, AlertTriangle, CheckCircle
 } from 'lucide-react';
 
@@ -24,7 +24,7 @@ const SessionManager = () => {
   const loadSessions = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
       const result = await getSessions();
       if (result.success) {
@@ -41,12 +41,12 @@ const SessionManager = () => {
 
   useEffect(() => {
     loadSessions();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getDeviceIcon = (deviceInfo) => {
     const userAgent = deviceInfo.userAgent?.toLowerCase() || '';
-    
+
     if (userAgent.includes('mobile') || userAgent.includes('android') || userAgent.includes('iphone')) {
       return <Smartphone className="h-5 w-5" />;
     } else if (userAgent.includes('tablet') || userAgent.includes('ipad')) {
@@ -60,7 +60,7 @@ const SessionManager = () => {
     const now = new Date();
     const activity = new Date(timestamp);
     const diffInMinutes = Math.floor((now - activity) / (1000 * 60));
-    
+
     if (diffInMinutes < 1) return 'Just now';
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
@@ -71,7 +71,7 @@ const SessionManager = () => {
     setActionLoading(prev => ({ ...prev, [sessionId]: true }));
     setError('');
     setSuccess('');
-    
+
     try {
       const result = await removeSession(sessionId);
       if (result.success) {
@@ -93,7 +93,7 @@ const SessionManager = () => {
     setActionLoading(prev => ({ ...prev, removeAll: true }));
     setError('');
     setSuccess('');
-    
+
     try {
       const result = await removeAllSessions();
       if (result.success) {
@@ -144,7 +144,7 @@ const SessionManager = () => {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           {success && (
             <Alert>
               <CheckCircle className="h-4 w-4" />
@@ -208,7 +208,7 @@ const SessionManager = () => {
                   Remove All
                 </Button>
               </div>
-              
+
               {activeSessions.map((session) => (
                 <div key={session.sessionId} className="border rounded-lg p-4">
                   <div className="flex items-start justify-between">
@@ -276,7 +276,7 @@ const SessionManager = () => {
               Are you sure you want to remove this session? The user will be signed out of that device.
             </DialogDescription>
           </DialogHeader>
-          
+
           {sessionToRemove && (
             <div className="border rounded-lg p-3 bg-gray-50">
               <div className="flex items-center gap-3">
@@ -292,7 +292,7 @@ const SessionManager = () => {
               </div>
             </div>
           )}
-          
+
           <div className="flex gap-3">
             <Button
               variant="outline"
@@ -332,7 +332,7 @@ const SessionManager = () => {
               This will sign you out of all other devices and browsers. Your current session will remain active.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex gap-3">
             <Button
               variant="outline"

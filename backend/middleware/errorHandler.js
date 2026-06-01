@@ -12,8 +12,8 @@ const config = require('../config');
 const errorHandler = (err, req, res, _next) => {
   // CSRF token errors from csrf-csrf
   if (err.message === 'invalid csrf token' || err.code === 'EBADCSRFTOKEN') {
-    return res.status(403).json({ 
-      success: false, 
+    return res.status(403).json({
+      success: false,
       data: null,
       error: 'Invalid or missing CSRF token',
       message: 'Invalid or missing CSRF token',

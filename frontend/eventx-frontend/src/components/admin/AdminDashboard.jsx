@@ -274,7 +274,7 @@ const AdminDashboard = () => {
             <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-between h-full border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
               {/* Decorative background glow */}
               <div className={`absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br ${stat.color} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
-              
+
               <div className="relative z-10 flex justify-between items-start mb-6">
                 <div className="flex-1 pr-3">
                   <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1">{stat.title}</p>
@@ -294,7 +294,7 @@ const AdminDashboard = () => {
                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{stat.title === 'Avg Ticket Price' ? 'vs free events' : 'vs last month'}</span>
                 </div>
               </div>
-              
+
               {/* Bottom decorative line */}
               <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
             </div>
@@ -312,7 +312,7 @@ const AdminDashboard = () => {
               <p className="text-sm text-gray-500 font-medium">Monthly revenue performance</p>
             </div>
             <div className="flex gap-2 mt-4 sm:mt-0">
-              <select 
+              <select
                 className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block px-3 py-1.5 outline-none font-medium"
                 value={revenueFilter}
                 onChange={(e) => setRevenueFilter(e.target.value)}
@@ -322,28 +322,28 @@ const AdminDashboard = () => {
               </select>
             </div>
           </div>
-          
+
           <div className="h-[300px] w-full mt-4">
             {revenueData ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} dx={-10} tickFormatter={(val) => `$${val}`} />
                   <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                  <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="#6366f1" 
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#6366f1"
                     strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorRevenue)" 
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
                     activeDot={{ r: 6, strokeWidth: 0, fill: '#4f46e5' }}
                   />
                 </AreaChart>
@@ -361,7 +361,7 @@ const AdminDashboard = () => {
         <GlassCard className="p-6">
           <h3 className="text-lg font-bold text-gray-900 tracking-tight">Event Distribution</h3>
           <p className="text-sm text-gray-500 font-medium mb-6">Events by category</p>
-          
+
           <div className="h-[240px] w-full relative">
             {eventCategories ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -389,7 +389,7 @@ const AdminDashboard = () => {
                 <p className="font-medium text-sm">No categories available</p>
               </div>
             )}
-            
+
             {/* Center Label */}
             {eventCategories && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -417,7 +417,7 @@ const AdminDashboard = () => {
 
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Latest Event Spotlight */}
         <GlassCard className="lg:col-span-2 p-0 flex flex-col">
           <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50">
@@ -458,12 +458,11 @@ const AdminDashboard = () => {
                           <span className="truncate max-w-[150px]">{selectedEvent.venue.name}</span>
                         </span>
                       )}
-                      
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                        selectedEvent.date && new Date(selectedEvent.date) > new Date() 
-                          ? 'bg-emerald-100 text-emerald-700' 
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
+
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${selectedEvent.date && new Date(selectedEvent.date) > new Date()
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-gray-100 text-gray-600'
+                        }`}>
                         {selectedEvent.date && new Date(selectedEvent.date) > new Date() ? 'UPCOMING' : 'PAST'}
                       </span>
                     </div>
@@ -478,7 +477,7 @@ const AdminDashboard = () => {
                   <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:bg-white hover:shadow-md hover:border-blue-100 transition-all cursor-default">
                     <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Total Revenue</p>
                     <p className="text-2xl font-black text-gray-900">
-                       {(selectedEvent.analytics?.totalRevenue || 0) > 0 ? `$${selectedEvent.analytics.totalRevenue.toLocaleString()}` : 'Free'}
+                      {(selectedEvent.analytics?.totalRevenue || 0) > 0 ? `$${selectedEvent.analytics.totalRevenue.toLocaleString()}` : 'Free'}
                     </p>
                   </div>
                   <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:bg-white hover:shadow-md hover:border-emerald-100 transition-all cursor-default">
@@ -507,9 +506,9 @@ const AdminDashboard = () => {
                 <div className="mt-8 pt-6 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
                     <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider flex items-center gap-2">
-                       <Activity className="w-4 h-4 text-blue-500" /> Ticket Sales Velocity
+                      <Activity className="w-4 h-4 text-blue-500" /> Ticket Sales Velocity
                     </h4>
-                    
+
                     <div className="space-y-4">
                       {/* Visual Progress Bar */}
                       <div>
@@ -520,8 +519,8 @@ const AdminDashboard = () => {
                           </span>
                         </div>
                         <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full" 
+                          <div
+                            className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full"
                             style={{ width: `${selectedEvent.analytics?.occupancyRate || (selectedEvent.seating && selectedEvent.seating.totalSeats > 0 ? Math.round(((selectedEvent.seating.totalSeats - selectedEvent.seating.availableSeats) / selectedEvent.seating.totalSeats) * 100) : 0)}%` }}
                           ></div>
                         </div>
@@ -533,23 +532,23 @@ const AdminDashboard = () => {
                   </div>
 
                   <div>
-                     <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider flex items-center gap-2">
-                       <DollarSign className="w-4 h-4 text-emerald-500" /> Revenue Flow
-                     </h4>
-                     <div className="bg-emerald-50/50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-400/25 rounded-xl p-4 flex items-center justify-between">
-                       <div>
-                         <p className="text-xs font-bold text-emerald-600 dark:text-emerald-200 uppercase tracking-wider mb-1">Average Ticket Value</p>
-                         <p className="text-2xl font-black text-emerald-900 dark:text-emerald-50">
-                           {selectedEvent.analytics?.totalRevenue > 0 && selectedEvent.analytics?.ticketsSold > 0
-                             ? `$${Math.round(selectedEvent.analytics.totalRevenue / selectedEvent.analytics.ticketsSold)}` 
-                             : 'Free'
-                           }
-                         </p>
-                       </div>
-                       <Button variant="outline" className="border-emerald-200 dark:border-emerald-400/30 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 bg-slate-50 dark:bg-transparent"  onClick={() => navigate('/admin/analytics')}>
-                          Full Report
-                       </Button>
-                     </div>
+                    <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-emerald-500" /> Revenue Flow
+                    </h4>
+                    <div className="bg-emerald-50/50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-400/25 rounded-xl p-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-200 uppercase tracking-wider mb-1">Average Ticket Value</p>
+                        <p className="text-2xl font-black text-emerald-900 dark:text-emerald-50">
+                          {selectedEvent.analytics?.totalRevenue > 0 && selectedEvent.analytics?.ticketsSold > 0
+                            ? `$${Math.round(selectedEvent.analytics.totalRevenue / selectedEvent.analytics.ticketsSold)}`
+                            : 'Free'
+                          }
+                        </p>
+                      </div>
+                      <Button variant="outline" className="border-emerald-200 dark:border-emerald-400/30 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 bg-slate-50 dark:bg-transparent" onClick={() => navigate('/admin/analytics')}>
+                        Full Report
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -577,7 +576,7 @@ const AdminDashboard = () => {
             </div>
             <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">{notifications.length}</span>
           </div>
-          
+
           <div className="p-6 flex-1 overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-gray-200">
             {notifications.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center">
@@ -589,7 +588,7 @@ const AdminDashboard = () => {
                 {notifications.slice(0, 5).map((notification, idx) => {
                   let Icon = Bell;
                   let colorClass = "bg-orange-100 text-orange-600 ring-orange-100";
-                  
+
                   if (notification.type === 'booking') { Icon = Ticket; colorClass = "bg-emerald-100 text-emerald-600 ring-emerald-100"; }
                   if (notification.type === 'registration') { Icon = Users; colorClass = "bg-blue-100 text-blue-600 ring-blue-100"; }
                   if (notification.type === 'event') { Icon = Calendar; colorClass = "bg-purple-100 text-purple-600 ring-purple-100"; }
@@ -600,7 +599,7 @@ const AdminDashboard = () => {
                       <span className={`absolute -left-[17px] top-1 flex items-center justify-center w-8 h-8 rounded-full ring-4 ring-white ${colorClass} shadow-sm group-hover:scale-110 transition-transform`}>
                         <Icon className="w-4 h-4" />
                       </span>
-                      
+
                       <div className="flex flex-col">
                         <div className="flex items-center justify-between gap-4 mb-1">
                           <h4 className="text-sm font-bold text-gray-900 leading-tight">
@@ -610,13 +609,13 @@ const AdminDashboard = () => {
                             {getTimeAgo(notification.timestamp)}
                           </span>
                         </div>
-                        
+
                         {notification.description && (
                           <p className="text-xs font-medium text-gray-500 leading-relaxed mb-2">
                             {notification.description}
                           </p>
                         )}
-                        
+
                         {/* Meta Tags */}
                         {(notification.metadata?.amount || notification.metadata?.ticketId) && (
                           <div className="flex flex-wrap gap-2 mt-1">
@@ -627,7 +626,7 @@ const AdminDashboard = () => {
                             )}
                             {notification.metadata.ticketId && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200 font-mono">
-                                #{notification.metadata.ticketId.substring(0,8)}
+                                #{notification.metadata.ticketId.substring(0, 8)}
                               </span>
                             )}
                           </div>
@@ -639,7 +638,7 @@ const AdminDashboard = () => {
               </div>
             )}
           </div>
-          
+
           {notifications.length > 5 && (
             <div className="p-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
               <Button variant="ghost" className="w-full text-blue-600 dark:text-blue-200 hover:text-blue-700 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-blue-500/20 text-sm font-semibold rounded-xl" onClick={() => navigate('/admin/notifications')}>

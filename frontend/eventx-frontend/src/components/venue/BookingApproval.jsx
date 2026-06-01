@@ -14,7 +14,7 @@ import EmptyState from '../shared/EmptyState';
 import Breadcrumbs from '../shared/Breadcrumbs';
 
 const BookingApproval = () => {
-        const [bookings, setBookings] = useState([]);
+    const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('pending');
 
@@ -22,7 +22,7 @@ const BookingApproval = () => {
 
     useEffect(() => {
         fetchBookings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filter]);
 
     const fetchBookings = async () => {

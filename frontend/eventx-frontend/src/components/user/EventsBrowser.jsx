@@ -50,8 +50,8 @@ const EventsBrowser = ({ onEventSelect }) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [pagination, setPagination] = useState({ current: 1, pages: 1, total: 0 });
   const [favorites, setFavorites] = useState(new Set());
-//   const [searchSuggestions] = useState([]);
-//   const [showSuggestions] = useState(false);
+  //   const [searchSuggestions] = useState([]);
+  //   const [showSuggestions] = useState(false);
 
   useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -69,7 +69,7 @@ const EventsBrowser = ({ onEventSelect }) => {
       fetchEvents();
     }, 300);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, categoryFilter, sortBy, cityFilter, dateFrom, dateTo, priceRange, pagination.current]);
 
   // When specificDate changes, constrain the range to that exact day

@@ -47,10 +47,9 @@ const AdminSettings = () => {
     };
 
     const getSectionButtonClass = (sectionId) => (
-        `flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${
-            activeSection === sectionId
-                ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200 font-bold'
-                : 'text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-accent hover:text-gray-900 dark:hover:text-foreground font-semibold'
+        `flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${activeSection === sectionId
+            ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200 font-bold'
+            : 'text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-accent hover:text-gray-900 dark:hover:text-foreground font-semibold'
         }`
     );
 
@@ -157,7 +156,7 @@ const AdminSettings = () => {
 
                 {/* Main Content Area */}
                 <div className="lg:col-span-2 space-y-8">
-                    
+
                     {/* Profile Section */}
                     <GlassCard id="settings-profile" className="flex flex-col scroll-mt-24">
                         <div className="px-6 py-5 border-b border-gray-100 bg-white/50">
@@ -323,18 +322,18 @@ const AdminSettings = () => {
                         </div>
                         <div className="p-6">
                             <div className="space-y-4">
-                                <NotificationToggle 
-                                    label="System Alerts" 
+                                <NotificationToggle
+                                    label="System Alerts"
                                     description="Get notified about major system updates, downtime, or security patches."
                                     defaultChecked={true}
                                 />
-                                <NotificationToggle 
-                                    label="New Event Creator Approvals" 
+                                <NotificationToggle
+                                    label="New Event Creator Approvals"
                                     description="Receive an email whenever a new organizer requests approval."
                                     defaultChecked={true}
                                 />
-                                <NotificationToggle 
-                                    label="Weekly Performance Report" 
+                                <NotificationToggle
+                                    label="Weekly Performance Report"
                                     description="A summary of ticket sales, revenue, and active events sent every Monday."
                                     defaultChecked={false}
                                 />

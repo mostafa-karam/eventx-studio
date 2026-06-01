@@ -205,8 +205,8 @@ const UserNotifications = () => {
                         <div
                             key={notification._id}
                             className={`group flex items-start gap-4 p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${notification.read
-                                    ? 'bg-white border-gray-100'
-                                    : 'bg-blue-50/50 border-blue-100 shadow-sm'
+                                ? 'bg-white border-gray-100'
+                                : 'bg-blue-50/50 border-blue-100 shadow-sm'
                                 }`}
                         >
                             <div className="flex-shrink-0 mt-0.5">

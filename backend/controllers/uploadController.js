@@ -47,7 +47,7 @@ exports.uploadFiles = async (req, res) => {
             try {
                 const buffer = await fs.promises.readFile(file.path);
                 const detected = await fileTypeFromBuffer(buffer);
-                
+
                 if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
                     fs.unlink(file.path, () => { });
                     rejectedFiles.push(`${file.originalname} (detected: ${detected?.mime || 'unknown'})`);
@@ -66,7 +66,7 @@ exports.uploadFiles = async (req, res) => {
                     rejectedFiles.push(`${file.originalname} (extension mismatch)`);
                     continue;
                 }
-                
+
                 // Sanitize originalname for alt text (prevent XSS in alt attributes)
                 file.sanitizedAlt = file.originalname.replace(/[^a-zA-Z0-9-_\s]/g, '').trim().substring(0, 100);
             } catch (err) {

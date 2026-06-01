@@ -251,7 +251,7 @@ exports.getCategoryStats = async (req, res) => {
             stats: {
                 totalCategories,
                 recentCategories,
-                topCategories: topCategoriesWithCounts.sort((a,b) => b.eventCount - a.eventCount)
+                topCategories: topCategoriesWithCounts.sort((a, b) => b.eventCount - a.eventCount)
             }
         });
     } catch (error) {

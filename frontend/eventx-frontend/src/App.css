@@ -169,6 +169,7 @@
 }
 
 @layer utilities {
+
   .dark .bg-white,
   .dark .bg-white\/60,
   .dark .bg-white\/80,
@@ -306,8 +307,8 @@
     border-color: var(--border) !important;
   }
 
-  .dark .divide-gray-100 > :not(:last-child),
-  .dark .divide-gray-200 > :not(:last-child) {
+  .dark .divide-gray-100> :not(:last-child),
+  .dark .divide-gray-200> :not(:last-child) {
     border-color: var(--border) !important;
   }
 

@@ -552,63 +552,63 @@ This section simulates **wrong production configuration** and maps each case to 
 
 These typically produce **restart loops** in Kubernetes/Docker or PM2, or a **single crash** before `Server running on port`.
 
-| Misconfiguration | Mechanism | What you see |
-| ---------------- | --------- | -------------- |
-| Missing any required env (`NODE_ENV`, `MONGO_URI`, `JWT_*`, `CSRF_SECRET`, `COOKIE_SIGNING_SECRET`, `PAYMENT_HMAC_SECRET`, `QR_HMAC_SECRET`, `SESSION_ENCRYPTION_KEY`, `FRONTEND_URL`) | `config/validateEnv.js` → `process.exit(1)` | Log: `Missing required environment variables: ...` |
-| In **production**, missing `PAYMENT_PROVIDER_WEBHOOK_SECRET` or `PAYMENT_WEBHOOK_IP_ALLOWLIST` | Same | Same |
-| Secret present but **fewer than 32 characters** or matches weak pattern (`test`, `change_me`, `example`, …) | `validateEnv` → `exit(1)` | `Weak or placeholder secret values detected: ...` |
-| `ALLOW_NON_TXN_BOOKING=true` with `NODE_ENV=production` | `validateEnv` → `exit(1)` | Error about non-transactional booking in production |
-| Missing `CSRF_SECRET` | `middleware/csrfProtection.js` throws on `require` | `CSRF_SECRET is required` (after `validateEnv` if that passed) |
-| Missing `COOKIE_SIGNING_SECRET` | `server.js` throws before `cookieParser` | `COOKIE_SIGNING_SECRET is required` |
-| `REDIS_URL` empty / unset in production | `server.js` → `verifyRateLimitRedisConfigured` after Mongo connect | `REDIS_URL is required for production rate limiting` then `exit(1)` |
-| Payment webhook config invalid (empty secret or empty allowlist in prod) | `verifyPaymentWebhookSecurity` | `Payment webhook security config invalid: ...` then `exit(1)` |
-| Mongo **transactions** required but `probeTransactionCapability()` fails | `verifyDbTransactions` | `MongoDB transactions are required but unavailable` then `exit(1)` |
-| `MONGO_URI` unreachable or auth failure | `connectDB` | `MongoDB connection error: ...` then `exit(1)` |
-| **`PAYMENT_WEBHOOK_IP_ALLOWLIST` syntactically invalid** (e.g. `not_an_ip`, bad CIDR) | `services/paymentsService.js` builds `WEBHOOK_IP_BLOCKLIST` **at module load** | Uncaught throw: `Invalid webhook allowlist IP/CIDR entry` — can crash during `require('./services/paymentsService')` **after** `validateEnv` accepted a non-empty garbage string |
+| Misconfiguration                                                                                                                                                                       | Mechanism                                                                      | What you see                                                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Missing any required env (`NODE_ENV`, `MONGO_URI`, `JWT_*`, `CSRF_SECRET`, `COOKIE_SIGNING_SECRET`, `PAYMENT_HMAC_SECRET`, `QR_HMAC_SECRET`, `SESSION_ENCRYPTION_KEY`, `FRONTEND_URL`) | `config/validateEnv.js` → `process.exit(1)`                                    | Log: `Missing required environment variables: ...`                                                                                                                               |
+| In **production**, missing `PAYMENT_PROVIDER_WEBHOOK_SECRET` or `PAYMENT_WEBHOOK_IP_ALLOWLIST`                                                                                         | Same                                                                           | Same                                                                                                                                                                             |
+| Secret present but **fewer than 32 characters** or matches weak pattern (`test`, `change_me`, `example`, …)                                                                            | `validateEnv` → `exit(1)`                                                      | `Weak or placeholder secret values detected: ...`                                                                                                                                |
+| `ALLOW_NON_TXN_BOOKING=true` with `NODE_ENV=production`                                                                                                                                | `validateEnv` → `exit(1)`                                                      | Error about non-transactional booking in production                                                                                                                              |
+| Missing `CSRF_SECRET`                                                                                                                                                                  | `middleware/csrfProtection.js` throws on `require`                             | `CSRF_SECRET is required` (after `validateEnv` if that passed)                                                                                                                   |
+| Missing `COOKIE_SIGNING_SECRET`                                                                                                                                                        | `server.js` throws before `cookieParser`                                       | `COOKIE_SIGNING_SECRET is required`                                                                                                                                              |
+| `REDIS_URL` empty / unset in production                                                                                                                                                | `server.js` → `verifyRateLimitRedisConfigured` after Mongo connect             | `REDIS_URL is required for production rate limiting` then `exit(1)`                                                                                                              |
+| Payment webhook config invalid (empty secret or empty allowlist in prod)                                                                                                               | `verifyPaymentWebhookSecurity`                                                 | `Payment webhook security config invalid: ...` then `exit(1)`                                                                                                                    |
+| Mongo **transactions** required but `probeTransactionCapability()` fails                                                                                                               | `verifyDbTransactions`                                                         | `MongoDB transactions are required but unavailable` then `exit(1)`                                                                                                               |
+| `MONGO_URI` unreachable or auth failure                                                                                                                                                | `connectDB`                                                                    | `MongoDB connection error: ...` then `exit(1)`                                                                                                                                   |
+| **`PAYMENT_WEBHOOK_IP_ALLOWLIST` syntactically invalid** (e.g. `not_an_ip`, bad CIDR)                                                                                                  | `services/paymentsService.js` builds `WEBHOOK_IP_BLOCKLIST` **at module load** | Uncaught throw: `Invalid webhook allowlist IP/CIDR entry` — can crash during `require('./services/paymentsService')` **after** `validateEnv` accepted a non-empty garbage string |
 
 **Note:** `REDIS_URL` is only checked for **non-empty** string at startup. A **wrong** URL may still allow the process to start; Redis errors appear at runtime (see §16.2).
 
 ### 16.2 Starts but critical paths break (HTTP errors or degraded behavior)
 
-| Misconfiguration | Effect |
-| ---------------- | ------ |
-| **`TRUST_PROXY` unset** (or wrong hop count) behind Nginx/LB | `req.ip` wrong → **`PAYMENT_WEBHOOK_IP_ALLOWLIST`** may reject real PSP traffic (**403** `Webhook source IP not allowed`); rate limits and `security_event` logs use wrong identity |
-| **CORS** origins not listed in `FRONTEND_ORIGIN` / `FRONTEND_URL` | Browser **CORS errors**; production rejects requests **without** `Origin` header |
-| **JWT issuer/audience** mismatch between token issuer and `JWT_ISSUER` / `JWT_AUDIENCE` | **401** `Invalid token` / issuer / audience messages (`middleware/auth.js`) |
-| **Redis down** or unreachable after start | Strict limiters: **429** (emergency cap) or **503** if `RATE_LIMIT_EMERGENCY_MODE=false` (`middleware/rateLimiter.js`) |
-| **Mongo transactions** lost after start (election, misconfig) | `requireHealthyTransactions` → **503** on `POST /api/payments/process`, `POST /api/booking/initiate`, `POST /api/booking/confirm` |
-| **Missing `Idempotency-Key`** on idempotent routes (non-test) | **400** `Idempotency-Key header is required` (`middleware/idempotency.js`) |
-| Webhook **clock skew** beyond `PAYMENT_WEBHOOK_MAX_AGE_MS` | **401** timestamp out of range |
-| Webhook **bad HMAC** | **401** invalid signature |
-| Webhook **replay** (duplicate `eventId` + signature digest) | **409** duplicate webhook |
-| Payment body **amount/currency** mismatch vs stored intent | Verification failure / **400** / failed payment state (`paymentsService`) |
+| Misconfiguration                                                                        | Effect                                                                                                                                                                              |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`TRUST_PROXY` unset** (or wrong hop count) behind Nginx/LB                            | `req.ip` wrong → **`PAYMENT_WEBHOOK_IP_ALLOWLIST`** may reject real PSP traffic (**403** `Webhook source IP not allowed`); rate limits and `security_event` logs use wrong identity |
+| **CORS** origins not listed in `FRONTEND_ORIGIN` / `FRONTEND_URL`                       | Browser **CORS errors**; production rejects requests **without** `Origin` header                                                                                                    |
+| **JWT issuer/audience** mismatch between token issuer and `JWT_ISSUER` / `JWT_AUDIENCE` | **401** `Invalid token` / issuer / audience messages (`middleware/auth.js`)                                                                                                         |
+| **Redis down** or unreachable after start                                               | Strict limiters: **429** (emergency cap) or **503** if `RATE_LIMIT_EMERGENCY_MODE=false` (`middleware/rateLimiter.js`)                                                              |
+| **Mongo transactions** lost after start (election, misconfig)                           | `requireHealthyTransactions` → **503** on `POST /api/payments/process`, `POST /api/booking/initiate`, `POST /api/booking/confirm`                                                   |
+| **Missing `Idempotency-Key`** on idempotent routes (non-test)                           | **400** `Idempotency-Key header is required` (`middleware/idempotency.js`)                                                                                                          |
+| Webhook **clock skew** beyond `PAYMENT_WEBHOOK_MAX_AGE_MS`                              | **401** timestamp out of range                                                                                                                                                      |
+| Webhook **bad HMAC**                                                                    | **401** invalid signature                                                                                                                                                           |
+| Webhook **replay** (duplicate `eventId` + signature digest)                             | **409** duplicate webhook                                                                                                                                                           |
+| Payment body **amount/currency** mismatch vs stored intent                              | Verification failure / **400** / failed payment state (`paymentsService`)                                                                                                           |
 
 ### 16.3 “Healthy” but wrong operationally (no immediate crash)
 
-| Misconfiguration | Effect |
-| ---------------- | ------ |
-| **`BACKEND_URL` unset** behind TLS terminator | Upload URLs may use **http** or wrong host in JSON (`uploadController.js`) — mixed content or broken image links |
-| **PM2 cluster** + **local `uploads/`** only | Files written on instance A; next request on instance B → **missing file** / intermittent 404 for `GET /api/upload/files/:filename` |
-| **`REDIS_URL` shared** between staging and prod with same **`REDIS_RATE_LIMIT_PREFIX`** | Cross-environment rate limit leakage |
-| **`TRUST_PROXY` too high** (trusts too many hops) | Spoofed `X-Forwarded-For` could distort client IP (operational security risk depending on edge config) |
+| Misconfiguration                                                                        | Effect                                                                                                                              |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **`BACKEND_URL` unset** behind TLS terminator                                           | Upload URLs may use **http** or wrong host in JSON (`uploadController.js`) — mixed content or broken image links                    |
+| **PM2 cluster** + **local `uploads/`** only                                             | Files written on instance A; next request on instance B → **missing file** / intermittent 404 for `GET /api/upload/files/:filename` |
+| **`REDIS_URL` shared** between staging and prod with same **`REDIS_RATE_LIMIT_PREFIX`** | Cross-environment rate limit leakage                                                                                                |
+| **`TRUST_PROXY` too high** (trusts too many hops)                                       | Spoofed `X-Forwarded-For` could distort client IP (operational security risk depending on edge config)                              |
 
 ### 16.4 Quick matrix (if this → then that)
 
-| If … | Then … |
-| ---- | ------ |
+| If …                                               | Then …                                                |
+| -------------------------------------------------- | ----------------------------------------------------- |
 | Standalone Mongo, no replica set / no transactions | **Startup exit** (default prod `requireTransactions`) |
-| `REDIS_URL` empty in production | **Exit** after DB connect |
-| Weak / short secrets | **Exit** in `validateEnv` |
-| `ALLOW_NON_TXN_BOOKING=true` in prod | **Exit** |
-| Invalid webhook allowlist **syntax** | **Crash on module load** of `paymentsService` |
-| Wrong Mongo URI / DB down | **Exit** in `connectDB` |
-| No `TRUST_PROXY` behind LB | Webhooks **403**; odd rate-limit behavior |
-| Wrong CORS origins | SPA **cannot** call API from browser |
-| Wrong JWT iss/aud | **401** on protected APIs |
-| Redis down at runtime | **429** / **503** on strict-limited routes |
-| Tx capability lost at runtime | **503** on payment + booking |
-| No `Idempotency-Key` | **400** on payment/booking |
-| Cluster + local uploads only | **Intermittent** missing uploads |
+| `REDIS_URL` empty in production                    | **Exit** after DB connect                             |
+| Weak / short secrets                               | **Exit** in `validateEnv`                             |
+| `ALLOW_NON_TXN_BOOKING=true` in prod               | **Exit**                                              |
+| Invalid webhook allowlist **syntax**               | **Crash on module load** of `paymentsService`         |
+| Wrong Mongo URI / DB down                          | **Exit** in `connectDB`                               |
+| No `TRUST_PROXY` behind LB                         | Webhooks **403**; odd rate-limit behavior             |
+| Wrong CORS origins                                 | SPA **cannot** call API from browser                  |
+| Wrong JWT iss/aud                                  | **401** on protected APIs                             |
+| Redis down at runtime                              | **429** / **503** on strict-limited routes            |
+| Tx capability lost at runtime                      | **503** on payment + booking                          |
+| No `Idempotency-Key`                               | **400** on payment/booking                            |
+| Cluster + local uploads only                       | **Intermittent** missing uploads                      |
 
 ### 16.5 How this relates to §10 (failure modes)
 

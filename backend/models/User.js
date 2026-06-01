@@ -101,16 +101,16 @@ const userSchema = new mongoose.Schema({
     sessionId: String,
     deviceInfo: {
       type: mongoose.Schema.Types.Mixed,
-      get: function(data) {
-          if (!data) return data;
-          if (typeof data === 'string' && data.includes(':')) {
-            try { return decrypt(data); } catch { return data; }
-          }
-          return data;
+      get: function (data) {
+        if (!data) return data;
+        if (typeof data === 'string' && data.includes(':')) {
+          try { return decrypt(data); } catch { return data; }
+        }
+        return data;
       },
-      set: function(data) {
-          if (!data) return data;
-          return typeof data === 'object' ? encrypt(data) : encrypt(String(data));
+      set: function (data) {
+        if (!data) return data;
+        return typeof data === 'object' ? encrypt(data) : encrypt(String(data));
       }
     },
     lastActivity: {

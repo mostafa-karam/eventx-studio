@@ -24,13 +24,13 @@ const EventsManagement = () => {
   const [dateTo, setDateTo] = useState('');
   const [specificDate, setSpecificDate] = useState('');
   const [cloneLoading, setCloneLoading] = useState(null);
-  
+
   // Pagination & Sorting state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
   const [activeDropdown, setActiveDropdown] = useState(null);
-  
+
   // Custom Delete Modal State
   const [itemToDelete, setItemToDelete] = useState(null);
 
@@ -38,7 +38,7 @@ const EventsManagement = () => {
 
   useEffect(() => {
     fetchEvents();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, dateFrom, dateTo]);
 
   useEffect(() => {
@@ -170,12 +170,12 @@ const EventsManagement = () => {
   // Process data for table
   const processedEvents = useMemo(() => {
     let result = [...events];
-    
+
     // Apply local search
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
-      result = result.filter(e => 
-        e.title?.toLowerCase().includes(lowerSearch) || 
+      result = result.filter(e =>
+        e.title?.toLowerCase().includes(lowerSearch) ||
         e.venue?.name?.toLowerCase().includes(lowerSearch)
       );
     }
@@ -185,7 +185,7 @@ const EventsManagement = () => {
       result.sort((a, b) => {
         let aVal = a[sortConfig.key];
         let bVal = b[sortConfig.key];
-        
+
         if (sortConfig.key === 'tickets') {
           aVal = a.seating?.totalSeats || 0;
           bVal = b.seating?.totalSeats || 0;
@@ -289,7 +289,7 @@ const EventsManagement = () => {
         ].map((stat, i) => (
           <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
             <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
-            
+
             <div className="relative z-10 flex justify-between items-center">
               <div className="flex-1 pr-3">
                 <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1.5">{stat.label}</p>
@@ -299,7 +299,7 @@ const EventsManagement = () => {
                 <stat.icon className="w-5 h-5" />
               </div>
             </div>
-            
+
             <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
           </div>
         ))}
@@ -341,7 +341,7 @@ const EventsManagement = () => {
               <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3 w-full lg:w-auto">
             <Button variant="outline" className="bg-white border-gray-200 shadow-sm rounded-xl text-gray-700 hidden sm:flex">
               <Filter className="w-4 h-4 mr-2 text-gray-500" /> Filters
@@ -360,16 +360,16 @@ const EventsManagement = () => {
         {/* Table */}
         <div className="overflow-x-auto min-h-[400px]">
           {loading ? (
-             <div className="p-8 space-y-4">
-               {[...Array(5)].map((_, i) => (
-                 <div key={i} className="animate-pulse flex items-center gap-4">
-                   <div className="h-10 w-10 bg-gray-200 rounded-lg"></div>
-                   <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                   <div className="h-4 bg-gray-200 rounded w-1/5 ml-auto"></div>
-                   <div className="h-8 bg-gray-200 rounded w-16"></div>
-                 </div>
-               ))}
-             </div>
+            <div className="p-8 space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="animate-pulse flex items-center gap-4">
+                  <div className="h-10 w-10 bg-gray-200 rounded-lg"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/5 ml-auto"></div>
+                  <div className="h-8 bg-gray-200 rounded w-16"></div>
+                </div>
+              ))}
+            </div>
           ) : currentEvents.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 text-center h-[400px]">
               <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
@@ -415,7 +415,7 @@ const EventsManagement = () => {
                   const availableSeats = event?.seating?.availableSeats || 0;
                   const soldSeats = Math.max(0, totalSeats - availableSeats);
                   const progress = totalSeats > 0 ? (soldSeats / totalSeats) * 100 : 0;
-                  
+
                   return (
                     <tr key={event._id} className="bg-white hover:bg-blue-50/30 transition-all duration-200 group border-b border-gray-50 last:border-0 relative">
                       <td className="px-6 py-4 cursor-pointer" onClick={() => navigate(`${basePath}/events/${event._id}`)}>
@@ -472,13 +472,13 @@ const EventsManagement = () => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="relative inline-block text-left action-dropdown-container">
-                          <button 
+                          <button
                             onClick={() => setActiveDropdown(activeDropdown === event._id ? null : event._id)}
                             className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-100"
                           >
                             <MoreHorizontal className="w-5 h-5" />
                           </button>
-                          
+
                           {activeDropdown === event._id && (
                             <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                               <button onClick={() => { navigate(`${basePath}/events/edit/${event._id}`); setActiveDropdown(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center font-medium">
@@ -521,7 +521,7 @@ const EventsManagement = () => {
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              
+
               {/* Simple page numbers */}
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 let pageNum = i + 1;
@@ -529,22 +529,21 @@ const EventsManagement = () => {
                   pageNum = currentPage - 2 + i;
                   if (pageNum > totalPages) pageNum = totalPages - (4 - i);
                 }
-                
+
                 return (
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-semibold transition-colors ${
-                      currentPage === pageNum 
-                        ? 'bg-blue-600 text-white shadow-sm' 
+                    className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-semibold transition-colors ${currentPage === pageNum
+                        ? 'bg-blue-600 text-white shadow-sm'
                         : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     {pageNum}
                   </button>
                 );
               })}
-              
+
               <button
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
@@ -569,14 +568,14 @@ const EventsManagement = () => {
               Are you sure you want to delete this event? This action cannot be undone and will permanently remove all associated tickets and data.
             </p>
             <div className="flex flex-col gap-3">
-              <Button 
-                onClick={handleDeleteEvent} 
+              <Button
+                onClick={handleDeleteEvent}
                 disabled={deleteLoading !== null}
                 className="w-full rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold h-12 shadow-md shadow-red-500/20"
               >
                 {deleteLoading !== null ? 'Deleting...' : 'Yes, delete event'}
               </Button>
-              <Button 
+              <Button
                 onClick={() => setItemToDelete(null)}
                 variant="outline"
                 className="w-full rounded-2xl bg-white border-gray-200 text-gray-700 hover:bg-gray-50 font-bold h-12 shadow-sm"

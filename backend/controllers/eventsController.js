@@ -203,7 +203,7 @@ exports.approveWaitlist = async (req, res) => {
 function escapeCSV(str) {
     if (str === null || str === undefined) return '';
     const strVal = String(str);
-    
+
     // FIX M-02 — Prevent CSV Injection by escaping formula prefixes
     if (/^[=+\-@]/.test(strVal)) {
         return `"'${strVal.replace(/"/g, '""')}"`;
@@ -291,11 +291,11 @@ exports.cancelEvent = async (req, res) => {
             resourceId: req.params.id,
             details: { reason },
         });
-        
-        res.json({ 
-            success: true, 
-            message: 'Event cancelled successfully. Attendees have been notified.', 
-            data: result 
+
+        res.json({
+            success: true,
+            message: 'Event cancelled successfully. Attendees have been notified.',
+            data: result
         });
     } catch (error) {
         logger.error('Cancel event error:', error);

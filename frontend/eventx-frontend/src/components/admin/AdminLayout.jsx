@@ -88,12 +88,10 @@ const AdminLayout = () => {
         to={item.to}
         onClick={() => setSidebarOpen(false)}
         className={({ isActive }) =>
-          `group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ${
-            isCollapsed ? 'justify-center' : ''
-          } ${
-            isActive
-              ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100/50 dark:bg-blue-500/15 dark:text-blue-200 dark:ring-blue-400/20'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-muted-foreground dark:hover:text-foreground dark:hover:bg-accent'
+          `group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ${isCollapsed ? 'justify-center' : ''
+          } ${isActive
+            ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100/50 dark:bg-blue-500/15 dark:text-blue-200 dark:ring-blue-400/20'
+            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-muted-foreground dark:hover:text-foreground dark:hover:bg-accent'
           }`
         }
       >
@@ -179,7 +177,7 @@ const AdminLayout = () => {
             </div>
           )}
         </div>
-        
+
         {/* Actions Row */}
         <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'justify-between gap-2'}`}>
           <button
@@ -190,7 +188,7 @@ const AdminLayout = () => {
             <LogOut className="w-4 h-4" />
             {!isCollapsed && <span>Sign out</span>}
           </button>
-          
+
           <button
             onClick={() => setCollapsed(!collapsed)}
             className={`hidden md:flex items-center justify-center w-10 h-8 rounded-xl bg-gray-50 dark:bg-sidebar-accent text-gray-400 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground hover:bg-gray-100 dark:hover:bg-accent border border-gray-200 dark:border-sidebar-border transition-all flex-shrink-0 ${isCollapsed ? 'w-full' : ''}`}
@@ -243,7 +241,7 @@ const AdminLayout = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 group-focus-within:text-blue-500 transition-colors" />
                 <input
                   placeholder="Search..."
-                className="pl-10 w-56 focus:w-72 border border-gray-200 dark:border-input rounded-xl h-9 text-sm bg-gray-50/80 dark:bg-input focus:bg-white dark:focus:bg-input focus:border-blue-300 dark:focus:border-ring focus:ring-2 focus:ring-blue-100 dark:focus:ring-ring/30 transition-all duration-300 outline-none"
+                  className="pl-10 w-56 focus:w-72 border border-gray-200 dark:border-input rounded-xl h-9 text-sm bg-gray-50/80 dark:bg-input focus:bg-white dark:focus:bg-input focus:border-blue-300 dark:focus:border-ring focus:ring-2 focus:ring-blue-100 dark:focus:ring-ring/30 transition-all duration-300 outline-none"
                 />
               </div>
 

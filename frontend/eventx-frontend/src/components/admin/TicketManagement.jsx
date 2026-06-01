@@ -34,7 +34,7 @@ const TicketManagement = () => {
 
     useEffect(() => {
         fetchTickets(statusView, page, eventFilter);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [statusView, page, eventFilter]);
 
     useEffect(() => {
@@ -50,7 +50,7 @@ const TicketManagement = () => {
             }
         };
         loadEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchTickets = async (status = '', pageParam = 1, eventId = '') => {
@@ -434,8 +434,8 @@ const TicketManagement = () => {
                                 key={tab.id}
                                 onClick={() => { setStatusView(tab.id); setPage(1); }}
                                 className={`pb-3 px-1 border-b-2 transition-colors whitespace-nowrap ${statusView === tab.id
-                                        ? 'border-blue-600 text-blue-600'
-                                        : 'border-transparent hover:text-gray-900 hover:border-gray-200'
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent hover:text-gray-900 hover:border-gray-200'
                                     }`}
                             >
                                 {tab.label}

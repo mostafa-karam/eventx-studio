@@ -41,7 +41,7 @@ export default function CheckInDashboard() {
         try {
             // Try to find ticket by QR code string first, then by ticket number
             const endpoint = `${API_BASE_URL}/tickets/lookup-qr`;
-                
+
             const res = await fetch(endpoint, {
                 method: 'POST',
                 credentials: 'include',
@@ -112,7 +112,7 @@ export default function CheckInDashboard() {
                 ].map((stat, i) => (
                     <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
                         <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
-                        
+
                         <div className="relative z-10 flex justify-between items-center">
                             <div className="flex-1 pr-3">
                                 <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest leading-tight mb-1.5">{stat.label}</p>
@@ -122,7 +122,7 @@ export default function CheckInDashboard() {
                                 <stat.icon className="w-5 h-5" />
                             </div>
                         </div>
-                        
+
                         <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
                     </div>
                 ))}
@@ -132,7 +132,7 @@ export default function CheckInDashboard() {
                 {/* Scanner */}
                 <WhiteCard className="flex flex-col">
                     <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/30 flex items-center gap-3">
-                        <QrCode className="w-5 h-5 text-gray-400" /> 
+                        <QrCode className="w-5 h-5 text-gray-400" />
                         <h2 className="text-lg font-bold text-gray-900">Scan / Enter Ticket</h2>
                     </div>
                     <div className="p-6 space-y-6 flex-1">
@@ -157,10 +157,10 @@ export default function CheckInDashboard() {
                         </div>
 
                         <div className="bg-blue-50 rounded-xl p-4 flex items-start gap-3 border border-blue-100/50">
-                           <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                           <p className="text-sm font-medium text-blue-800">
-                               Connect a QR scanner. It will automatically submit when it successfully reads a Code from the attendee's ticket.
-                           </p>
+                            <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-sm font-medium text-blue-800">
+                                Connect a QR scanner. It will automatically submit when it successfully reads a Code from the attendee's ticket.
+                            </p>
                         </div>
 
                         {/* Result */}
@@ -196,8 +196,8 @@ export default function CheckInDashboard() {
                 <WhiteCard className="flex flex-col">
                     <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/30 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                           <CheckCircle className="w-5 h-5 text-emerald-500" /> 
-                           <h2 className="text-lg font-bold text-gray-900">Recent Check-Ins</h2>
+                            <CheckCircle className="w-5 h-5 text-emerald-500" />
+                            <h2 className="text-lg font-bold text-gray-900">Recent Check-Ins</h2>
                         </div>
                         <span className="text-xs font-bold uppercase tracking-widest text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">{recentCheckins.length} Today</span>
                     </div>
@@ -205,7 +205,7 @@ export default function CheckInDashboard() {
                         {recentCheckins.length === 0 ? (
                             <div className="text-center py-16 flex flex-col items-center justify-center">
                                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
-                                   <QrCode className="w-8 h-8 text-gray-300" />
+                                    <QrCode className="w-8 h-8 text-gray-300" />
                                 </div>
                                 <p className="font-extrabold text-gray-900 text-lg">No check-ins yet</p>
                                 <p className="text-gray-500 font-medium">Scan a ticket to view activity history</p>
@@ -222,7 +222,7 @@ export default function CheckInDashboard() {
                                             <p className="text-xs font-medium text-gray-500 mt-0.5 truncate">{t?.event?.title || '—'} · <span className="font-mono text-gray-400">#{t?.ticketNumber || '—'}</span></p>
                                         </div>
                                         <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest bg-emerald-100/50 px-2 py-1 rounded-md">
-                                            {new Date(t.checkedInAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                            {new Date(t.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
                                 ))}

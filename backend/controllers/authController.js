@@ -211,7 +211,7 @@ exports.changePassword = async (req, res) => {
     if (recentlyUsed) return res.status(400).json({ success: false, message: 'Cannot reuse a recently used password' });
 
     user.password = newPassword;
-    
+
     // Invalidate all other sessions while preserving the current one.
     const currentSessionId = req.sessionId;
     user.activeSessions = (user.activeSessions || []).filter(s => s.sessionId === currentSessionId);
@@ -269,7 +269,7 @@ exports.resendVerification = async (req, res) => {
     if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
 
     const user = await User.findOne({ email: email.toLowerCase() });
-    
+
     // SECURITY (Phase 2.4): Always return the same message to prevent enumeration
     if (user && !user.emailVerified) {
       const verificationToken = user.generateEmailVerificationToken();

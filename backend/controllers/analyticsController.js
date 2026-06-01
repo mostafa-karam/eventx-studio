@@ -159,9 +159,9 @@ exports.getDashboard = async (req, res) => {
       data: {
         overview: { ...overview, totalAttendees: overview.totalTicketsSold },
         revenueData: monthlyRevenue.map((item) => ({
-            month: new Date(item._id.year, item._id.month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-            revenue: item.revenue,
-          })),
+          month: new Date(item._id.year, item._id.month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          revenue: item.revenue,
+        })),
         eventCategories: categoryDistribution.map((item) => ({ name: item._id || 'Uncategorized', value: item.count })),
         trends: { monthlyRevenue },
         distributions: { categories: categoryDistribution },
@@ -236,7 +236,7 @@ exports.getEventAnalytics = async (req, res) => {
 
     const growthResults = await analyticsService.getAttendeeGrowth(req.user, eventId);
     const demographics = await analyticsService.getAttendeeDemographics(req.user, eventId);
-    
+
     res.json({
       success: true,
       data: {
@@ -592,7 +592,7 @@ exports.generateReport = async (req, res) => {
         });
       } catch (err) {
         logger.error('Report finalization error:', err);
-        await Report.findByIdAndUpdate(report._id, { status: 'failed' }).catch(() => {});
+        await Report.findByIdAndUpdate(report._id, { status: 'failed' }).catch(() => { });
       }
     }, 2000);
 

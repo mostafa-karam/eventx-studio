@@ -96,6 +96,7 @@ http://localhost:5000/api
 - `POST /confirm`
 
 Notes:
+
 - `POST /confirm` supports idempotent retries through `Idempotency-Key` / `X-Idempotency-Key`.
 
 ## Payments (`/api/payments`)

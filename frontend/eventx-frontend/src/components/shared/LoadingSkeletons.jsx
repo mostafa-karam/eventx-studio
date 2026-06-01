@@ -30,8 +30,8 @@ export const TableSkeleton = ({ rows = 5, columns = 4 }) => (
                         <div
                             key={colIndex}
                             className={`h-4 bg-gray-200 rounded ${colIndex === 0 ? 'w-48' :
-                                    colIndex === columns - 1 ? 'w-16' :
-                                        'w-24'
+                                colIndex === columns - 1 ? 'w-16' :
+                                    'w-24'
                                 }`}
                         ></div>
                     ))}

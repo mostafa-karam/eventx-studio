@@ -43,7 +43,7 @@ const EventDetails = ({ eventId: propEventId, onBack, onEdit }) => {
     if (eventId) {
       fetchEventDetails();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
   const fetchEventDetails = async () => {
@@ -126,7 +126,7 @@ const EventDetails = ({ eventId: propEventId, onBack, onEdit }) => {
     return `$${event?.pricing?.amount || 0}`;
   };
 
-  
+
   const WhiteCard = ({ children, className = '' }) => (
     <div className={`bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden ${className}`}>
       {children}
