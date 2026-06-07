@@ -126,8 +126,8 @@ const Marketing = () => {
       {/* Stats Overview (real data) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {[
-          { title: 'Total Campaigns', value: stats.totalCampaigns || 0, icon: Target, color: 'from-blue-500 to-indigo-600', lightBg: 'bg-blue-50 text-blue-600' },
-          { title: 'Total Reach', value: stats.totalRecipients?.toLocaleString() || '0', icon: Users, color: 'from-violet-500 to-purple-600', lightBg: 'bg-violet-50 text-violet-600' },
+          { title: 'Total Campaigns', value: stats.totalCampaigns || 0, icon: Target, color: 'from-blue-500 to-cyan-600', lightBg: 'bg-blue-50 text-blue-600' },
+          { title: 'Total Reach', value: stats.totalRecipients?.toLocaleString() || '0', icon: Users, color: 'from-sky-500 to-blue-600', lightBg: 'bg-sky-50 text-sky-600' },
           { title: 'Avg Open Rate', value: `${stats.avgOpenRate || 0}%`, icon: Eye, color: 'from-teal-400 to-emerald-600', lightBg: 'bg-teal-50 text-teal-600' },
           { title: 'Revenue Generated', value: `$${stats.revenue?.toLocaleString() || '0'}`, icon: TrendingUp, color: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50 text-amber-600' }
         ].map((stat, i) => {
@@ -276,10 +276,10 @@ const Marketing = () => {
                         </div>
                         <div className="text-center">
                           <div className="flex items-center justify-center mb-1">
-                            <TrendingUp className="w-4 h-4 text-purple-500 mr-2" />
-                            <p className="text-xl font-black text-purple-600">{campaign.conversions}</p>
+                            <TrendingUp className="w-4 h-4 text-blue-500 mr-2" />
+                            <p className="text-xl font-black text-blue-600">{campaign.conversions}</p>
                           </div>
-                          <p className="text-xs font-bold text-purple-700/70 uppercase tracking-widest">Conversions</p>
+                          <p className="text-xs font-bold text-blue-700/70 uppercase tracking-widest">Conversions</p>
                         </div>
                       </div>
                     )}

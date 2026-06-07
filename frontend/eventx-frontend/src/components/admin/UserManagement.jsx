@@ -114,9 +114,9 @@ const UserManagement = () => {
     const getRoleStyles = (role) => {
         switch (role) {
             case 'admin':
-                return { color: 'bg-red-50 text-red-700 border-red-200', icon: Shield, gradient: 'from-red-500 to-rose-600' };
+                return { color: 'bg-red-50 text-red-700 border-red-200', icon: Shield, gradient: 'from-red-500 to-orange-600' };
             case 'organizer':
-                return { color: 'bg-blue-50 text-blue-700 border-blue-200', icon: Calendar, gradient: 'from-blue-500 to-indigo-600' };
+                return { color: 'bg-blue-50 text-blue-700 border-blue-200', icon: Calendar, gradient: 'from-blue-500 to-cyan-600' };
             case 'user':
                 return { color: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: Users, gradient: 'from-emerald-500 to-teal-600' };
             default:
@@ -151,9 +151,9 @@ const UserManagement = () => {
             {/* KPI Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                 {[
-                    { label: 'Total Users', val: total, icon: Users, gradient: 'from-blue-500 to-indigo-600', lightBg: 'bg-blue-50 text-blue-600' },
-                    { label: 'System Admins', val: users.filter(u => u.role === 'admin').length || (total > 0 ? 1 : 0), icon: Shield, gradient: 'from-red-500 to-rose-600', lightBg: 'bg-red-50 text-red-600' },
-                    { label: 'Organizers', val: users.filter(u => u.role === 'organizer').length, icon: Calendar, gradient: 'from-violet-500 to-purple-600', lightBg: 'bg-violet-50 text-violet-600' },
+                    { label: 'Total Users', val: total, icon: Users, gradient: 'from-blue-500 to-cyan-600', lightBg: 'bg-blue-50 text-blue-600' },
+                    { label: 'System Admins', val: users.filter(u => u.role === 'admin').length || (total > 0 ? 1 : 0), icon: Shield, gradient: 'from-red-500 to-orange-600', lightBg: 'bg-red-50 text-red-600' },
+                    { label: 'Organizers', val: users.filter(u => u.role === 'organizer').length, icon: Calendar, gradient: 'from-sky-500 to-blue-600', lightBg: 'bg-sky-50 text-sky-600' },
                     { label: 'Regular Users', val: users.filter(u => u.role === 'user').length, icon: CheckCircle2, gradient: 'from-emerald-500 to-teal-500', lightBg: 'bg-emerald-50 text-emerald-600' }
                 ].map((stat, i) => (
                     <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>

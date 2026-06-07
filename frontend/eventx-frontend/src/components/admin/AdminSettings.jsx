@@ -174,7 +174,7 @@ const AdminSettings = () => {
                             )}
 
                             <div className="flex items-center gap-6 mb-8 pb-8 border-b border-gray-100">
-                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg border-4 border-white">
+                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg border-4 border-white">
                                     {name ? name.charAt(0).toUpperCase() : (user?.email ? user.email.charAt(0).toUpperCase() : 'U')}
                                 </div>
                                 <div>
@@ -251,7 +251,7 @@ const AdminSettings = () => {
                     <GlassCard id="settings-security" className="flex flex-col scroll-mt-24">
                         <div className="px-6 py-5 border-b border-gray-100 bg-white/50">
                             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                <Shield className="w-5 h-5 text-indigo-600" /> Security & Passwords
+                                <Shield className="w-5 h-5 text-blue-600" /> Security & Passwords
                             </h2>
                             <p className="text-sm text-gray-500 mt-1">Manage your password and secure your account.</p>
                         </div>
@@ -265,7 +265,7 @@ const AdminSettings = () => {
 
                             <form onSubmit={handleChangePassword} className="space-y-5">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div className="space-y-1.5 focus-within:text-indigo-600">
+                                    <div className="space-y-1.5 focus-within:text-blue-600">
                                         <label className="block text-sm font-bold text-gray-700 transition-colors">Current Password</label>
                                         <div className="relative">
                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -273,7 +273,7 @@ const AdminSettings = () => {
                                             </div>
                                             <input
                                                 type="password"
-                                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-colors font-medium text-gray-900"
+                                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors font-medium text-gray-900"
                                                 value={currentPassword}
                                                 onChange={(e) => setCurrentPassword(e.target.value)}
                                                 required
@@ -281,7 +281,7 @@ const AdminSettings = () => {
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-1.5 focus-within:text-indigo-600">
+                                    <div className="space-y-1.5 focus-within:text-blue-600">
                                         <label className="block text-sm font-bold text-gray-700 transition-colors">New Password</label>
                                         <div className="relative">
                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -289,7 +289,7 @@ const AdminSettings = () => {
                                             </div>
                                             <input
                                                 type="password"
-                                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-colors font-medium text-gray-900"
+                                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors font-medium text-gray-900"
                                                 value={newPassword}
                                                 onChange={(e) => setNewPassword(e.target.value)}
                                                 required
@@ -345,7 +345,7 @@ const AdminSettings = () => {
                     <GlassCard id="settings-appearance" className="flex flex-col scroll-mt-24">
                         <div className="px-6 py-5 border-b border-gray-100 bg-white/50">
                             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                <Eye className="w-5 h-5 text-violet-600" /> Appearance
+                                <Eye className="w-5 h-5 text-blue-600" /> Appearance
                             </h2>
                             <p className="text-sm text-gray-500 mt-1">Choose how the admin workspace looks on this device.</p>
                         </div>

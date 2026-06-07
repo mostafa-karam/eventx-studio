@@ -92,7 +92,7 @@ const EventDetails = ({ eventId: propEventId, onBack, onEdit }) => {
     }
   };
   const getSeatColor = (seat) => {
-    if (seat.isBooked) return 'bg-purple-600';
+    if (seat.isBooked) return 'bg-blue-600';
     return 'bg-gray-200';
   };
 
@@ -284,7 +284,7 @@ const EventDetails = ({ eventId: propEventId, onBack, onEdit }) => {
             <WhiteCard>
               <div className="p-4 text-center">
                 <div className="flex items-center justify-center mb-2">
-                  <Ticket className="w-5 h-5 text-purple-600" />
+                  <Ticket className="w-5 h-5 text-blue-600" />
                 </div>
                 <p className="text-sm text-gray-600">Ticket Price</p>
                 <p className="text-lg font-bold">{formatPrice(event)}</p>
@@ -328,7 +328,7 @@ const EventDetails = ({ eventId: propEventId, onBack, onEdit }) => {
               <div className="mb-4">
                 <div className="flex items-center space-x-6">
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-purple-600 rounded"></div>
+                    <div className="w-4 h-4 bg-blue-600 rounded"></div>
                     <span className="text-sm">Booked Seats</span>
                   </div>
                   <div className="flex items-center space-x-2">

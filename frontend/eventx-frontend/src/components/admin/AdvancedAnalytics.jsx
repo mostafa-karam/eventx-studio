@@ -82,9 +82,9 @@ const AdvancedAnalytics = () => {
 
     // Mapping base colors to gradient and icon colors
     const styleMap = {
-      blue: { bg: 'bg-blue-50', text: 'text-blue-600', grad: 'from-blue-600 to-indigo-600' },
+      blue: { bg: 'bg-blue-50', text: 'text-blue-600', grad: 'from-blue-600 to-cyan-600' },
       green: { bg: 'bg-emerald-50', text: 'text-emerald-600', grad: 'from-emerald-500 to-teal-500' },
-      purple: { bg: 'bg-purple-50', text: 'text-purple-600', grad: 'from-purple-500 to-fuchsia-500' },
+      sky: { bg: 'bg-sky-50', text: 'text-sky-600', grad: 'from-sky-500 to-blue-600' },
       amber: { bg: 'bg-amber-50', text: 'text-amber-600', grad: 'from-amber-500 to-orange-500' }
     };
     const style = styleMap[colorClass] || styleMap.blue;
@@ -282,7 +282,7 @@ const AdvancedAnalytics = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <StatCard title="Total Revenue" value={formatCurrency(safeOverview.totalRevenue)} change={safeOverview.growthRate.revenue} icon={DollarSign} colorClass="blue" />
         <StatCard title="Tickets Sold" value={formatNumber(safeOverview.totalTicketsSold)} change={safeOverview.growthRate.tickets} icon={Ticket} colorClass="green" />
-        <StatCard title="Total Events" value={formatNumber(safeOverview.totalEvents)} change={safeOverview.growthRate.events} icon={Calendar} colorClass="purple" />
+        <StatCard title="Total Events" value={formatNumber(safeOverview.totalEvents)} change={safeOverview.growthRate.events} icon={Calendar} colorClass="sky" />
         <StatCard title="Total Attendees" value={formatNumber(safeOverview.totalAttendees)} change={safeOverview.growthRate.attendees} icon={Users} colorClass="amber" />
       </div>
 
@@ -441,8 +441,8 @@ const AdvancedAnalytics = () => {
                 <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
                   <div className="mb-6">
                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center">
-                        <Users className="w-4 h-4 text-pink-600" />
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <Users className="w-4 h-4 text-blue-600" />
                       </div>
                       Age Demographics
                     </h3>
@@ -452,7 +452,7 @@ const AdvancedAnalytics = () => {
                       <BarChart data={safeAgeGroups}>
                         <defs>
                           <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.9} />
+                            <stop offset="0%" stopColor="#0EA5E9" stopOpacity={0.9} />
                             <stop offset="100%" stopColor="#3B82F6" stopOpacity={0.9} />
                           </linearGradient>
                         </defs>
@@ -495,7 +495,7 @@ const AdvancedAnalytics = () => {
                             </div>
                             <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500"
+                                className="h-full rounded-full bg-gradient-to-r from-blue-400 to-cyan-500"
                                 style={{ width: `${pct}%` }}
                               />
                             </div>

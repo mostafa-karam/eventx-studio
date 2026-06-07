@@ -213,11 +213,11 @@ const ContactSupport = () => {
           <Badge className="bg-yellow-100 text-yellow-800 border-0 px-3 py-1 font-bold tracking-wide">9 AM - 6 PM EST</Badge>
         </WhiteCard>
 
-        <WhiteCard className="group hover:border-purple-300 hover:shadow-md transition-all duration-300 bg-white hover:bg-purple-50/10 cursor-pointer flex flex-col items-center justify-center p-8">
-          <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+        <WhiteCard className="group hover:border-blue-300 hover:shadow-md transition-all duration-300 bg-white hover:bg-blue-50/10 cursor-pointer flex flex-col items-center justify-center p-8">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
             <Mail className="w-7 h-7" />
           </div>
-          <h3 className="text-lg font-extrabold text-gray-900 mb-2 group-hover:text-purple-700 transition-colors">Email Support</h3>
+          <h3 className="text-lg font-extrabold text-gray-900 mb-2 group-hover:text-blue-700 transition-colors">Email Support</h3>
           <p className="text-sm font-medium text-gray-500 mb-5 text-center">support@eventxstudio.com</p>
           <Badge className="bg-blue-100 text-blue-800 border-0 px-3 py-1 font-bold tracking-wide">24/7 Response</Badge>
         </WhiteCard>

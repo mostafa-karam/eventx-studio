@@ -89,9 +89,9 @@ const Notifications = ({ onOpenAction }) => {
       case 'booking':
         return { icon: Ticket, bg: 'bg-emerald-50 text-emerald-600 border-emerald-200' };
       case 'event':
-        return { icon: Calendar, bg: 'bg-indigo-50 text-indigo-600 border-indigo-200' };
+        return { icon: Calendar, bg: 'bg-blue-50 text-blue-600 border-blue-200' };
       case 'user':
-        return { icon: Users, bg: 'bg-purple-50 text-purple-600 border-purple-200' };
+        return { icon: Users, bg: 'bg-blue-50 text-blue-600 border-blue-200' };
       case 'analytics':
         return { icon: Info, bg: 'bg-blue-50 text-blue-600 border-blue-200' };
       case 'system':

@@ -43,8 +43,8 @@
 
 :root {
   --radius: 0.75rem;
-  --background: #f6f7fb;
-  /* soft light background like Figma */
+  --background: #f8fafc;
+  /* clean neutral light background */
   --foreground: #0f1724;
   /* main text color */
   --card: oklch(1 0 0);

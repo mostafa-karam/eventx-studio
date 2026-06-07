@@ -225,20 +225,20 @@ const EventCategories = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-blue-900 to-indigo-800 p-8 sm:p-10 shadow-2xl text-white border border-indigo-700/50">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-8 sm:p-10 shadow-2xl text-white border border-blue-900/50">
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-blue-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-indigo-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-cyan-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2 text-white">
               Event Categories
             </h1>
-            <p className="text-indigo-200 text-lg font-medium max-w-2xl">
+            <p className="text-blue-100 text-lg font-medium max-w-2xl">
               Manage global event classifications & tags to help attendees find what they love.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button onClick={() => setShowCreateForm(true)} className="bg-white hover:bg-gray-50 text-indigo-900 font-bold rounded-xl px-6 transition-all shadow-lg text-sm h-11">
+            <Button onClick={() => setShowCreateForm(true)} className="bg-white hover:bg-gray-50 text-slate-900 font-bold rounded-xl px-6 transition-all shadow-lg text-sm h-11">
               <Plus className="w-4 h-4 mr-2" />
               Add Category
             </Button>
@@ -249,9 +249,9 @@ const EventCategories = () => {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         {[
-          { label: 'Total Categories', val: categories.length, icon: Tag, gradient: 'from-blue-500 to-indigo-600', lightColor: 'bg-blue-50 text-blue-600' },
+          { label: 'Total Categories', val: categories.length, icon: Tag, gradient: 'from-blue-500 to-cyan-600', lightColor: 'bg-blue-50 text-blue-600' },
           { label: 'Active Categories', val: activeCategories, icon: CircleDot, gradient: 'from-emerald-500 to-green-600', lightColor: 'bg-emerald-50 text-emerald-600' },
-          { label: 'Events Tagged', val: totalEvents, icon: Tag, gradient: 'from-violet-500 to-purple-600', lightColor: 'bg-violet-50 text-violet-600' }
+          { label: 'Events Tagged', val: totalEvents, icon: Tag, gradient: 'from-sky-500 to-blue-600', lightColor: 'bg-sky-50 text-sky-600' }
         ].map((stat, i) => (
           <div key={i} className="group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden">
             <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>

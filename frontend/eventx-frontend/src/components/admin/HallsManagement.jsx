@@ -205,11 +205,11 @@ const HallsManagement = () => {
 
                             <div className="grid grid-cols-2 gap-4 text-sm mt-5 pt-5 border-t border-gray-100">
                                 <div className="flex items-center text-gray-700 font-semibold bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
-                                    <Users className="w-4 h-4 mr-2 text-indigo-500" />
+                                    <Users className="w-4 h-4 mr-2 text-blue-500" />
                                     {hall.capacity} <span className="font-normal text-gray-500 ml-1 text-xs">PPL</span>
                                 </div>
                                 <div className="flex items-center text-gray-700 font-semibold bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
-                                    <MapPin className="w-4 h-4 mr-2 text-rose-500" />
+                                    <MapPin className="w-4 h-4 mr-2 text-red-500" />
                                     <span className="truncate">{hall.location?.floor || 'N/A'}</span>
                                 </div>
                             </div>

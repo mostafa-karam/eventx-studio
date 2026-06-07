@@ -167,7 +167,7 @@ const AdminLayout = () => {
       <div className="border-t border-gray-200 dark:border-sidebar-border p-4 space-y-3">
         {/* User Card */}
         <div className={`relative flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-sidebar-accent bg-white dark:bg-sidebar border border-gray-100 dark:border-sidebar-border shadow-sm'} transition-all`}>
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0 border-2 border-white">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0 border-2 border-white">
             {user?.name?.charAt(0)?.toUpperCase() || 'A'}
           </div>
           {!isCollapsed && (
@@ -271,7 +271,7 @@ const AdminLayout = () => {
                   onClick={() => setProfileOpen(!profileOpen)}
                   className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-accent transition-all duration-200"
                 >
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
                     {user?.name?.charAt(0)?.toUpperCase() || 'A'}
                   </div>
                   <div className="text-left">

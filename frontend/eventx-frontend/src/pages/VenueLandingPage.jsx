@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { MapPin, Phone, Mail, Clock, Users, Building2, Star, Calendar, ChevronRight, Wifi, Monitor, Coffee, Car, Accessibility, Wind } from 'lucide-react';
 
 const halls = [
-    { name: 'Grand Ballroom', capacity: 1000, size: '2,500 m²', price: '$5,000/day', tag: 'Events', color: 'from-purple-600 to-indigo-600' },
+    { name: 'Grand Ballroom', capacity: 1000, size: '2,500 m²', price: '$5,000/day', tag: 'Events', color: 'from-blue-700 to-slate-800' },
     { name: 'Conference Hall A', capacity: 300, size: '800 m²', price: '$1,500/day', tag: 'Conferences', color: 'from-blue-600 to-cyan-600' },
     { name: 'Workshop Studio', capacity: 80, size: '200 m²', price: '$400/day', tag: 'Workshops', color: 'from-emerald-600 to-teal-600' },
     { name: 'Exhibition Hall', capacity: 600, size: '1,800 m²', price: '$3,000/day', tag: 'Exhibitions', color: 'from-orange-600 to-rose-600' },
@@ -30,16 +30,16 @@ export default function VenueLandingPage() {
         <div className="min-h-screen bg-white font-sans">
             {/* Hero */}
             <section className="relative h-[90vh] flex items-center justify-center overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900" />
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900" />
                 <div className="absolute inset-0 opacity-20"
-                    style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, #6366f1 0%, transparent 50%), radial-gradient(circle at 75% 75%, #8b5cf6 0%, transparent 50%)' }} />
+                    style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, #2563eb 0%, transparent 50%), radial-gradient(circle at 75% 75%, #14b8a6 0%, transparent 50%)' }} />
                 <div className="relative text-center text-white px-6 max-w-5xl mx-auto">
                     <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 mb-6 border border-white/20">
                         <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                         <span className="text-sm font-medium">Rated #1 Venue in the Region</span>
                     </div>
                     <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight">
-                        EventX <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300">Studio</span>
+                        EventX <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-teal-200">Studio</span>
                     </h1>
                     <p className="text-xl md:text-2xl text-indigo-200 mb-4 max-w-3xl mx-auto leading-relaxed">
                         A world-class multi-hall venue for conferences, concerts, exhibitions, workshops, and private events.
@@ -136,7 +136,7 @@ export default function VenueLandingPage() {
             </section>
 
             {/* Contact */}
-            <section className="py-20 px-6 bg-gradient-to-br from-indigo-900 to-purple-900 text-white">
+            <section className="py-20 px-6 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-white">
                 <div className="max-w-4xl mx-auto text-center">
                     <h2 className="text-4xl font-black mb-4">Ready to Book?</h2>
                     <p className="text-indigo-200 text-lg mb-10">Our team is available 7 days a week to help you plan your perfect event.</p>

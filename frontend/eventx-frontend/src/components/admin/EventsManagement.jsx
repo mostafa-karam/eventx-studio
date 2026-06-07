@@ -282,10 +282,10 @@ const EventsManagement = () => {
       {/* KPI Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
         {[
-          { label: 'Total Events', val: events.length, icon: Calendar, gradient: 'from-blue-500 to-indigo-600', lightBg: 'bg-blue-50 text-blue-600' },
+          { label: 'Total Events', val: events.length, icon: Calendar, gradient: 'from-blue-500 to-cyan-600', lightBg: 'bg-blue-50 text-blue-600' },
           { label: 'Published', val: events.filter(e => e.status === 'published').length, icon: CheckCircle2, gradient: 'from-emerald-500 to-teal-500', lightBg: 'bg-emerald-50 text-emerald-600' },
           { label: 'Drafts', val: events.filter(e => e.status !== 'published').length, icon: Edit, gradient: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50 text-amber-600' },
-          { label: 'Total Capacity', val: events.reduce((s, e) => s + (e.seating?.totalSeats || 0), 0), icon: Ticket, gradient: 'from-purple-500 to-fuchsia-600', lightBg: 'bg-purple-50 text-purple-600' }
+          { label: 'Total Capacity', val: events.reduce((s, e) => s + (e.seating?.totalSeats || 0), 0), icon: Ticket, gradient: 'from-cyan-500 to-blue-600', lightBg: 'bg-cyan-50 text-cyan-600' }
         ].map((stat, i) => (
           <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
             <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
@@ -441,7 +441,7 @@ const EventsManagement = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1.5 items-start">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border ${isPublished ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border ${isPublished ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                             {isPublished ? 'PUBLISHED' : 'DRAFT'}
                           </span>
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border ${evtState.color}`}>

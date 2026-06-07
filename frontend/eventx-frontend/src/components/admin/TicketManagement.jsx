@@ -385,7 +385,7 @@ const TicketManagement = () => {
                     <Button variant="outline" onClick={exportAsCSV} className="bg-white/60 backdrop-blur-md border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 shadow-sm rounded-xl transition-all">
                         <Download className="w-4 h-4 mr-2" /> Export CSV
                     </Button>
-                    <Button onClick={bulkQRGenerate} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 rounded-xl transition-all duration-300 transform hover:scale-[1.02]">
+                    <Button onClick={bulkQRGenerate} className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg shadow-blue-500/20 rounded-xl transition-all duration-300 transform hover:scale-[1.02]">
                         <QrCode className="w-4 h-4 mr-2" /> <span>{bulkBtnLabel}</span>
                     </Button>
                 </div>
@@ -394,9 +394,9 @@ const TicketManagement = () => {
             {/* KPI Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                 {[
-                    { label: 'Total Tickets', val: statistics.total || 0, icon: Ticket, gradient: 'from-blue-500 to-indigo-600', lightBg: 'bg-blue-50 text-blue-600' },
+                    { label: 'Total Tickets', val: statistics.total || 0, icon: Ticket, gradient: 'from-blue-500 to-cyan-600', lightBg: 'bg-blue-50 text-blue-600' },
                     { label: 'Active Bookings', val: statistics.statusCounts?.booked || 0, icon: CheckCircle, gradient: 'from-emerald-500 to-teal-500', lightBg: 'bg-emerald-50 text-emerald-600' },
-                    { label: 'Used Tickets', val: statistics.statusCounts?.used || 0, icon: Users, gradient: 'from-violet-500 to-purple-600', lightBg: 'bg-violet-50 text-violet-600' },
+                    { label: 'Used Tickets', val: statistics.statusCounts?.used || 0, icon: Users, gradient: 'from-sky-500 to-blue-600', lightBg: 'bg-sky-50 text-sky-600' },
                     { label: 'Orphan Tickets', val: statistics.orphanCount || 0, icon: AlertCircle, gradient: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50 text-amber-600' }
                 ].map((stat, i) => (
                     <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-center h-[120px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
@@ -654,7 +654,7 @@ const TicketManagement = () => {
             {/* QR Code Modal Dialog */}
             <Dialog open={showQrModal} onOpenChange={(open) => { if (!open) { setShowQrModal(false); setSelectedTicket(null); setQrCodeDataUrl(''); } }}>
                 <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border-0 shadow-2xl">
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-center text-white relative">
+                    <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-6 text-center text-white relative">
                         <DialogTitle className="text-2xl font-extrabold tracking-tight">Access Ticket</DialogTitle>
                         <DialogDescription className="text-blue-100 font-medium mt-1">
                             {selectedTicket?.event?.title || 'Unknown Event'}

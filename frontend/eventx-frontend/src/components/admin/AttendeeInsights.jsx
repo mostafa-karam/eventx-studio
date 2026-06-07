@@ -184,7 +184,7 @@ const AttendeeInsights = () => {
         <div className="bg-white/90 dark:bg-popover backdrop-blur-md border border-gray-100 dark:border-border p-3 rounded-xl shadow-xl">
           <p className="font-semibold text-gray-800 dark:text-foreground mb-1">{label}</p>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].fill || payload[0].stroke || '#6366f1' }}></div>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].fill || payload[0].stroke || '#2563eb' }}></div>
             <p className="text-gray-600 dark:text-muted-foreground">
               <span className="font-bold text-gray-900 dark:text-foreground">{payload[0].value.toLocaleString()}</span> attendees
             </p>
@@ -195,20 +195,20 @@ const AttendeeInsights = () => {
     return null;
   };
 
-  const PIE_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
+  const PIE_COLORS = ['#3B82F6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#0F766E', '#2563EB'];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 w-full">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-blue-900 to-indigo-800 p-8 shadow-2xl text-white border border-indigo-700/50">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-8 shadow-2xl text-white border border-blue-900/50">
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-blue-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-indigo-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-cyan-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2 text-white flex items-center gap-3">
               Attendee Insights
             </h1>
-            <p className="text-indigo-200 text-lg font-medium max-w-2xl">
+            <p className="text-blue-100 text-lg font-medium max-w-2xl">
               Deep analytics on your audience demographics, locations, and behavioral interests.
             </p>
           </div>
@@ -218,7 +218,7 @@ const AttendeeInsights = () => {
                 <Users className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-indigo-300 tracking-wider uppercase">Total Base</p>
+                <p className="text-xs font-bold text-blue-200 tracking-wider uppercase">Total Base</p>
                 <p className="text-lg font-black text-white leading-tight">{formatNumber(overview?.totalAttendees)}</p>
               </div>
             </div>
@@ -226,13 +226,13 @@ const AttendeeInsights = () => {
             <div className="flex p-1 bg-black/20 backdrop-blur-md rounded-2xl w-full sm:w-auto border border-white/10">
               <button
                 onClick={() => setViewType('all')}
-                className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-xl transition-all ${viewType === 'all' ? 'bg-white text-indigo-900 shadow-md' : 'text-indigo-200 hover:text-white'}`}
+                className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-xl transition-all ${viewType === 'all' ? 'bg-white text-slate-900 shadow-md' : 'text-blue-100 hover:text-white'}`}
               >
                 Global
               </button>
               <button
                 onClick={() => setViewType('single')}
-                className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-xl transition-all ${viewType === 'single' ? 'bg-white text-indigo-900 shadow-md' : 'text-indigo-200 hover:text-white'}`}
+                className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-xl transition-all ${viewType === 'single' ? 'bg-white text-slate-900 shadow-md' : 'text-blue-100 hover:text-white'}`}
               >
                 Specific Event
               </button>
@@ -261,7 +261,7 @@ const AttendeeInsights = () => {
 
           {eventMeta && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg font-medium flex items-center gap-1.5">
+              <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg font-medium flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5" />
                 {eventMeta.venue?.name || 'No Venue'}
               </span>
@@ -285,7 +285,7 @@ const AttendeeInsights = () => {
             icon: Calendar,
             trend: overview?.ageStats?.trend,
             count: overview?.ageStats?.count,
-            gradient: 'from-blue-500 to-indigo-600',
+            gradient: 'from-blue-500 to-cyan-600',
             iconBg: 'bg-blue-50',
             iconColor: 'text-blue-600'
           },
@@ -296,9 +296,9 @@ const AttendeeInsights = () => {
             icon: Users,
             trend: overview?.genderStats?.trend,
             count: overview?.genderStats?.count,
-            gradient: 'from-violet-500 to-purple-600',
-            iconBg: 'bg-violet-50',
-            iconColor: 'text-violet-600'
+            gradient: 'from-sky-500 to-blue-600',
+            iconBg: 'bg-sky-50',
+            iconColor: 'text-sky-600'
           },
           {
             title: 'Top Location',
@@ -386,9 +386,9 @@ const AttendeeInsights = () => {
                       <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12, fontWeight: 500 }} />
                       <YAxis type="category" dataKey="city" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12, fontWeight: 700 }} width={110} />
                       <RechartsTooltip cursor={{ fill: 'var(--muted)' }} content={<CustomTooltip />} />
-                      <Bar dataKey="count" fill="#4f46e5" radius={[0, 8, 8, 0]} barSize={24}>
+                      <Bar dataKey="count" fill="#2563eb" radius={[0, 8, 8, 0]} barSize={24}>
                         {computedLocations.slice(0, 7).map((_, idx) => (
-                          <Cell key={`cell-${idx}`} fill={idx === 0 ? '#4f46e5' : '#818cf8'} />
+                          <Cell key={`cell-${idx}`} fill={idx === 0 ? '#2563eb' : '#60a5fa'} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -456,7 +456,7 @@ const AttendeeInsights = () => {
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${pct}%` }}></div>
+                                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${pct}%` }}></div>
                                 </div>
                                 <span className="text-xs font-bold text-gray-500 w-8">{pct}%</span>
                               </div>
@@ -511,7 +511,7 @@ const AttendeeInsights = () => {
                 <div className="p-6">
                   <div className="divide-y divide-gray-100">
                     {(overview?.socialBreakdown || overview?.engagementBreakdown || [
-                      { label: 'Instagram Mentions', value: overview?.socialEngagement?.instagram, color: 'text-pink-600', bg: 'bg-pink-50' },
+                      { label: 'Instagram Mentions', value: overview?.socialEngagement?.instagram, color: 'text-blue-600', bg: 'bg-blue-50' },
                       { label: 'Facebook Shares', value: overview?.socialEngagement?.facebook, color: 'text-blue-600', bg: 'bg-blue-50' },
                       { label: 'Twitter Analytics', value: overview?.socialEngagement?.twitter, color: 'text-sky-600', bg: 'bg-sky-50' },
                       { label: 'Event Check-ins (QR)', value: insightsData?.tickets?.statistics?.checkedIn || 0, color: 'text-emerald-600', bg: 'bg-emerald-50' }
@@ -632,7 +632,7 @@ const AttendeeInsights = () => {
                         </div>
                         <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${['bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-pink-500'][idx % 4]}`}
+                            className={`h-full rounded-full ${['bg-blue-500', 'bg-cyan-500', 'bg-emerald-500', 'bg-amber-500'][idx % 4]}`}
                             style={{ width: `${pct}%` }}
                           ></div>
                         </div>
@@ -666,7 +666,7 @@ const AttendeeInsights = () => {
                           stroke="none"
                         >
                           {computedAges.map((entry, index) => (
-                            <Cell key={`cell-age-${index}`} fill={['#10B981', '#F59E0B', '#F43F5E', '#8B5CF6'][index % 4]} className="focus:outline-none" />
+                            <Cell key={`cell-age-${index}`} fill={['#10B981', '#F59E0B', '#EF4444', '#0EA5E9'][index % 4]} className="focus:outline-none" />
                           ))}
                         </Pie>
                         <RechartsTooltip content={<CustomTooltip />} />
@@ -675,8 +675,8 @@ const AttendeeInsights = () => {
                   </div>
                   <div className="mt-2 flex flex-col gap-3">
                     {computedAges.map((item, index) => {
-                      const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-violet-500'];
-                      const ring = ['ring-emerald-100', 'ring-amber-100', 'ring-rose-100', 'ring-violet-100'];
+                      const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-red-500', 'bg-blue-500'];
+                      const ring = ['ring-emerald-100', 'ring-amber-100', 'ring-red-100', 'ring-blue-100'];
                       return (
                         <div key={index} className="flex items-center justify-between text-sm hover:bg-gray-50 p-2 rounded-xl transition-colors">
                           <div className="flex items-center gap-3">

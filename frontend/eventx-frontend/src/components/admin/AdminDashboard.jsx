@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
@@ -8,6 +8,159 @@ import {
   Calendar, Users, DollarSign, Ticket, Bell, ArrowRight, TrendingUp, TrendingDown, MapPin, Activity
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+
+const PIE_COLORS = ['#3B82F6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#0F766E'];
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white/90 backdrop-blur-md border border-gray-100 p-3 rounded-xl shadow-xl">
+        <p className="font-semibold text-gray-800 mb-1">{label}</p>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+          <p className="text-gray-600">
+            <span className="font-medium text-gray-900">${payload[0].value.toLocaleString()}</span> revenue
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+const PieTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white/90 backdrop-blur-md border border-gray-100 p-2.5 rounded-xl shadow-xl flex items-center gap-2">
+        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: payload[0].payload.fill }}></div>
+        <p className="text-sm font-medium text-gray-800">{payload[0].name}: <span className="font-bold">{payload[0].value}</span></p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const DashboardCard = ({ children, className = '' }) => (
+  <div className={`bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden relative ${className}`}>
+    {children}
+  </div>
+);
+
+// Alias for legacy components that use `GlassCard`
+const GlassCard = DashboardCard;
+
+const RevenueOverview = React.memo(({ revenueFilter, onRevenueFilterChange, revenueData }) => (
+  <DashboardCard className="lg:col-span-2 p-6">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+      <div>
+        <h3 className="text-lg font-bold text-gray-900 tracking-tight">Revenue Overview</h3>
+        <p className="text-sm text-gray-500 font-medium">Monthly revenue performance</p>
+      </div>
+      <div className="flex gap-2 mt-4 sm:mt-0">
+        <select
+          className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block px-3 py-1.5 outline-none font-medium"
+          value={revenueFilter}
+          onChange={(e) => onRevenueFilterChange(e.target.value)}
+        >
+          <option value="This Year">This Year</option>
+          <option value="Last 6 Months">Last 6 Months</option>
+        </select>
+      </div>
+    </div>
+
+    <div className="h-[300px] w-full mt-4">
+      {revenueData ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} dy={10} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} dx={-10} tickFormatter={(val) => `$${val}`} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }} />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              stroke="#2563eb"
+              strokeWidth={3}
+              fillOpacity={1}
+              fill="url(#colorRevenue)"
+              activeDot={{ r: 6, strokeWidth: 0, fill: '#1d4ed8' }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+          <TrendingUp className="w-10 h-10 mb-3 text-gray-300" />
+          <p className="font-medium text-sm">No revenue data available</p>
+        </div>
+      )}
+    </div>
+  </DashboardCard>
+));
+RevenueOverview.displayName = 'RevenueOverview';
+
+const EventDistribution = React.memo(({ eventCategories }) => (
+  <DashboardCard className="p-6">
+    <h3 className="text-lg font-bold text-gray-900 tracking-tight">Event Distribution</h3>
+    <p className="text-sm text-gray-500 font-medium mb-6">Events by category</p>
+
+    <div className="h-[240px] w-full relative">
+      {eventCategories ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={eventCategories}
+              cx="50%"
+              cy="50%"
+              innerRadius={70}
+              outerRadius={100}
+              paddingAngle={3}
+              dataKey="value"
+              stroke="none"
+            >
+              {eventCategories.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} className="focus:outline-none" />
+              ))}
+            </Pie>
+            <Tooltip content={<PieTooltip />} />
+          </PieChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+          <PieChart className="w-10 h-10 mb-3 text-gray-300" />
+          <p className="font-medium text-sm">No categories available</p>
+        </div>
+      )}
+
+      {eventCategories && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <p className="text-sm text-gray-500 font-medium">Total</p>
+          <p className="text-2xl font-bold text-gray-900 text-center -mt-1">
+            {eventCategories.reduce((acc, curr) => acc + curr.value, 0)}
+          </p>
+        </div>
+      )}
+    </div>
+
+    <div className="mt-6 space-y-3">
+      {eventCategories?.slice(0, 4).map((item, index) => (
+        <div key={index} className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
+            <span className="text-gray-600 font-medium">{item.name}</span>
+          </div>
+          <span className="font-bold text-gray-900">{item.value}</span>
+        </div>
+      ))}
+    </div>
+  </DashboardCard>
+));
+EventDistribution.displayName = 'EventDistribution';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -23,11 +176,11 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revenueFilter]);
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
-      const months = revenueFilter === 'This Year' ? 12 : 6;
+      const months = 12;
       const response = await fetch(`${API_BASE_URL}/analytics/dashboard?months=${months}`, {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -46,12 +199,6 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   };
-
-  const GlassCard = ({ children, className = '' }) => (
-    <div className={`bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden relative ${className}`}>
-      {children}
-    </div>
-  );
 
   const LoadingBlock = ({ className = '', ...props }) => (
     <div className={`animate-pulse rounded-lg bg-slate-200/90 dark:bg-slate-700/80 ${className}`} {...props} />
@@ -125,6 +272,16 @@ const AdminDashboard = () => {
     </div>
   );
 
+  const revenueData = Array.isArray(dashboardData?.revenueData) && dashboardData.revenueData.length > 0
+    ? dashboardData.revenueData
+    : null;
+  const filteredRevenueData = useMemo(() => {
+    if (!revenueData) return null;
+    return revenueFilter === 'Last 6 Months'
+      ? revenueData.slice(-6)
+      : revenueData;
+  }, [revenueData, revenueFilter]);
+
   if (loading) return <SkeletonLoader />;
 
   if (error) {
@@ -137,9 +294,6 @@ const AdminDashboard = () => {
 
   const { overview } = dashboardData || {};
 
-  const revenueData = Array.isArray(dashboardData?.revenueData) && dashboardData.revenueData.length > 0
-    ? dashboardData.revenueData
-    : null;
   // revenueData is null when there are no bookings yet → shows empty state instead of blank chart
   const eventCategories = Array.isArray(dashboardData?.eventCategories) && dashboardData.eventCategories.length > 0
     ? dashboardData.eventCategories
@@ -164,7 +318,7 @@ const AdminDashboard = () => {
       icon: Calendar,
       trend: `${overview?.totalEvents || 0} total`,
       isPositive: true,
-      color: 'from-blue-500 to-indigo-600',
+      color: 'from-blue-500 to-cyan-600',
       lightColor: 'bg-blue-50 text-blue-600',
     },
     {
@@ -173,8 +327,8 @@ const AdminDashboard = () => {
       icon: Ticket,
       trend: `${overview?.growthRate?.tickets > 0 ? '+' : ''}${overview?.growthRate?.tickets || 0}%`,
       isPositive: (overview?.growthRate?.tickets || 0) >= 0,
-      color: 'from-violet-500 to-purple-600',
-      lightColor: 'bg-violet-50 text-violet-600',
+      color: 'from-sky-500 to-blue-600',
+      lightColor: 'bg-sky-50 text-sky-600',
     },
     {
       title: 'Avg Ticket Price',
@@ -202,7 +356,7 @@ const AdminDashboard = () => {
       return d > ld ? e : latest;
     }, null));
 
-  const PIE_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#06B6D4'];
+  const PIE_COLORS = ['#3B82F6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#0F766E'];
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -210,7 +364,7 @@ const AdminDashboard = () => {
         <div className="bg-white/90 backdrop-blur-md border border-gray-100 p-3 rounded-xl shadow-xl">
           <p className="font-semibold text-gray-800 mb-1">{label}</p>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
             <p className="text-gray-600">
               <span className="font-medium text-gray-900">${payload[0].value.toLocaleString()}</span> revenue
             </p>
@@ -245,20 +399,20 @@ const AdminDashboard = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 w-full">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-blue-900 to-indigo-800 p-8 sm:p-10 shadow-2xl text-white border border-indigo-700/50">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-8 sm:p-10 shadow-2xl text-white border border-blue-900/50">
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-blue-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-indigo-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-cyan-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2 text-white">
               Welcome back, {user?.name?.split(' ')[0] || 'Admin'}
             </h1>
-            <p className="text-indigo-200 text-lg font-medium max-w-2xl">
+            <p className="text-blue-100 text-lg font-medium max-w-2xl">
               Here's what's happening with your events today. You have <span className="text-white font-bold">{overview?.activeEvents || 0}</span> active events running.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button className="bg-slate-50 hover:bg-white text-indigo-950 dark:bg-slate-50 dark:hover:bg-white dark:text-indigo-950 font-bold rounded-xl px-6 transition-all shadow-lg text-sm h-11" onClick={() => navigate('/admin/events')}>
+            <Button className="bg-slate-50 hover:bg-white text-slate-950 dark:bg-slate-50 dark:hover:bg-white dark:text-slate-950 font-bold rounded-xl px-6 transition-all shadow-lg text-sm h-11" onClick={() => navigate('/admin/events')}>
               <Calendar className="w-4 h-4 mr-2" />
               Manage Events
             </Button>
@@ -324,13 +478,13 @@ const AdminDashboard = () => {
           </div>
 
           <div className="h-[300px] w-full mt-4">
-            {revenueData ? (
+            {filteredRevenueData ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={filteredRevenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -340,11 +494,12 @@ const AdminDashboard = () => {
                   <Area
                     type="monotone"
                     dataKey="revenue"
-                    stroke="#6366f1"
+                    stroke="#2563eb"
                     strokeWidth={3}
                     fillOpacity={1}
                     fill="url(#colorRevenue)"
-                    activeDot={{ r: 6, strokeWidth: 0, fill: '#4f46e5' }}
+                    activeDot={{ r: 6, strokeWidth: 0, fill: '#1d4ed8' }}
+                    isAnimationActive={false}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -375,6 +530,7 @@ const AdminDashboard = () => {
                     paddingAngle={3}
                     dataKey="value"
                     stroke="none"
+                    isAnimationActive={false}
                   >
                     {eventCategories.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} className="focus:outline-none" />
@@ -453,7 +609,7 @@ const AdminDashboard = () => {
                         {selectedEvent.date ? new Date(selectedEvent.date).toLocaleDateString() : 'TBD'}
                       </span>
                       {selectedEvent.venue?.name && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full">
                           <MapPin className="w-3.5 h-3.5" />
                           <span className="truncate max-w-[150px]">{selectedEvent.venue.name}</span>
                         </span>
@@ -486,7 +642,7 @@ const AdminDashboard = () => {
                       {selectedEvent.analytics?.ticketsSold || (selectedEvent.seating ? (selectedEvent.seating.totalSeats || 0) - (selectedEvent.seating.availableSeats || 0) : 0)}
                     </p>
                   </div>
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:bg-white hover:shadow-md hover:border-purple-100 transition-all cursor-default">
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:bg-white hover:shadow-md hover:border-blue-100 transition-all cursor-default">
                     <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Occupancy</p>
                     <p className="text-2xl font-black text-gray-900">
                       {selectedEvent.analytics?.occupancyRate || (selectedEvent.seating && selectedEvent.seating.totalSeats > 0
@@ -520,7 +676,7 @@ const AdminDashboard = () => {
                         </div>
                         <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full"
+                            className="h-full bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full"
                             style={{ width: `${selectedEvent.analytics?.occupancyRate || (selectedEvent.seating && selectedEvent.seating.totalSeats > 0 ? Math.round(((selectedEvent.seating.totalSeats - selectedEvent.seating.availableSeats) / selectedEvent.seating.totalSeats) * 100) : 0)}%` }}
                           ></div>
                         </div>
@@ -591,7 +747,7 @@ const AdminDashboard = () => {
 
                   if (notification.type === 'booking') { Icon = Ticket; colorClass = "bg-emerald-100 text-emerald-600 ring-emerald-100"; }
                   if (notification.type === 'registration') { Icon = Users; colorClass = "bg-blue-100 text-blue-600 ring-blue-100"; }
-                  if (notification.type === 'event') { Icon = Calendar; colorClass = "bg-purple-100 text-purple-600 ring-purple-100"; }
+                  if (notification.type === 'event') { Icon = Calendar; colorClass = "bg-blue-100 text-blue-600 ring-blue-100"; }
 
                   return (
                     <div key={notification.id || idx} className="relative pl-6 sm:pl-8 group">

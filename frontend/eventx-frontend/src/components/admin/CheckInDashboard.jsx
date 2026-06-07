@@ -106,7 +106,7 @@ export default function CheckInDashboard() {
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 {[
-                    { label: 'Total Tickets', val: stats.total || '—', icon: Ticket, gradient: 'from-blue-500 to-indigo-600', lightBg: 'bg-blue-50 text-blue-600' },
+                    { label: 'Total Tickets', val: stats.total || '—', icon: Ticket, gradient: 'from-blue-500 to-cyan-600', lightBg: 'bg-blue-50 text-blue-600' },
                     { label: 'Checked In', val: stats.checkedIn || recentCheckins.length, icon: CheckCircle, gradient: 'from-emerald-500 to-teal-500', lightBg: 'bg-emerald-50 text-emerald-600' },
                     { label: 'Remaining', val: stats.remaining || '—', icon: Users, gradient: 'from-amber-400 to-orange-500', lightBg: 'bg-amber-50 text-amber-600' }
                 ].map((stat, i) => (
