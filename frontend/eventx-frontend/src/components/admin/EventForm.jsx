@@ -139,7 +139,7 @@ const EventForm = ({ event, onSave }) => {
       setUploadingImage(true);
       const res = await fetch(`${API_BASE_URL}/upload`, { method: 'POST', body: uploadData, credentials: 'include' });
       const data = await res.json();
-      if (data.success) setFormData(prev => ({ ...prev, images: [...prev.images, ...data.urls.map(url => ({ url }))] }));
+      if (data.success) setFormData(prev => ({ ...prev, images: [...(prev.images || []), ...((Array.isArray(data.urls) ? data.urls : []).map(url => ({ url })))] }));
     } catch (err) { console.error('Upload error:', err); toast.error('Upload failed'); }
     finally { setUploadingImage(false); }
   };
@@ -303,7 +303,7 @@ const EventForm = ({ event, onSave }) => {
             </div>
             <div className="grid gap-2">
               <Label className="text-sm font-bold ml-1">Description</Label>
-              <TiptapEditor value={formData.description} onChange={(val) => setFormData({ ...formData, description: val })} />
+              <TiptapEditor value={formData.description} onChange={(val) => setFormData(prev => ({ ...prev, description: val }))} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="grid gap-2">
@@ -398,10 +398,10 @@ const EventForm = ({ event, onSave }) => {
                 </label>
               </div>
               <div className="grid grid-cols-4 gap-4">
-                {formData.images.map((img, i) => (
+                {(formData.images || []).map((img, i) => (
                   <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-gray-100 group relative">
                     <img src={img.url} alt={img.alt || 'Uploaded event media'} className="w-full h-full object-cover" />
-                    <button onClick={() => setFormData({ ...formData, images: formData.images.filter((_, idx) => idx !== i) })} className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><XCircle className="w-4 h-4" /></button>
+                    <button onClick={() => setFormData(prev => ({ ...prev, images: (prev.images || []).filter((_, idx) => idx !== i) }))} className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><XCircle className="w-4 h-4" /></button>
                   </div>
                 ))}
               </div>
