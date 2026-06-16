@@ -200,7 +200,7 @@ const AttendeeInsights = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 w-full">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-8 shadow-2xl text-white border border-blue-900/50">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-slate-950 via-blue-950 to-slate-900 p-8 shadow-2xl text-white border border-blue-900/50">
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-blue-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-cyan-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -327,7 +327,7 @@ const AttendeeInsights = () => {
           return (
             <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-between h-full border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
               {/* Decorative background glow */}
-              <div className={`absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
+              <div className={`absolute -top-10 -right-10 w-40 h-40 bg-linear-to-br ${stat.gradient} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
 
               <div className="relative z-10 flex justify-between items-start mb-6">
                 <div className="flex-1 pr-3">
@@ -343,7 +343,7 @@ const AttendeeInsights = () => {
               <div className="relative z-10 flex items-end justify-between mt-auto pt-4 border-t border-gray-50/80">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total count</span>
-                  <span className={`text-2xl font-black bg-gradient-to-br ${stat.gradient} text-transparent bg-clip-text leading-none`}>
+                  <span className={`text-2xl font-black bg-linear-to-br ${stat.gradient} text-transparent bg-clip-text leading-none`}>
                     {stat.count !== null && stat.count !== undefined ? formatNumber(stat.count) : '—'}
                   </span>
                 </div>
@@ -353,7 +353,7 @@ const AttendeeInsights = () => {
               </div>
 
               {/* Bottom decorative line */}
-              <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+              <div className={`absolute bottom-0 left-0 w-full h-1 bg-linear-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
             </div>
           );
         })}
@@ -376,7 +376,7 @@ const AttendeeInsights = () => {
               </div>
             </div>
 
-            <div className="p-6 h-[400px]">
+            <div className="p-6 h-100">
               {viewType === 'all' ? (
                 /* All Locations Horizontal Bar Chart */
                 computedLocations && computedLocations.length > 0 ? (
@@ -565,7 +565,7 @@ const AttendeeInsights = () => {
             <div className="p-6">
               {(computedInterests && computedInterests.length > 0) ? (
                 <>
-                  <div className="h-[240px] w-full relative">
+                  <div className="h-60 w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -604,7 +604,7 @@ const AttendeeInsights = () => {
                   </div>
                 </>
               ) : (
-                <div className="h-[240px] flex flex-col items-center justify-center text-gray-400">
+                <div className="h-60 flex flex-col items-center justify-center text-gray-400">
                   <Star className="w-8 h-8 mb-3 text-gray-300" />
                   <span className="text-sm font-medium">No interest data available</span>
                 </div>
@@ -652,7 +652,7 @@ const AttendeeInsights = () => {
             <div className="p-6">
               {(computedAges && computedAges.length > 0) ? (
                 <>
-                  <div className="h-[240px] w-full relative">
+                  <div className="h-60 w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -690,7 +690,7 @@ const AttendeeInsights = () => {
                   </div>
                 </>
               ) : (
-                <div className="h-[240px] flex flex-col items-center justify-center text-gray-400">
+                <div className="h-60 flex flex-col items-center justify-center text-gray-400">
                   <Calendar className="w-8 h-8 mb-3 text-gray-300" />
                   <span className="text-sm font-medium">No age data available</span>
                 </div>
