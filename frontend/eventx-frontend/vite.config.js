@@ -26,8 +26,19 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'event-form': ['./src/components/admin/EventForm.jsx']
+        manualChunks(id) {
+          // Put EventForm in its own chunk
+          if (
+            id.endsWith('EventForm.jsx') ||
+            id.includes('/src/components/admin/EventForm.jsx') ||
+            id.includes('\\src\\components\\admin\\EventForm.jsx')
+          ) {
+            return 'event-form'
+          }
+          // Keep vendor libraries together
+          if (id.includes('node_modules')) {
+            return 'vendor'
+          }
         }
       }
     }
