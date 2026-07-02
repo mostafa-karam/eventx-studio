@@ -68,7 +68,7 @@ const RevenueOverview = React.memo(({ revenueFilter, onRevenueFilterChange, reve
       </div>
     </div>
 
-    <div className="h-[300px] w-full mt-4">
+    <div className="h-75 w-full mt-4">
       {revenueData ? (
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -109,7 +109,7 @@ const EventDistribution = React.memo(({ eventCategories }) => (
     <h3 className="text-lg font-bold text-gray-900 tracking-tight">Event Distribution</h3>
     <p className="text-sm text-gray-500 font-medium mb-6">Events by category</p>
 
-    <div className="h-[240px] w-full relative">
+    <div className="h-60 w-full relative">
       {eventCategories ? (
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -244,7 +244,7 @@ const AdminDashboard = () => {
             </div>
             <LoadingBlock className="h-9 w-28 rounded-xl" />
           </div>
-          <div className="h-[300px] rounded-xl border border-slate-100 dark:border-slate-700/70 bg-slate-50 dark:bg-slate-900/40 p-5">
+          <div className="h-75 rounded-xl border border-slate-100 dark:border-slate-700/70 bg-slate-50 dark:bg-slate-900/40 p-5">
             <div className="flex h-full items-end gap-3">
               {[42, 58, 38, 72, 66, 84, 54, 78].map((height, i) => (
                 <LoadingBlock key={i} className="flex-1 rounded-t-lg" style={{ height: `${height}%` }} />
@@ -258,7 +258,7 @@ const AdminDashboard = () => {
             <LoadingBlock className="h-5 w-40" />
             <LoadingBlock className="h-3 w-32" />
           </div>
-          <div className="mx-auto h-44 w-44 rounded-full border-[28px] border-slate-200 dark:border-slate-700 animate-pulse" />
+          <div className="mx-auto h-44 w-44 rounded-full border-28 border-slate-200 dark:border-slate-700 animate-pulse" />
           <div className="mt-8 space-y-3">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="flex items-center justify-between gap-4">
@@ -399,7 +399,7 @@ const AdminDashboard = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 w-full">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-8 sm:p-10 shadow-2xl text-white border border-blue-900/50">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-slate-950 via-blue-950 to-slate-900 p-8 sm:p-10 shadow-2xl text-white border border-blue-900/50">
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-blue-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-cyan-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -427,7 +427,7 @@ const AdminDashboard = () => {
           return (
             <div key={i} className={`group bg-white rounded-3xl p-6 flex flex-col justify-between h-full border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}>
               {/* Decorative background glow */}
-              <div className={`absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br ${stat.color} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
+              <div className={`absolute -top-10 -right-10 w-40 h-40 bg-linear-to-br ${stat.color} opacity-[0.06] blur-2xl rounded-full group-hover:scale-150 group-hover:opacity-15 transition-all duration-700 ease-out z-0`}></div>
 
               <div className="relative z-10 flex justify-between items-start mb-6">
                 <div className="flex-1 pr-3">
@@ -450,7 +450,7 @@ const AdminDashboard = () => {
               </div>
 
               {/* Bottom decorative line */}
-              <div className={`absolute bottom-0 left-0 w-full h-[4px] bg-gradient-to-r ${stat.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+              <div className={`absolute bottom-0 left-0 w-full h-1 bg-linear-to-r ${stat.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
             </div>
           );
         })}
@@ -477,7 +477,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="h-[300px] w-full mt-4">
+          <div className="h-75 w-full mt-4">
             {filteredRevenueData ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={filteredRevenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -517,7 +517,7 @@ const AdminDashboard = () => {
           <h3 className="text-lg font-bold text-gray-900 tracking-tight">Event Distribution</h3>
           <p className="text-sm text-gray-500 font-medium mb-6">Events by category</p>
 
-          <div className="h-[240px] w-full relative">
+          <div className="h-60 w-full relative">
             {eventCategories ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -583,10 +583,10 @@ const AdminDashboard = () => {
             </div>
             {allEvents.length > 0 && (
               <Select value={selectedEventId || ''} onValueChange={setSelectedEventId}>
-                <SelectTrigger className="w-[200px] h-9 bg-white border-gray-200 rounded-xl outline-none ring-0 focus:ring-2 focus:ring-blue-100 font-medium text-gray-700">
+                <SelectTrigger className="w-50 h-9 bg-white border-gray-200 rounded-xl outline-none ring-0 focus:ring-2 focus:ring-blue-100 font-medium text-gray-700">
                   <SelectValue placeholder="Select event..." />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl shadow-xl min-w-[200px]">
+                <SelectContent className="rounded-xl shadow-xl min-w-50">
                   {allEvents.map((event) => (
                     <SelectItem key={event._id} value={event._id} className="cursor-pointer font-medium">
                       {event.title}
@@ -611,7 +611,7 @@ const AdminDashboard = () => {
                       {selectedEvent.venue?.name && (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full">
                           <MapPin className="w-3.5 h-3.5" />
-                          <span className="truncate max-w-[150px]">{selectedEvent.venue.name}</span>
+                          <span className="truncate max-w-37.5">{selectedEvent.venue.name}</span>
                         </span>
                       )}
 
@@ -623,7 +623,7 @@ const AdminDashboard = () => {
                       </span>
                     </div>
                   </div>
-                  <Button variant="outline" className="rounded-xl border-gray-200 dark:border-blue-400/30 shadow-sm text-blue-600 dark:text-blue-200 hover:text-blue-700 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-blue-500/20 flex-shrink-0" onClick={() => navigate(`/admin/events/${selectedEvent._id}`)}>
+                  <Button variant="outline" className="rounded-xl border-gray-200 dark:border-blue-400/30 shadow-sm text-blue-600 dark:text-blue-200 hover:text-blue-700 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-blue-500/20 shrink-0" onClick={() => navigate(`/admin/events/${selectedEvent._id}`)}>
                     Manage Event
                   </Button>
                 </div>
@@ -676,7 +676,7 @@ const AdminDashboard = () => {
                         </div>
                         <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full"
+                            className="h-full bg-linear-to-r from-blue-400 to-cyan-500 rounded-full"
                             style={{ width: `${selectedEvent.analytics?.occupancyRate || (selectedEvent.seating && selectedEvent.seating.totalSeats > 0 ? Math.round(((selectedEvent.seating.totalSeats - selectedEvent.seating.availableSeats) / selectedEvent.seating.totalSeats) * 100) : 0)}%` }}
                           ></div>
                         </div>
@@ -733,7 +733,7 @@ const AdminDashboard = () => {
             <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">{notifications.length}</span>
           </div>
 
-          <div className="p-6 flex-1 overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-gray-200">
+          <div className="p-6 flex-1 overflow-y-auto max-h-100 scrollbar-thin scrollbar-thumb-gray-200">
             {notifications.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center">
                 <Bell className="w-10 h-10 text-gray-300 mb-3" />
@@ -752,7 +752,7 @@ const AdminDashboard = () => {
                   return (
                     <div key={notification.id || idx} className="relative pl-6 sm:pl-8 group">
                       {/* Timeline Dot */}
-                      <span className={`absolute -left-[17px] top-1 flex items-center justify-center w-8 h-8 rounded-full ring-4 ring-white ${colorClass} shadow-sm group-hover:scale-110 transition-transform`}>
+                      <span className={`absolute -left-4.25 top-1 flex items-center justify-center w-8 h-8 rounded-full ring-4 ring-white ${colorClass} shadow-sm group-hover:scale-110 transition-transform`}>
                         <Icon className="w-4 h-4" />
                       </span>
 
