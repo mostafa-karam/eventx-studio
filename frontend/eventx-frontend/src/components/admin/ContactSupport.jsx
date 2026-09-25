@@ -364,7 +364,7 @@ const ContactSupport = () => {
                 return (
                   <div key={ticket.id} className="p-6 hover:bg-blue-50/30 transition-colors flex flex-col lg:flex-row lg:items-center gap-6 group">
                     <div className="flex items-start gap-4 flex-1">
-                      <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-gray-500 border border-gray-100 flex-shrink-0">
+                      <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-gray-500 border border-gray-100 shrink-0">
                         {getCategoryIcon(ticket.category)}
                       </div>
                       <div>
@@ -429,7 +429,7 @@ const ContactSupport = () => {
               }
             ].map((faq, index) => (
               <div key={index} className="flex gap-4 items-start group">
-                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-black flex-shrink-0 group-hover:scale-110 transition-transform">
+                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-black shrink-0 group-hover:scale-110 transition-transform">
                   {index + 1}
                 </div>
                 <div>
@@ -496,7 +496,7 @@ const ContactSupport = () => {
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
                       placeholder="Type your response to the user here..."
-                      className="min-h-[100px] border-gray-200 rounded-xl focus:ring-blue-100 resize-none"
+                      className="min-h-25 border-gray-200 rounded-xl focus:ring-blue-100 resize-none"
                     />
                     <div className="mt-3 flex justify-end gap-3">
                       <Button variant="outline" className="font-bold rounded-xl" onClick={() => handleStatusChange('resolved')}>

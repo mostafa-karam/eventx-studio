@@ -10,7 +10,7 @@ module.exports = {
     credentials: true,
   },
   request: {
-    jsonLimit: process.env.REQUEST_BODY_LIMIT || '10kb',
+    jsonLimit: process.env.REQUEST_BODY_LIMIT || '100kb',
   },
   rateLimit: {
     windowMs: toInt(process.env.RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),

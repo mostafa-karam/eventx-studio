@@ -16,6 +16,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: ['euros-printing-metabolism-speaks.trycloudflare.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

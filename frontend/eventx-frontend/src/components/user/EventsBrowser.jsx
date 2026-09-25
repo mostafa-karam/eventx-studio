@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -54,6 +55,17 @@ const EventsBrowser = ({ onEventSelect }) => {
   //   const [showSuggestions] = useState(false);
 
   useAuth();
+  const navigate = useNavigate();
+  const handleEventSelect = (event) => {
+    if (typeof onEventSelect === 'function') {
+      onEventSelect(event);
+      return;
+    }
+    const eventId = event?._id || event?.id;
+    if (eventId) {
+      navigate(`/user/events/${eventId}`);
+    }
+  };
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
   // Load favorites from localStorage on component mount
@@ -226,7 +238,7 @@ const EventsBrowser = ({ onEventSelect }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {[...Array(8)].map((_, i) => (
             <Card key={i} className="overflow-hidden">
-              <div className="h-48 bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse flex items-center justify-center">
+              <div className="h-48 bg-linear-to-br from-gray-200 to-gray-300 animate-pulse flex items-center justify-center">
                 <div className="w-16 h-16 bg-gray-300 rounded-xl animate-pulse"></div>
               </div>
               <CardHeader className="pb-2">
@@ -254,7 +266,7 @@ const EventsBrowser = ({ onEventSelect }) => {
   return (
     <div className="p-6 space-y-6">
       {/* Premium Header */}
-      <div className="bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 border border-indigo-500/20 rounded-t-3xl p-8 shadow-xl relative overflow-hidden pb-16">
+      <div className="bg-linear-to-r from-gray-900 via-indigo-900 to-purple-900 border border-indigo-500/20 rounded-t-3xl p-8 shadow-xl relative overflow-hidden pb-16">
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500 rounded-full blur-3xl opacity-20 -mr-20 -mt-20"></div>
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500 rounded-full blur-3xl opacity-20 -ml-20 -mb-20"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -404,7 +416,7 @@ const EventsBrowser = ({ onEventSelect }) => {
                   type="date"
                   value={specificDate}
                   onChange={(e) => setSpecificDate(e.target.value)}
-                  className="pl-12 pr-4 h-14 w-auto min-w-[176px] bg-gray-50/50 border border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none font-medium text-gray-700 shadow-inner"
+                  className="pl-12 pr-4 h-14 w-auto min-w-44 bg-gray-50/50 border border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none font-medium text-gray-700 shadow-inner"
                 />
               </div>
             </div>
@@ -495,14 +507,14 @@ const EventsBrowser = ({ onEventSelect }) => {
                   <Card
                     key={event._id}
                     className="group cursor-pointer overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 pb-0 rounded-2xl bg-white"
-                    onClick={() => onEventSelect(event)}
+                    onClick={() => handleEventSelect(event)}
                   >
                     <div className="flex flex-col md:flex-row">
-                      <div className="relative w-full md:w-64 h-48 md:h-auto overflow-hidden flex-shrink-0">
+                      <div className="relative w-full md:w-64 h-48 md:h-auto overflow-hidden shrink-0">
                         {thumbnail ? (
                           <img src={thumbnail} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 p-4 bg-gradient-to-br from-indigo-50 to-purple-50">
+                          <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 p-4 bg-linear-to-br from-indigo-50 to-purple-50">
                             <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-2">
                               <Grid3X3 className="w-6 h-6 text-indigo-300" />
                             </div>
@@ -538,7 +550,7 @@ const EventsBrowser = ({ onEventSelect }) => {
                                 {event.description}
                               </p>
                             </div>
-                            <div className="text-right flex-shrink-0">
+                            <div className="text-right shrink-0">
                               <div className="text-xl md:text-2xl font-extrabold text-indigo-600 mb-1">
                                 {formatPrice(event)}
                               </div>
@@ -554,7 +566,7 @@ const EventsBrowser = ({ onEventSelect }) => {
                               <Calendar className="h-4 w-4 mr-2 text-indigo-500" />
                               {formatDate(event.date)}
                             </div>
-                            <div className="flex items-center bg-gray-50 px-3 py-1.5 rounded-lg max-w-[200px] truncate">
+                            <div className="flex items-center bg-gray-50 px-3 py-1.5 rounded-lg max-w-50 truncate">
                               <MapPin className="h-4 w-4 mr-2 text-indigo-500" />
                               <span className="truncate">{event?.venue?.city || event?.location?.address || 'Unknown city'}</span>
                             </div>
@@ -572,7 +584,7 @@ const EventsBrowser = ({ onEventSelect }) => {
                             </Badge>
                           </div>
                           <Button
-                            onClick={(e) => { e.stopPropagation(); onEventSelect(event); }}
+                            onClick={(e) => { e.stopPropagation(); handleEventSelect(event); }}
                             disabled={eventStatus.status === 'past' || eventStatus.status === 'sold-out'}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md font-semibold px-6 rounded-xl transition-all group-hover:shadow-lg group-hover:-translate-y-0.5"
                           >
@@ -591,9 +603,9 @@ const EventsBrowser = ({ onEventSelect }) => {
                 <Card
                   key={event._id}
                   className="group cursor-pointer overflow-hidden border-0 shadow-md hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 bg-white flex flex-col h-full rounded-2xl"
-                  onClick={() => onEventSelect(event)}
+                  onClick={() => handleEventSelect(event)}
                 >
-                  <div className="relative w-full h-56 bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden">
+                  <div className="relative w-full h-56 bg-linear-to-br from-indigo-50 to-purple-50 overflow-hidden">
                     {thumbnail ? (
                       <img src={thumbnail} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" />
                     ) : (
@@ -618,13 +630,13 @@ const EventsBrowser = ({ onEventSelect }) => {
                     >
                       <Heart className={`w-4.5 h-4.5 ${isFavorite ? 'fill-red-500 text-red-500 scale-110' : 'text-gray-600'} transition-transform`} />
                     </Button>
-                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                    <div className="absolute inset-0 bg-linear-to-t from-gray-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-md text-indigo-900 font-extrabold px-3 py-1.5 rounded-lg shadow-lg transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
                       {formatPrice(event)}
                     </div>
                   </div>
 
-                  <CardHeader className="pb-3 pt-5 flex-shrink-0">
+                  <CardHeader className="pb-3 pt-5 shrink-0">
                     <CardTitle className="text-xl font-bold line-clamp-1 group-hover:text-indigo-600 transition-colors tracking-tight text-gray-900">
                       {event.title}
                     </CardTitle>
@@ -648,7 +660,7 @@ const EventsBrowser = ({ onEventSelect }) => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto min-h-[52px]">
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto min-h-13">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs font-semibold bg-gray-50 border-gray-200 text-gray-600 px-2.5 py-0.5 rounded-full">
                           {event.category}
@@ -662,7 +674,7 @@ const EventsBrowser = ({ onEventSelect }) => {
                         {formatPrice(event)}
                       </div>
                       <Button
-                        onClick={(e) => { e.stopPropagation(); onEventSelect(event); }}
+                        onClick={(e) => { e.stopPropagation(); handleEventSelect(event); }}
                         disabled={eventStatus.status === 'past' || eventStatus.status === 'sold-out'}
                         size="sm"
                         className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md px-4 rounded-lg hidden group-hover:flex transition-all duration-300 animate-in fade-in zoom-in-95"
@@ -727,4 +739,3 @@ const EventsBrowser = ({ onEventSelect }) => {
 };
 
 export default EventsBrowser;
-

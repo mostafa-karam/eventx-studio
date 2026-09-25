@@ -118,7 +118,7 @@ Client --> POST /api/booking/initiate --> booking session
 - **Helmet:** CSP with nonce, HSTS in production, COEP/COOP/CORP, `X-Frame-Options: deny`, referrer policy, permissions policy.
 - **CORS:** `FRONTEND_ORIGIN` or `FRONTEND_URL` — comma-separated origins, validated (no `*`). In production, requests **without** `Origin` are rejected for browser CORS flow.
 - **Cookies:** `cookie-parser(COOKIE_SIGNING_SECRET)`; CSRF cookies use `__Host-` prefix in production (`config/security.js`).
-- **Body size:** `REQUEST_BODY_LIMIT` (default `10kb` in `config/security.js`).
+- **Body size:** `REQUEST_BODY_LIMIT` (default `100kb` in `config/security.js`).
 - **Other:** `mongoSanitize`, `hpp`, `compression`, `response-time`, request sanitizer.
 
 ### 2.4 Rate limiting (`middleware/rateLimiter.js`)
@@ -245,7 +245,7 @@ EMAIL_USER=...
 EMAIL_PASS=...
 EMAIL_FROM="EventX Studio" <no-reply@example.com>
 
-REQUEST_BODY_LIMIT=10kb
+REQUEST_BODY_LIMIT=100kb
 ```
 
 **Do not set in production:** `ALLOW_NON_TXN_BOOKING=true`.
